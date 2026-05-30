@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -10,25 +11,42 @@ class ApiClient {
     required Uri baseUrl,
     required TokenStore tokenStore,
     http.Client? httpClient,
+    int maxAttempts = 3,
+    Duration retryDelay = const Duration(milliseconds: 200),
+    Future<void> Function(Duration duration)? sleep,
   })  : _baseUrl = baseUrl,
         _tokenStore = tokenStore,
-        _httpClient = httpClient ?? http.Client();
+        _httpClient = httpClient ?? http.Client(),
+        _maxAttempts = maxAttempts,
+        _retryDelay = retryDelay,
+        _sleep = sleep ?? ((duration) => Future<void>.delayed(duration)) {
+    if (maxAttempts < 1) {
+      throw ArgumentError.value(
+        maxAttempts,
+        'maxAttempts',
+        'Must be at least 1.',
+      );
+    }
+  }
 
   final Uri _baseUrl;
   final TokenStore _tokenStore;
   final http.Client _httpClient;
+  final int _maxAttempts;
+  final Duration _retryDelay;
+  final Future<void> Function(Duration duration) _sleep;
 
   Future<void> createAnonymousSession({
     required String installationId,
     required String appVersion,
   }) async {
-    final response = await _httpClient.post(
-      _resolve('/v1/auth/anonymous-session'),
+    final response = await _postWithRetry(
+      '/v1/auth/anonymous-session',
       headers: const {'Content-Type': 'application/json'},
-      body: jsonEncode({
+      body: {
         'installation_id': installationId,
         'app_version': appVersion,
-      }),
+      },
     );
     final body = _decodeJson(response);
     await _tokenStore.saveTokens(
@@ -41,10 +59,10 @@ class ApiClient {
     String path,
     Map<String, Object?> body,
   ) async {
-    final response = await _httpClient.post(
-      _resolve(path),
+    final response = await _postWithRetry(
+      path,
       headers: await _authorizedJsonHeaders(),
-      body: jsonEncode(body),
+      body: body,
     );
     return _decodeJson(response);
   }
@@ -58,7 +76,7 @@ class ApiClient {
     request.headers['Accept'] = 'text/event-stream';
     request.body = jsonEncode(body);
 
-    final response = await _httpClient.send(request);
+    final response = await _sendStreamingRequest(request);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw ApiException('Streaming request failed: ${response.statusCode}.');
     }
@@ -83,6 +101,66 @@ class ApiClient {
       'Authorization': 'Bearer $accessToken',
       'Content-Type': 'application/json',
     };
+  }
+
+  Future<http.Response> _postWithRetry(
+    String path, {
+    required Map<String, String> headers,
+    required Map<String, Object?> body,
+  }) {
+    return _sendWithRetry(
+      () => _httpClient.post(
+        _resolve(path),
+        headers: headers,
+        body: jsonEncode(body),
+      ),
+      statusCode: (response) => response.statusCode,
+    );
+  }
+
+  Future<T> _sendWithRetry<T>(
+    Future<T> Function() send, {
+    required int Function(T response) statusCode,
+  }) async {
+    for (var attempt = 1; attempt <= _maxAttempts; attempt += 1) {
+      try {
+        final response = await send();
+        if (!_isRetryableStatus(statusCode(response)) ||
+            attempt == _maxAttempts) {
+          return response;
+        }
+      } on TimeoutException {
+        if (attempt == _maxAttempts) {
+          throw const ApiException('Network request timed out.');
+        }
+      } on http.ClientException {
+        if (attempt == _maxAttempts) {
+          throw const ApiException('Network request failed.');
+        }
+      }
+      await _sleep(_delayForAttempt(attempt));
+    }
+    throw const ApiException('Network request failed.');
+  }
+
+  Future<http.StreamedResponse> _sendStreamingRequest(
+    http.Request request,
+  ) async {
+    try {
+      return await _httpClient.send(request);
+    } on TimeoutException {
+      throw const ApiException('Network request timed out.');
+    } on http.ClientException {
+      throw const ApiException('Network request failed.');
+    }
+  }
+
+  bool _isRetryableStatus(int statusCode) {
+    return statusCode == 429 || (statusCode >= 500 && statusCode < 600);
+  }
+
+  Duration _delayForAttempt(int attempt) {
+    return Duration(milliseconds: _retryDelay.inMilliseconds * attempt);
   }
 
   Map<String, Object?> _decodeJson(http.Response response) {
