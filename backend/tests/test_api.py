@@ -1,0 +1,140 @@
+"""API route tests."""
+
+from uuid import uuid4
+
+from fastapi.testclient import TestClient
+
+from meinimpact.core.config import Settings
+from meinimpact.main import create_app
+
+
+def _client() -> TestClient:
+    settings = Settings(
+        jwt_secret="test-secret",
+        allowed_origins=["http://testserver"],
+    )
+    return TestClient(create_app(settings))
+
+
+def _auth_headers(client: TestClient) -> dict[str, str]:
+    response = client.post(
+        "/v1/auth/anonymous-session",
+        json={"installation_id": str(uuid4()), "app_version": "0.1.0"},
+    )
+    assert response.status_code == 201
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+def test_health_has_security_headers() -> None:
+    client = _client()
+    response = client.get("/health/live")
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["Cache-Control"] == "no-store"
+
+
+def test_protected_route_requires_bearer_token() -> None:
+    client = _client()
+    response = client.get("/v1/news")
+    assert response.status_code == 401
+
+
+def test_protected_route_rejects_invalid_bearer_token() -> None:
+    client = _client()
+    response = client.get(
+        "/v1/news",
+        headers={"Authorization": "Bearer invalid-token"},
+    )
+    assert response.status_code == 401
+
+
+def test_news_route_returns_dummy_news() -> None:
+    client = _client()
+    response = client.get("/v1/news", headers=_auth_headers(client))
+    assert response.status_code == 200
+    assert response.json()["news"][0]["id"] == "committee-solar-access"
+
+
+def test_recommendations_route_returns_explanations() -> None:
+    client = _client()
+    response = client.post(
+        "/v1/actions/recommendations",
+        headers=_auth_headers(client),
+        json={
+            "profile": {
+                "topics": ["climate", "housing"],
+                "value_axes": {"civil_rights": 2},
+                "region": "Germany",
+            },
+            "limit": 2,
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["recommendations"]) == 2
+    assert body["recommendations"][0]["score"] > 0
+    assert body["recommendations"][0]["reasons"]
+
+
+def test_action_route_returns_404_for_unknown_action() -> None:
+    client = _client()
+    response = client.get("/v1/actions/missing", headers=_auth_headers(client))
+    assert response.status_code == 404
+
+
+def test_action_route_returns_action() -> None:
+    client = _client()
+    response = client.get(
+        "/v1/actions/solar-letter-bundestag",
+        headers=_auth_headers(client),
+    )
+    assert response.status_code == 200
+    assert response.json()["id"] == "solar-letter-bundestag"
+
+
+def test_draft_stream_returns_404_for_unknown_action() -> None:
+    client = _client()
+    response = client.post(
+        "/v1/actions/missing/drafts/stream",
+        headers=_auth_headers(client),
+        json={
+            "profile": {
+                "topics": ["climate"],
+                "value_axes": {},
+                "region": "Germany",
+            }
+        },
+    )
+    assert response.status_code == 404
+
+
+def test_draft_stream_returns_sse_events() -> None:
+    client = _client()
+    with client.stream(
+        "POST",
+        "/v1/actions/solar-letter-bundestag/drafts/stream",
+        headers=_auth_headers(client),
+        json={
+            "profile": {
+                "topics": ["climate"],
+                "value_axes": {},
+                "region": "Germany",
+            },
+            "personal_context": "I rent an apartment.",
+            "tone": "respectful",
+        },
+    ) as response:
+        assert response.status_code == 200
+        body = response.read().decode()
+    assert "event: draft.started" in body
+    assert "event: draft.delta" in body
+    assert "event: draft.completed" in body
+
+
+def test_ready_health_route() -> None:
+    client = _client()
+    response = client.get("/health/ready")
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"

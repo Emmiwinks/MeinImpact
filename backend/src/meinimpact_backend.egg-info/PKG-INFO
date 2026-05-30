@@ -1,0 +1,58 @@
+Metadata-Version: 2.4
+Name: meinimpact-backend
+Version: 0.1.0
+Summary: FastAPI backend for MeinImpact.
+Requires-Python: >=3.14
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi>=0.115.0
+Requires-Dist: httpx>=0.28.0
+Requires-Dist: psycopg[binary]>=3.2.0
+Requires-Dist: pydantic-settings>=2.6.0
+Requires-Dist: PyJWT>=2.10.0
+Requires-Dist: sqlalchemy[asyncio]>=2.0.36
+Requires-Dist: uvicorn[standard]>=0.32.0
+Provides-Extra: dev
+Requires-Dist: mypy>=1.13.0; extra == "dev"
+Requires-Dist: pytest>=8.3.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.24.0; extra == "dev"
+Requires-Dist: pytest-cov>=6.0.0; extra == "dev"
+Requires-Dist: ruff>=0.8.0; extra == "dev"
+Requires-Dist: types-PyJWT>=1.7.1; extra == "dev"
+
+# MeinImpact Backend
+
+FastAPI backend for MeinImpact.
+
+## Stack
+
+- Python 3.14.
+- FastAPI.
+- PostgreSQL.
+- SQLAlchemy.
+- Mistral through an AI provider interface.
+- HTTPS streaming with SSE payloads.
+
+## Local Development
+
+```bash
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
+uvicorn meinimpact.main:app --reload
+```
+
+## Docker Compose
+
+```bash
+docker compose -f compose.yaml up --build
+```
+
+## Quality Gates
+
+```bash
+ruff format --check .
+ruff check .
+mypy src tests
+pytest
+```

@@ -1,0 +1,1 @@
+"""MeinImpact backend package."""
