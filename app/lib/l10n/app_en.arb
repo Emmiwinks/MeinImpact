@@ -1,0 +1,117 @@
+{
+  "@@locale": "en",
+  "appTitle": "MeinImpact",
+  "@appTitle": {
+    "description": "Application title."
+  },
+  "languageMenuLabel": "Language",
+  "@languageMenuLabel": {
+    "description": "Accessible label for the language selector."
+  },
+  "languageEnglish": "English",
+  "@languageEnglish": {
+    "description": "Native display name for English."
+  },
+  "languageGerman": "Deutsch",
+  "@languageGerman": {
+    "description": "Native display name for German."
+  },
+  "noActionsAvailable": "No actions available yet.",
+  "@noActionsAvailable": {
+    "description": "Empty state shown when no recommendations are available."
+  },
+  "scoreLabel": "Score {score}",
+  "@scoreLabel": {
+    "description": "Recommendation score label.",
+    "placeholders": {
+      "score": {
+        "type": "int",
+        "example": "90"
+      }
+    }
+  },
+  "effortMinutes": "{minutes, plural, =1{1 min} other{{minutes} min}}",
+  "@effortMinutes": {
+    "description": "Estimated effort in minutes.",
+    "placeholders": {
+      "minutes": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "recommendationsLoadError": "Could not load recommendations: {message}",
+  "@recommendationsLoadError": {
+    "description": "Error shown when recommendations cannot be loaded.",
+    "placeholders": {
+      "message": {
+        "type": "String",
+        "example": "Backend unavailable"
+      }
+    }
+  },
+  "topicClimate": "climate",
+  "@topicClimate": {
+    "description": "Display label for the climate topic."
+  },
+  "topicHousing": "housing",
+  "@topicHousing": {
+    "description": "Display label for the housing topic."
+  },
+  "topicEnergy": "energy",
+  "@topicEnergy": {
+    "description": "Display label for the energy topic."
+  },
+  "topicEducation": "education",
+  "@topicEducation": {
+    "description": "Display label for the education topic."
+  },
+  "topicDemocracy": "democracy",
+  "@topicDemocracy": {
+    "description": "Display label for the democracy topic."
+  },
+  "demoSolarTitle": "Ask your representative about community solar access",
+  "@demoSolarTitle": {
+    "description": "Demo action title for community solar access."
+  },
+  "demoSolarSummary": "A committee vote will discuss community solar rules next week.",
+  "@demoSolarSummary": {
+    "description": "Demo action summary for community solar access."
+  },
+  "demoSolarImpactHint": "The vote position can be checked after the committee week.",
+  "@demoSolarImpactHint": {
+    "description": "Demo action impact hint for community solar access."
+  },
+  "demoSolarReasonTopics": "Matches selected topics: climate, housing.",
+  "@demoSolarReasonTopics": {
+    "description": "Demo recommendation reason for community solar topic matching."
+  },
+  "demoSolarReasonEffort": "Can be completed in about three minutes.",
+  "@demoSolarReasonEffort": {
+    "description": "Demo recommendation effort reason for community solar access."
+  },
+  "demoSchoolTitle": "Support transparent school renovation funding",
+  "@demoSchoolTitle": {
+    "description": "Demo action title for school renovation funding."
+  },
+  "demoSchoolSummary": "A petition asks for clearer renovation funding timelines.",
+  "@demoSchoolSummary": {
+    "description": "Demo action summary for school renovation funding."
+  },
+  "demoSchoolImpactHint": "The quorum status can be checked after the deadline.",
+  "@demoSchoolImpactHint": {
+    "description": "Demo action impact hint for school renovation funding."
+  },
+  "demoSchoolReasonSpending": "Matches a public spending topic.",
+  "@demoSchoolReasonSpending": {
+    "description": "Demo recommendation reason for public spending."
+  },
+  "demoSchoolReasonEffort": "Can be completed in about two minutes.",
+  "@demoSchoolReasonEffort": {
+    "description": "Demo recommendation effort reason for school renovation funding."
+  },
+  "demoDraftDelta": "Dear representative, I care about transparent decisions.",
+  "@demoDraftDelta": {
+    "description": "Demo draft stream text."
+  }
+}

@@ -86,3 +86,13 @@ MeinImpact.
 - Use small, targeted commits. Each commit should add one coherent capability or
   documentation slice and must be pushed before starting the next commit group
   when the user requests step-by-step commits.
+
+## Version and Changelog
+
+- Every user-visible, API, schema, dependency, or infrastructure change must bump
+  the affected component version before commit.
+- Backend versions live in `backend/VERSION` and `backend/pyproject.toml` and
+  must stay synchronized.
+- App versions live in `app/VERSION` and `app/pubspec.yaml` and must stay
+  synchronized.
+- Every version bump must add a concise entry to `CHANGELOG.md`.

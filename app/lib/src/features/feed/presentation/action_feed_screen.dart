@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:meinimpact/l10n/app_localizations.dart';
 
 import '../domain/action_repository.dart';
 import '../domain/civic_action.dart';
@@ -7,10 +8,14 @@ import '../domain/user_profile.dart';
 class ActionFeedScreen extends StatelessWidget {
   const ActionFeedScreen({
     required this.actionRepository,
+    required this.selectedLocale,
+    required this.onLocaleChanged,
     super.key,
   });
 
   final ActionRepository actionRepository;
+  final Locale selectedLocale;
+  final ValueChanged<Locale> onLocaleChanged;
 
   static const _defaultProfile = UserProfile(
     topics: ['climate', 'housing', 'democracy'],
@@ -20,8 +25,17 @@ class ActionFeedScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('MeinImpact')),
+      appBar: AppBar(
+        title: Text(l10n.appTitle),
+        actions: [
+          _LanguageMenu(
+            selectedLocale: selectedLocale,
+            onLocaleChanged: onLocaleChanged,
+          ),
+        ],
+      ),
       body: FutureBuilder<List<ActionRecommendation>>(
         future: actionRepository.recommendations(_defaultProfile),
         builder: (context, snapshot) {
@@ -39,6 +53,50 @@ class ActionFeedScreen extends StatelessWidget {
   }
 }
 
+class _LanguageMenu extends StatelessWidget {
+  const _LanguageMenu({
+    required this.selectedLocale,
+    required this.onLocaleChanged,
+  });
+
+  final Locale selectedLocale;
+  final ValueChanged<Locale> onLocaleChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Semantics(
+      label: l10n.languageMenuLabel,
+      button: true,
+      child: Padding(
+        padding: const EdgeInsetsDirectional.only(end: 12),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<Locale>(
+            key: const Key('languageSelector'),
+            value: selectedLocale,
+            icon: const Icon(Icons.language),
+            onChanged: (locale) {
+              if (locale != null) {
+                onLocaleChanged(locale);
+              }
+            },
+            items: [
+              DropdownMenuItem(
+                value: const Locale('en'),
+                child: Text(l10n.languageEnglish),
+              ),
+              DropdownMenuItem(
+                value: const Locale('de'),
+                child: Text(l10n.languageGerman),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _RecommendationList extends StatelessWidget {
   const _RecommendationList({required this.recommendations});
 
@@ -46,8 +104,9 @@ class _RecommendationList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (recommendations.isEmpty) {
-      return const Center(child: Text('No actions available yet.'));
+      return Center(child: Text(l10n.noActionsAvailable));
     }
     return ListView.separated(
       padding: const EdgeInsets.all(16),
@@ -67,6 +126,7 @@ class _ActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final action = recommendation.action;
     return Card(
       child: Padding(
@@ -85,8 +145,8 @@ class _ActionCard extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                Chip(label: Text('${action.effortMinutes} min')),
-                Chip(label: Text('Score ${recommendation.score}')),
+                Chip(label: Text(l10n.effortMinutes(action.effortMinutes))),
+                Chip(label: Text(l10n.scoreLabel(recommendation.score))),
                 for (final topic in action.topics) Chip(label: Text(topic)),
               ],
             ),
@@ -106,10 +166,11 @@ class _FeedError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
-        child: Text('Could not load recommendations: $message'),
+        child: Text(l10n.recommendationsLoadError(message)),
       ),
     );
   }

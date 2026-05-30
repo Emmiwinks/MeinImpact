@@ -21,6 +21,7 @@ app/.flutter-plugins-dependencies
 app/.packages
 app/build/
 app/coverage/
+app/lib/l10n/app_localizations*.dart
 
 # Generated platform outputs
 app/android/.gradle/

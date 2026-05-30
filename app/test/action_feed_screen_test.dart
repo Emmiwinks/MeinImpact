@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meinimpact/src/app/meinimpact_app.dart';
 import 'package:meinimpact/src/core/network/sse_event_parser.dart';
@@ -17,6 +18,21 @@ void main() {
     expect(find.text('Score 90'), findsOneWidget);
   });
 
+  testWidgets('switches between English and German', (tester) async {
+    await tester.pumpWidget(
+      MeinImpactApp(actionRepository: _FakeActionRepository()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('languageSelector')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Deutsch').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Bewertung 90'), findsOneWidget);
+    expect(find.text('3 Min.'), findsOneWidget);
+  });
+
   testWidgets('renders empty recommendation state', (tester) async {
     await tester.pumpWidget(
       MeinImpactApp(actionRepository: _EmptyActionRepository()),
@@ -24,6 +40,20 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('No actions available yet.'), findsOneWidget);
+  });
+
+  testWidgets('renders empty recommendation state in German', (tester) async {
+    await tester.pumpWidget(
+      MeinImpactApp(actionRepository: _EmptyActionRepository()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('languageSelector')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Deutsch').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Noch keine Aktionen verfügbar.'), findsOneWidget);
   });
 
   testWidgets('renders recommendation errors', (tester) async {

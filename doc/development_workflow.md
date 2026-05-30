@@ -31,6 +31,7 @@ Install Flutter and make sure `flutter` is on `PATH`. Then from `app`:
 ```bash
 flutter create --platforms=android,ios,web,windows,macos,linux .
 flutter pub get
+flutter gen-l10n
 flutter run
 ```
 
@@ -52,6 +53,7 @@ App:
 
 ```bash
 cd app
+flutter gen-l10n
 dart format --set-exit-if-changed lib test
 flutter analyze --fatal-infos
 flutter test --coverage

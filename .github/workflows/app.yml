@@ -41,6 +41,9 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Generate localizations
+        run: flutter gen-l10n
+
       - name: Check formatting
         run: dart format --set-exit-if-changed lib test
 
@@ -72,6 +75,12 @@ jobs:
       - name: Generate Android project
         run: flutter create --platforms=android .
 
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate localizations
+        run: flutter gen-l10n
+
       - name: Build debug APK
         run: flutter build apk --debug
 
@@ -99,6 +108,12 @@ jobs:
 
       - name: Generate web project
         run: flutter create --platforms=web .
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate localizations
+        run: flutter gen-l10n
 
       - name: Build web release
         run: flutter build web --release
@@ -133,6 +148,12 @@ jobs:
       - name: Generate Linux project
         run: flutter create --platforms=linux .
 
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate localizations
+        run: flutter gen-l10n
+
       - name: Build Linux debug bundle
         run: flutter build linux --debug
 
@@ -161,6 +182,12 @@ jobs:
       - name: Generate Windows project
         run: flutter create --platforms=windows .
 
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate localizations
+        run: flutter gen-l10n
+
       - name: Build Windows debug bundle
         run: flutter build windows --debug
 
@@ -188,6 +215,12 @@ jobs:
 
       - name: Generate Apple projects
         run: flutter create --platforms=ios,macos .
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate localizations
+        run: flutter gen-l10n
 
       - name: Build iOS release without signing
         run: flutter build ios --release --no-codesign

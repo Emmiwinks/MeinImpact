@@ -2,49 +2,52 @@ import '../../feed/domain/action_repository.dart';
 import '../../feed/domain/civic_action.dart';
 import '../../feed/domain/user_profile.dart';
 import '../../../core/network/sse_event_parser.dart';
+import 'demo_action_copy.dart';
 
 class DemoActionRepository implements ActionRepository {
+  const DemoActionRepository(this.copy);
+
+  final DemoActionCopy copy;
+
   @override
   Future<List<ActionRecommendation>> recommendations(
     UserProfile profile,
   ) async {
-    return const [
+    return [
       ActionRecommendation(
         action: CivicAction(
           id: 'solar-letter-bundestag',
-          title: 'Ask your representative about community solar access',
+          title: copy.solarTitle,
           actionType: 'representative_letter',
-          summary:
-              'A committee vote will discuss community solar rules next week.',
-          topics: ['climate', 'housing', 'energy'],
+          summary: copy.solarSummary,
+          topics: [copy.topicClimate, copy.topicHousing, copy.topicEnergy],
           region: 'Germany',
           effortMinutes: 3,
-          impactHint:
-              'The vote position can be checked after the committee week.',
+          impactHint: copy.solarImpactHint,
           sourceUrl: 'https://www.bundestag.de/',
         ),
         score: 95,
         reasons: [
-          'Matches selected topics: climate, housing.',
-          'Can be completed in about three minutes.',
+          copy.solarReasonTopics,
+          copy.solarReasonEffort,
         ],
       ),
       ActionRecommendation(
         action: CivicAction(
           id: 'school-funding-petition',
-          title: 'Support transparent school renovation funding',
+          title: copy.schoolTitle,
           actionType: 'petition_signature',
-          summary: 'A petition asks for clearer renovation funding timelines.',
-          topics: ['education', 'democracy'],
+          summary: copy.schoolSummary,
+          topics: [copy.topicEducation, copy.topicDemocracy],
           region: 'Germany',
           effortMinutes: 2,
-          impactHint: 'The quorum status can be checked after the deadline.',
+          impactHint: copy.schoolImpactHint,
           sourceUrl: 'https://epetitionen.bundestag.de/',
         ),
         score: 76,
         reasons: [
-          'Matches a public spending topic.',
-          'Can be completed in about two minutes.',
+          copy.schoolReasonSpending,
+          copy.schoolReasonEffort,
         ],
       ),
     ];
@@ -57,9 +60,9 @@ class DemoActionRepository implements ActionRepository {
     String? personalContext,
     String tone = 'respectful',
   }) async* {
-    yield const SseEvent(
+    yield SseEvent(
       event: 'draft.delta',
-      data: 'Dear representative, I care about transparent decisions.',
+      data: copy.draftDelta,
     );
   }
 }
