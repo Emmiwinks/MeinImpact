@@ -6,7 +6,7 @@ services:
       - path: .env
         required: false
     environment:
-      MEINIMPACT_DATABASE_URL: postgresql+psycopg://meinimpact:meinimpact@db:5432/meinimpact
+      MEINIMPACT_DATABASE_URL: postgresql+asyncpg://meinimpact:meinimpact@db:5432/meinimpact
     ports:
       - "8000:8000"
     depends_on:

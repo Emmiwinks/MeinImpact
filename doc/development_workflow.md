@@ -18,6 +18,12 @@ Docker Compose starts PostgreSQL and the API:
 docker compose -f backend/compose.yaml up --build
 ```
 
+Apply backend database migrations from `backend`:
+
+```bash
+python -m alembic upgrade head
+```
+
 ## Local App
 
 Install Flutter and make sure `flutter` is on `PATH`. Then from `app`:

@@ -20,7 +20,7 @@ class Settings(BaseSettings):
         ]
     )
     database_url: str = (
-        "postgresql+psycopg://meinimpact:meinimpact@localhost:5432/meinimpact"
+        "postgresql+asyncpg://meinimpact:meinimpact@localhost:5432/meinimpact"
     )
     jwt_secret: str = "replace-this-local-development-secret"
     jwt_issuer: str = "meinimpact-api"

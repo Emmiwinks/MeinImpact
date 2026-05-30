@@ -7,7 +7,7 @@ FastAPI backend for MeinImpact.
 - Python 3.14.
 - FastAPI.
 - PostgreSQL.
-- SQLAlchemy.
+- SQLAlchemy with `asyncpg`.
 - Mistral through an AI provider interface.
 - HTTPS streaming with SSE payloads.
 
@@ -25,6 +25,12 @@ uvicorn meinimpact.main:app --reload
 
 ```bash
 docker compose -f compose.yaml up --build
+```
+
+Apply database migrations against the configured PostgreSQL database:
+
+```bash
+python -m alembic upgrade head
 ```
 
 ## Quality Gates

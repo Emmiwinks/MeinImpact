@@ -59,9 +59,14 @@ jobs:
       - name: Type check
         run: mypy src tests
 
+      - name: Run database migrations
+        env:
+          MEINIMPACT_DATABASE_URL: postgresql+asyncpg://meinimpact:meinimpact@localhost:5432/meinimpact
+        run: python -m alembic upgrade head
+
       - name: Run tests
         env:
-          MEINIMPACT_DATABASE_URL: postgresql+psycopg://meinimpact:meinimpact@localhost:5432/meinimpact
+          MEINIMPACT_DATABASE_URL: postgresql+asyncpg://meinimpact:meinimpact@localhost:5432/meinimpact
           MEINIMPACT_JWT_SECRET: ci-test-secret
         run: pytest
 
