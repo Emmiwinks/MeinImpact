@@ -28,7 +28,7 @@ class MeinImpactApp extends StatefulWidget {
 }
 
 class _MeinImpactAppState extends State<MeinImpactApp> {
-  Locale _locale = const Locale('en');
+  Locale _locale = const Locale('de');
 
   void _setLocale(Locale locale) {
     if (_locale == locale) {
@@ -49,7 +49,14 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF1FA37A),
+        ).copyWith(
+          surface: const Color(0xFFFFFCF7),
         ),
+        scaffoldBackgroundColor: const Color(0xFFFAF7F0),
+        textTheme: ThemeData.light().textTheme.apply(
+              bodyColor: const Color(0xFF28241F),
+              displayColor: const Color(0xFF28241F),
+            ),
         useMaterial3: true,
       ),
       home: Builder(
