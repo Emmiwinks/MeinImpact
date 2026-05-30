@@ -15,7 +15,7 @@ class MetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      minHeight: 76,
+      constraints: const BoxConstraints(minHeight: 76),
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
         color: AppColors.surfaceMuted,
