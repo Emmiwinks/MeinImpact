@@ -18,3 +18,17 @@ streaming AI drafts, app UI, CI, and future source integrations.
 - Add action tracking and notification foundations.
 - Add real civic and news source adapters.
 - Complete release packaging and security hardening.
+
+## Created GitHub Issues
+
+- `#1` - Stream AI-assisted drafts through Mistral.
+- `#2` - Add PostgreSQL migrations and repositories.
+- `#3` - Implement transparent weekly recommendation scoring.
+- `#4` - Implement onboarding and value profile storage.
+- `#5` - Harden anonymous session authentication.
+- `#6` - Integrate real civic and news source adapters.
+- `#7` - Keep identity data local with draft placeholders.
+- `#8` - Add secure token storage and API retry behavior.
+- `#9` - Add action tracking and notification foundations.
+- `#10` - Build initial Flutter action feed and draft flow.
+- `#11` - Complete release packaging and security hardening.

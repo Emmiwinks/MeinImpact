@@ -76,3 +76,5 @@ Recommended commit order for this scaffold:
 - GitHub issue creation and issue-plan documentation updates.
 
 Each commit message must be English, concise, and describe one coherent change.
+
+The initial bootstrap commit history is recorded in `doc/commit_log.md`.
