@@ -18,9 +18,8 @@ class SignalDots extends StatelessWidget {
             width: 6,
             height: 6,
             decoration: BoxDecoration(
-              color: index < activeDots
-                  ? AppColors.green
-                  : AppColors.subtleBorder,
+              color:
+                  index < activeDots ? AppColors.green : AppColors.subtleBorder,
               shape: BoxShape.circle,
             ),
           ),
