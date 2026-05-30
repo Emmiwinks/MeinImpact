@@ -18,6 +18,11 @@ when the user requests traceable commit history.
   parser, token storage abstraction, demo feed, domain models, and app tests.
 - `fa15739` - `Add CI workflows and coverage tooling`: GitHub Actions for
   backend and app builds/tests plus LCOV coverage enforcement tooling.
+- `869e3c6` - `Document bootstrap commits and issues`: records the bootstrap
+  commit history and created GitHub issues in project documentation.
+- `c45c201` - `Fix Flutter CI generated test and Linux deps`: removes the
+  default generated Flutter widget test in CI and installs the Linux
+  `libsecret-1` development dependency required by secure storage.
 
 ## Bootstrap Issues
 
