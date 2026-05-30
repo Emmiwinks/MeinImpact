@@ -1,0 +1,200 @@
+name: App
+
+on:
+  pull_request:
+    paths:
+      - "app/**"
+      - "tools/**"
+      - ".github/workflows/app.yml"
+  push:
+    branches: ["main"]
+    paths:
+      - "app/**"
+      - "tools/**"
+      - ".github/workflows/app.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test app
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate platform folders
+        run: flutter create --platforms=android,ios,web,windows,macos,linux .
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Check formatting
+        run: dart format --set-exit-if-changed lib test
+
+      - name: Analyze
+        run: flutter analyze --fatal-infos
+
+      - name: Run tests
+        run: flutter test --coverage
+
+      - name: Enforce coverage
+        run: python ../tools/check_lcov.py coverage/lcov.info 95
+
+  android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate Android project
+        run: flutter create --platforms=android .
+
+      - name: Build debug APK
+        run: flutter build apk --debug
+
+      - name: Upload Android artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-debug-apk
+          path: app/build/app/outputs/flutter-apk/app-debug.apk
+
+  web:
+    name: Build web app
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate web project
+        run: flutter create --platforms=web .
+
+      - name: Build web release
+        run: flutter build web --release
+
+      - name: Upload web artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-release
+          path: app/build/web
+
+  linux:
+    name: Build Linux app
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux desktop dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate Linux project
+        run: flutter create --platforms=linux .
+
+      - name: Build Linux debug bundle
+        run: flutter build linux --debug
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-debug
+          path: app/build/linux
+
+  windows:
+    name: Build Windows app
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate Windows project
+        run: flutter create --platforms=windows .
+
+      - name: Build Windows debug bundle
+        run: flutter build windows --debug
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-debug
+          path: app/build/windows
+
+  apple:
+    name: Build Apple apps
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate Apple projects
+        run: flutter create --platforms=ios,macos .
+
+      - name: Build iOS release without signing
+        run: flutter build ios --release --no-codesign
+
+      - name: Build macOS release
+        run: flutter build macos --release
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-release
+          path: app/build/macos
