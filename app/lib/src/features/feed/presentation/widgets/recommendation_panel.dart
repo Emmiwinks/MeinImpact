@@ -39,7 +39,8 @@ class RecommendationPanel extends StatelessWidget {
                 l10n: l10n,
                 recommendation: recommendation,
               ),
-              if (recommendation != recommendations.last) const SizedBox(height: 12),
+              if (recommendation != recommendations.last)
+                const SizedBox(height: 12),
             ],
         ],
       ),

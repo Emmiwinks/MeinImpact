@@ -119,8 +119,12 @@ class _TopicRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = topic.selected ? AppColors.green : AppColors.subtleBorder;
-    final background = topic.selected ? AppColors.greenWash : AppColors.surfaceMuted;
+    final borderColor = topic.selected
+        ? AppColors.green
+        : AppColors.subtleBorder;
+    final background = topic.selected
+        ? AppColors.greenWash
+        : AppColors.surfaceMuted;
 
     return Container(
       minHeight: 34,
@@ -143,7 +147,9 @@ class _TopicRow extends StatelessWidget {
               topic.label,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: AppColors.ink,
-                    fontWeight: topic.selected ? FontWeight.w700 : FontWeight.w500,
+                    fontWeight: topic.selected
+                        ? FontWeight.w700
+                        : FontWeight.w500,
                   ),
             ),
           ),
