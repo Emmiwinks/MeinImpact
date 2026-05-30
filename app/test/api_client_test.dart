@@ -260,4 +260,47 @@ void main() {
       ),
     );
   });
+
+  test('maps SSE stream failures after response starts', () async {
+    final tokenStore = InMemoryTokenStore();
+    await tokenStore.saveTokens(
+      accessToken: 'secret-access-token',
+      refreshToken: 'secret-refresh-token',
+    );
+    final client = ApiClient(
+      baseUrl: Uri.parse('https://api.example.test/'),
+      tokenStore: tokenStore,
+      httpClient: _StreamingClient((request) async {
+        return http.StreamedResponse(
+          Stream<List<int>>.error(
+            http.ClientException('stream down secret-access-token'),
+          ),
+          200,
+        );
+      }),
+      retryDelay: Duration.zero,
+    );
+
+    Object? thrown;
+    try {
+      await client.postSse('/v1/stream', const {}).toList();
+    } on Object catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown, isA<ApiException>());
+    expect(thrown.toString(), contains('Network request failed.'));
+    expect(thrown.toString(), isNot(contains('secret-access-token')));
+  });
+}
+
+class _StreamingClient extends http.BaseClient {
+  _StreamingClient(this._send);
+
+  final Future<http.StreamedResponse> Function(http.BaseRequest request) _send;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    return _send(request);
+  }
 }

@@ -81,8 +81,19 @@ class ApiClient {
       throw ApiException('Streaming request failed: ${response.statusCode}.');
     }
 
+    final chunks = response.stream.transform(utf8.decoder).handleError(
+      (Object error) {
+        if (error is TimeoutException) {
+          throw const ApiException('Network request timed out.');
+        }
+        throw const ApiException('Network request failed.');
+      },
+      test: (error) =>
+          error is TimeoutException || error is http.ClientException,
+    );
+
     final parser = SseEventParser();
-    await for (final chunk in response.stream.transform(utf8.decoder)) {
+    await for (final chunk in chunks) {
       for (final event in parser.addChunk(chunk)) {
         yield event;
       }
