@@ -1,6 +1,7 @@
 # CI/CD Plan
 
-GitHub Actions builds, tests, and packages the backend and app.
+GitHub Actions builds, tests, and packages the backend and app. GitLab CI also
+validates and publishes the backend Docker image for registry-based deployment.
 
 ## Backend CI
 
@@ -15,9 +16,16 @@ It performs:
 - Mypy type checks.
 - Pytest with at least 95% coverage.
 - Docker image build.
+- GitLab Container Registry push for default branch and release tag backend
+  images.
 
 PostgreSQL is available as a service in CI so integration tests can be added
 without changing the workflow.
+
+Published GitLab backend images use `registry.gitlab.com/<group>/<project>/backend`
+with the commit SHA tag on every published build. Default branch builds also get
+the branch slug and `latest` tags. Git tag pipelines also publish the matching
+tag name.
 
 ## App CI
 

@@ -18,6 +18,19 @@ Docker Compose starts PostgreSQL and the API:
 docker compose -f backend/compose.yaml up --build
 ```
 
+The GitLab deployment compose file uses a published backend image instead of a
+local build:
+
+```bash
+docker compose -f backend/compose.deploy.yaml up -d
+```
+
+Run migrations with the same published image and deployment environment:
+
+```bash
+docker compose -f backend/compose.deploy.yaml run --rm api python -m alembic upgrade head
+```
+
 Apply backend database migrations from `backend`:
 
 ```bash

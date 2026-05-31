@@ -27,7 +27,38 @@ uvicorn meinimpact.main:app --reload
 docker compose -f compose.yaml up --build
 ```
 
-Apply database migrations against the configured PostgreSQL database:
+## GitLab Registry Image
+
+GitLab CI builds the backend image as `registry.gitlab.com/<group>/<project>/backend`.
+Default branch builds are pushed with the commit SHA, branch slug, and `latest` tags.
+Git tags are also pushed as matching image tags.
+
+Deploy the published image without rebuilding it locally:
+
+```bash
+docker login registry.gitlab.com
+docker compose -f compose.deploy.yaml up -d
+```
+
+Set these runtime values through environment variables or a local `.env` file on
+the deployment host:
+
+```bash
+MEINIMPACT_BACKEND_IMAGE=registry.gitlab.com/<group>/<project>/backend:latest
+MEINIMPACT_DATABASE_URL=postgresql+asyncpg://user:password@postgres.example.com:5432/meinimpact
+MEINIMPACT_JWT_SECRET=change-me
+MEINIMPACT_MISTRAL_API_KEY=change-me
+MEINIMPACT_ALLOWED_ORIGINS=["https://app.example.com"]
+```
+
+Run migrations with the same published image and runtime environment:
+
+```bash
+docker compose -f compose.deploy.yaml run --rm api python -m alembic upgrade head
+```
+
+For local Python setup, apply database migrations against the configured
+PostgreSQL database:
 
 ```bash
 python -m alembic upgrade head
