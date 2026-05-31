@@ -4,6 +4,11 @@ import 'package:meinimpact/l10n/app_localizations.dart';
 import '../domain/action_repository.dart';
 import '../domain/civic_action.dart';
 import '../domain/user_profile.dart';
+import 'widgets/app_colors.dart';
+import 'widgets/app_frame.dart';
+import 'widgets/feed_error.dart';
+import 'widgets/home_content.dart';
+import 'widgets/loading_card.dart';
 
 class ActionFeedScreen extends StatelessWidget {
   const ActionFeedScreen({
@@ -27,151 +32,35 @@ class ActionFeedScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.appTitle),
-        actions: [
-          _LanguageMenu(
-            selectedLocale: selectedLocale,
-            onLocaleChanged: onLocaleChanged,
-          ),
-        ],
-      ),
+      backgroundColor: AppColors.canvas,
       body: FutureBuilder<List<ActionRecommendation>>(
         future: actionRepository.recommendations(_defaultProfile),
         builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return _FeedError(message: snapshot.error.toString());
-          }
-          final recommendations = snapshot.data ?? const [];
-          return _RecommendationList(recommendations: recommendations);
+          return AppFrame(
+            l10n: l10n,
+            selectedLocale: selectedLocale,
+            onLocaleChanged: onLocaleChanged,
+            child: _buildContent(l10n, snapshot),
+          );
         },
       ),
     );
   }
-}
 
-class _LanguageMenu extends StatelessWidget {
-  const _LanguageMenu({
-    required this.selectedLocale,
-    required this.onLocaleChanged,
-  });
-
-  final Locale selectedLocale;
-  final ValueChanged<Locale> onLocaleChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    return Semantics(
-      label: l10n.languageMenuLabel,
-      button: true,
-      child: Padding(
-        padding: const EdgeInsetsDirectional.only(end: 12),
-        child: DropdownButtonHideUnderline(
-          child: DropdownButton<Locale>(
-            key: const Key('languageSelector'),
-            value: selectedLocale,
-            icon: const Icon(Icons.language),
-            onChanged: (locale) {
-              if (locale != null) {
-                onLocaleChanged(locale);
-              }
-            },
-            items: [
-              DropdownMenuItem(
-                value: const Locale('en'),
-                child: Text(l10n.languageEnglish),
-              ),
-              DropdownMenuItem(
-                value: const Locale('de'),
-                child: Text(l10n.languageGerman),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RecommendationList extends StatelessWidget {
-  const _RecommendationList({required this.recommendations});
-
-  final List<ActionRecommendation> recommendations;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    if (recommendations.isEmpty) {
-      return Center(child: Text(l10n.noActionsAvailable));
+  Widget _buildContent(
+    AppLocalizations l10n,
+    AsyncSnapshot<List<ActionRecommendation>> snapshot,
+  ) {
+    if (snapshot.connectionState != ConnectionState.done) {
+      return const LoadingCard();
     }
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemBuilder: (context, index) {
-        return _ActionCard(recommendation: recommendations[index]);
-      },
-      separatorBuilder: (context, index) => const SizedBox(height: 12),
-      itemCount: recommendations.length,
-    );
-  }
-}
+    if (snapshot.hasError) {
+      return FeedError(message: snapshot.error.toString());
+    }
 
-class _ActionCard extends StatelessWidget {
-  const _ActionCard({required this.recommendation});
-
-  final ActionRecommendation recommendation;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final action = recommendation.action;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              action.title,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(action.summary),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                Chip(label: Text(l10n.effortMinutes(action.effortMinutes))),
-                Chip(label: Text(l10n.scoreLabel(recommendation.score))),
-                for (final topic in action.topics) Chip(label: Text(topic)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(action.impactHint),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FeedError extends StatelessWidget {
-  const _FeedError({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Text(l10n.recommendationsLoadError(message)),
-      ),
+    return HomeContent(
+      l10n: l10n,
+      recommendations: snapshot.data ?? const [],
     );
   }
 }

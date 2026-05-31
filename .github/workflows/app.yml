@@ -58,6 +58,7 @@ jobs:
 
   android:
     name: Build Android APK
+    needs: test
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -92,6 +93,7 @@ jobs:
 
   web:
     name: Build web app
+    needs: test
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -126,6 +128,7 @@ jobs:
 
   linux:
     name: Build Linux app
+    needs: test
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -165,6 +168,7 @@ jobs:
 
   windows:
     name: Build Windows app
+    needs: test
     runs-on: windows-latest
     defaults:
       run:
@@ -199,6 +203,7 @@ jobs:
 
   apple:
     name: Build Apple apps
+    needs: test
     runs-on: macos-latest
     defaults:
       run:

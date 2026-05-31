@@ -38,7 +38,7 @@ class DemoActionRepository implements ActionRepository {
           title: copy.schoolTitle,
           actionType: 'petition_signature',
           summary: copy.schoolSummary,
-          topics: [copy.topicEducation, copy.topicDemocracy],
+          topics: [copy.topicDemocracy],
           region: 'Germany',
           effortMinutes: 2,
           impactHint: copy.schoolImpactHint,

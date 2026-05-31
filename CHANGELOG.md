@@ -11,6 +11,12 @@ Version sources:
 
 ## 2026-05-30
 
+### App 0.1.2+3
+
+- Added bounded retry behavior for transient JSON API failures.
+- Added generic network error mapping for JSON and SSE transport failures.
+- Added API client tests for retry limits and token-safe error messages.
+
 ### App 0.1.1+2
 
 - Added native Flutter localization support with English and German ARB files.
