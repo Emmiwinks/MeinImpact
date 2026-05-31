@@ -13,12 +13,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('MeinImpact'), findsOneWidget);
-    expect(find.text('Write to your representative'), findsOneWidget);
-    expect(find.text('Score 90'), findsOneWidget);
+    expect(find.text('MeinImpact'), findsWidgets);
+    expect(find.text('Write to your representative'), findsWidgets);
+    expect(find.text('Bewertung 90'), findsOneWidget);
   });
 
-  testWidgets('switches between English and German', (tester) async {
+  testWidgets('switches between German and English', (tester) async {
     await tester.pumpWidget(
       MeinImpactApp(actionRepository: _FakeActionRepository()),
     );
@@ -26,11 +26,11 @@ void main() {
 
     await tester.tap(find.byKey(const Key('languageSelector')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Deutsch').last);
+    await tester.tap(find.text('English').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('Bewertung 90'), findsOneWidget);
-    expect(find.text('3 Min.'), findsOneWidget);
+    expect(find.text('Score 90'), findsOneWidget);
+    expect(find.text('3 min'), findsOneWidget);
   });
 
   testWidgets('renders empty recommendation state', (tester) async {
@@ -39,10 +39,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('No actions available yet.'), findsOneWidget);
+    expect(find.text('Noch keine Aktionen verfügbar.'), findsOneWidget);
   });
 
-  testWidgets('renders empty recommendation state in German', (tester) async {
+  testWidgets('renders empty recommendation state in English', (tester) async {
     await tester.pumpWidget(
       MeinImpactApp(actionRepository: _EmptyActionRepository()),
     );
@@ -50,10 +50,10 @@ void main() {
 
     await tester.tap(find.byKey(const Key('languageSelector')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Deutsch').last);
+    await tester.tap(find.text('English').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('Noch keine Aktionen verfügbar.'), findsOneWidget);
+    expect(find.text('No actions available yet.'), findsOneWidget);
   });
 
   testWidgets('renders recommendation errors', (tester) async {
@@ -63,7 +63,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.textContaining('Could not load recommendations:'),
+      find.textContaining('Empfehlungen konnten nicht geladen werden:'),
       findsOneWidget,
     );
   });
