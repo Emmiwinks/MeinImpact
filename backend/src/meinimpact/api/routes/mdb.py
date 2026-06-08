@@ -18,7 +18,8 @@ _PLZ_RE = re.compile(r"^\d{5}$")
 
 
 def _get_wks(request: Request) -> WksService:
-    return request.app.state.wks_service
+    wks: WksService = request.app.state.wks_service
+    return wks
 
 
 @router.get("")

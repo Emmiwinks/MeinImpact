@@ -16,7 +16,7 @@ async def test_recommendation_prioritizes_matching_topics_and_region() -> None:
     service = RecommendationService(DummyActionRepository())
     recommendations = await service.recommend(
         UserProfile(
-            topics=("climate", "housing"),
+            topics=("klimaschutz", "wohnen"),
             value_axes={},
             region="Germany",
         ),
@@ -24,7 +24,7 @@ async def test_recommendation_prioritizes_matching_topics_and_region() -> None:
     )
     assert recommendations[0].action.id == "solar-letter-bundestag"
     assert recommendations[0].score > recommendations[-1].score
-    assert any("climate" in reason for reason in recommendations[0].reasons)
+    assert any("klimaschutz" in reason for reason in recommendations[0].reasons)
 
 
 @pytest.mark.asyncio
