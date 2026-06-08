@@ -53,6 +53,7 @@ class CivicActionRecord(Base):
     effort_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
     impact_hint: Mapped[str] = mapped_column(Text, nullable=False)
     source_url: Mapped[str] = mapped_column(String(length=500), nullable=False)
+    urgency: Mapped[str] = mapped_column(String(length=10), nullable=False, default="low")
 
 
 class NewsItemRecord(Base):

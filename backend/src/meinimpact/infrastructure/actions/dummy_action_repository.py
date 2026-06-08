@@ -14,12 +14,13 @@ _DUMMY_ACTIONS: tuple[CivicAction, ...] = (
             "A Bundestag committee vote will discuss community solar access "
             "rules next week."
         ),
-        topics=("climate", "housing", "energy"),
+        topics=("klimaschutz", "wohnen"),
         region="Germany",
-        deadline=date(2026, 6, 8),
+        deadline=date(2026, 6, 14),
         effort_minutes=3,
         impact_hint="The vote position can be checked after the committee week.",
         source_url="https://www.bundestag.de/",
+        urgency="high",
     ),
     CivicAction(
         id="school-funding-petition",
@@ -29,12 +30,13 @@ _DUMMY_ACTIONS: tuple[CivicAction, ...] = (
             "A public petition is close to its quorum and asks for clearer "
             "renovation funding timelines."
         ),
-        topics=("education", "democracy", "public spending"),
+        topics=("bildung", "demokratie"),
         region="Germany",
-        deadline=date(2026, 6, 14),
+        deadline=date(2026, 6, 28),
         effort_minutes=2,
         impact_hint="The quorum status can be checked after the deadline.",
         source_url="https://epetitionen.bundestag.de/",
+        urgency="mid",
     ),
     CivicAction(
         id="local-bike-plan-comment",
@@ -44,12 +46,13 @@ _DUMMY_ACTIONS: tuple[CivicAction, ...] = (
             "A city planning consultation accepts resident comments on safer "
             "school cycling routes."
         ),
-        topics=("mobility", "education", "local democracy"),
+        topics=("verkehr", "bildung"),
         region="Dresden",
-        deadline=date(2026, 6, 21),
+        deadline=date(2026, 7, 21),
         effort_minutes=3,
         impact_hint="Submitted comments become part of the formal review file.",
         source_url="https://www.dresden.de/",
+        urgency="low",
     ),
 )
 

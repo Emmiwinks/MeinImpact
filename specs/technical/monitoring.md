@@ -10,7 +10,7 @@ Covers backend health, API costs, pipeline status, and error tracking.
 
 - **Three monitoring tools, all on free tiers for MVP:**
   Sentry (errors), Fly.io Metrics (infrastructure), provider dashboards
-  (Mistral, Tavily, Neon).
+  (Mistral, Tavily, Supabase).
 
 - **No custom monitoring infrastructure.** No Grafana, no Prometheus,
   no self-hosted dashboards in MVP. All monitoring via existing SaaS.
@@ -29,7 +29,7 @@ Covers backend health, API costs, pipeline status, and error tracking.
 |---|---|---|
 | Sentry | Application errors, exceptions | Free (5k errors/month) |
 | Fly.io Metrics | CPU, memory, request latency, restarts | Included |
-| Neon Dashboard | DB size, connection count, query performance | Included |
+| Supabase Dashboard | DB size, connection count, query performance | Included |
 | Mistral Dashboard | Token usage, cost, API errors | Included |
 | Tavily Dashboard | Credit usage, remaining balance | Included |
 | NewsData.io Dashboard | Credit usage | Included |
@@ -97,7 +97,7 @@ await SentryFlutter.init(
 
 | Metric | Source |
 |---|---|
-| DB size | Neon dashboard |
+| DB size | Supabase dashboard |
 | Active push subscriptions | `SELECT COUNT(*) FROM push_subscriptions` |
 | Completion rate | `SELECT SUM(completion_count) FROM action_stats` |
 | Average feedback rating | `SELECT AVG(rating) FROM feedback WHERE created_at > now() - '7 days'::interval` |

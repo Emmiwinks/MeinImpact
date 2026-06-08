@@ -55,6 +55,15 @@ class ApiClient {
     );
   }
 
+  Future<Map<String, Object?>> getJson(String path) async {
+    final headers = await _authorizedJsonHeaders();
+    final response = await _sendWithRetry(
+      () => _httpClient.get(_resolve(path), headers: headers),
+      statusCode: (r) => r.statusCode,
+    );
+    return _decodeJson(response);
+  }
+
   Future<Map<String, Object?>> postJson(
     String path,
     Map<String, Object?> body,

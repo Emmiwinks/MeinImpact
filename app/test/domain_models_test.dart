@@ -30,15 +30,29 @@ void main() {
 
   test('serializes user profile for backend requests', () {
     const profile = UserProfile(
-      topics: ['climate'],
-      valueAxes: {'civil_rights': 2},
+      topics: ['klimaschutz'],
+      werte: {'wirtschaft_gleichheit': 2},
       region: 'Germany',
     );
 
     expect(profile.toJson(), {
-      'topics': ['climate'],
-      'value_axes': {'civil_rights': 2},
+      'topics': ['klimaschutz'],
+      'blacklist': <String>[],
+      'werte': {'wirtschaft_gleichheit': 2},
       'region': 'Germany',
     });
+  });
+
+  test('derives value axes from werte question scores', () {
+    const profile = UserProfile(
+      topics: ['klimaschutz'],
+      werte: {
+        'wirtschaft_gleichheit': -2,
+        'wirtschaft_staat': -1,
+      },
+    );
+
+    expect(profile.axisWirtschaft, -1.5);
+    expect(profile.axisDiplomatie, 0.0);
   });
 }

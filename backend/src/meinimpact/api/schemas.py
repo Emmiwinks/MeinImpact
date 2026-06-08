@@ -84,6 +84,47 @@ class ActionResponse(BaseModel):
         )
 
 
+class ActionPoolItemResponse(BaseModel):
+    """One action in the device-side scoring pool."""
+
+    id: str
+    title: str
+    action_type: str
+    summary: str
+    topics: list[str]
+    region: str | None
+    deadline: date | None
+    effort_minutes: int
+    impact_hint: str
+    source_url: str
+    urgency: str = "low"
+    werte_relevanz: dict[str, float] = Field(default_factory=dict)
+
+    @classmethod
+    def from_domain(cls, action: CivicAction) -> ActionPoolItemResponse:
+        """Builds a pool item from a domain action."""
+        return cls(
+            id=action.id,
+            title=action.title,
+            action_type=action.action_type.value,
+            summary=action.summary,
+            topics=list(action.topics),
+            region=action.region,
+            deadline=action.deadline,
+            effort_minutes=action.effort_minutes,
+            impact_hint=action.impact_hint,
+            source_url=action.source_url,
+            urgency=action.urgency,
+        )
+
+
+class ActionPoolResponse(BaseModel):
+    """Full action pool for device-side scoring."""
+
+    actions: list[ActionPoolItemResponse]
+    version: str
+
+
 class RecommendationResponse(BaseModel):
     """Recommended action with transparent scoring reasons."""
 
@@ -145,9 +186,16 @@ class NewsResponse(BaseModel):
     news: list[NewsItemResponse]
 
 
-class DraftRequest(BaseModel):
-    """Request for an AI-assisted action draft stream."""
+class LetterRequest(BaseModel):
+    """Request for a streaming letter or public question draft."""
 
-    profile: UserProfileRequest
-    personal_context: str | None = Field(default=None, max_length=600)
-    tone: str = Field(default="respectful", min_length=1, max_length=64)
+    action_id: str = Field(min_length=1, max_length=120)
+    type: str = Field(pattern=r"^(brief|anfrage)$")
+    recipient_name: str = Field(min_length=1, max_length=120)
+    recipient_party: str = Field(min_length=1, max_length=60)
+    recipient_wahlkreis: str | None = Field(default=None, max_length=120)
+    tone_descriptors: list[str] = Field(default_factory=list)
+    lebenssituation: list[str] = Field(default_factory=list)
+    sektor: str | None = None
+    plz_prefix: str | None = Field(default=None, max_length=2)
+    wohnsituation: str | None = None

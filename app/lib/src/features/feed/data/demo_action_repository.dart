@@ -57,12 +57,9 @@ class DemoActionRepository implements ActionRepository {
   Stream<SseEvent> streamDraft({
     required String actionId,
     required UserProfile profile,
-    String? personalContext,
-    String tone = 'respectful',
+    String letterType = 'brief',
   }) async* {
-    yield SseEvent(
-      event: 'draft.delta',
-      data: copy.draftDelta,
-    );
+    yield SseEvent(event: 'message', data: copy.draftDelta);
+    yield const SseEvent(event: 'message', data: '[DONE]');
   }
 }

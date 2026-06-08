@@ -9,9 +9,14 @@ class CivicAction {
     required this.effortMinutes,
     required this.impactHint,
     required this.sourceUrl,
+    this.deadline,
+    this.urgency = 'low',
+    this.werteRelevanz = const {},
   });
 
   factory CivicAction.fromJson(Map<String, Object?> json) {
+    final deadlineStr = json['deadline'] as String?;
+    final werteRaw = json['werte_relevanz'] as Map<String, Object?>?;
     return CivicAction(
       id: json['id'] as String,
       title: json['title'] as String,
@@ -22,6 +27,11 @@ class CivicAction {
       effortMinutes: json['effort_minutes'] as int,
       impactHint: json['impact_hint'] as String,
       sourceUrl: json['source_url'] as String,
+      deadline: deadlineStr != null ? DateTime.parse(deadlineStr) : null,
+      urgency: json['urgency'] as String? ?? 'low',
+      werteRelevanz: werteRaw != null
+          ? werteRaw.map((k, v) => MapEntry(k, (v as num).toDouble()))
+          : const {},
     );
   }
 
@@ -34,6 +44,9 @@ class CivicAction {
   final int effortMinutes;
   final String impactHint;
   final String sourceUrl;
+  final DateTime? deadline;
+  final String urgency;
+  final Map<String, double> werteRelevanz;
 }
 
 class ActionRecommendation {

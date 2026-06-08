@@ -4,17 +4,21 @@ import 'package:meinimpact/l10n/app_localizations.dart';
 import '../../domain/civic_action.dart';
 import 'action_tile.dart';
 import 'app_colors.dart';
-import 'shared_widgets.dart';
+import 'components/surface_card.dart';
 
 class RecommendationPanel extends StatelessWidget {
   const RecommendationPanel({
     required this.l10n,
     required this.recommendations,
+    required this.selectedIndex,
+    required this.onSelect,
     super.key,
   });
 
   final AppLocalizations l10n;
   final List<ActionRecommendation> recommendations;
+  final int selectedIndex;
+  final void Function(int index) onSelect;
 
   @override
   Widget build(BuildContext context) {
@@ -24,22 +28,19 @@ class RecommendationPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _RecommendationHeader(
-            l10n: l10n,
-            count: recommendations.length,
-          ),
+          _Header(l10n: l10n, count: recommendations.length),
           const SizedBox(height: 16),
-          const ProgressLine(value: 0.56),
-          const SizedBox(height: 18),
           if (recommendations.isEmpty)
             _EmptyState(l10n: l10n)
           else
-            for (final recommendation in recommendations) ...[
+            for (int i = 0; i < recommendations.length; i++) ...[
               ActionTile(
                 l10n: l10n,
-                recommendation: recommendation,
+                recommendation: recommendations[i],
+                isSelected: i == selectedIndex,
+                onTap: () => onSelect(i),
               ),
-              if (recommendation != recommendations.last)
+              if (i < recommendations.length - 1)
                 const SizedBox(height: 12),
             ],
         ],
@@ -48,43 +49,20 @@ class RecommendationPanel extends StatelessWidget {
   }
 }
 
-class _RecommendationHeader extends StatelessWidget {
-  const _RecommendationHeader({
-    required this.l10n,
-    required this.count,
-  });
+class _Header extends StatelessWidget {
+  const _Header({required this.l10n, required this.count});
 
   final AppLocalizations l10n;
   final int count;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                l10n.feedGreeting,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.4,
-                    ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                l10n.recommendationsForCount(count),
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.mutedText,
-                    ),
-              ),
-            ],
+    return Text(
+      l10n.recommendationsForCount(count),
+      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.4,
           ),
-        ),
-        StatusBadge(label: l10n.activeStreak),
-      ],
     );
   }
 }

@@ -32,6 +32,7 @@ class CivicAction:
     effort_minutes: int
     impact_hint: str
     source_url: str
+    urgency: str = "low"
 
 
 @dataclass(frozen=True)

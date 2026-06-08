@@ -15,32 +15,40 @@ class ActionFeedScreen extends StatelessWidget {
     required this.actionRepository,
     required this.selectedLocale,
     required this.onLocaleChanged,
+    this.profile,
+    this.onEditProfile,
     super.key,
   });
 
   final ActionRepository actionRepository;
   final Locale selectedLocale;
   final ValueChanged<Locale> onLocaleChanged;
+  final UserProfile? profile;
+  final VoidCallback? onEditProfile;
 
-  static const _defaultProfile = UserProfile(
-    topics: ['climate', 'housing', 'democracy'],
-    valueAxes: {'civil_rights': 2},
-    region: 'Germany',
+  static const _fallbackProfile = UserProfile(
+    topics: ['klimaschutz', 'demokratie'],
   );
 
   @override
   Widget build(BuildContext context) {
+    final effectiveProfile = profile ?? _fallbackProfile;
     final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: AppColors.canvas,
       body: FutureBuilder<List<ActionRecommendation>>(
-        future: actionRepository.recommendations(_defaultProfile),
+        future: actionRepository.recommendations(effectiveProfile),
         builder: (context, snapshot) {
           return AppFrame(
             l10n: l10n,
             selectedLocale: selectedLocale,
             onLocaleChanged: onLocaleChanged,
-            child: _buildContent(l10n, snapshot),
+            child: _buildContent(
+              context,
+              l10n,
+              snapshot,
+              effectiveProfile,
+            ),
           );
         },
       ),
@@ -48,8 +56,10 @@ class ActionFeedScreen extends StatelessWidget {
   }
 
   Widget _buildContent(
+    BuildContext context,
     AppLocalizations l10n,
     AsyncSnapshot<List<ActionRecommendation>> snapshot,
+    UserProfile effectiveProfile,
   ) {
     if (snapshot.connectionState != ConnectionState.done) {
       return const LoadingCard();
@@ -61,6 +71,9 @@ class ActionFeedScreen extends StatelessWidget {
     return HomeContent(
       l10n: l10n,
       recommendations: snapshot.data ?? const [],
+      profile: effectiveProfile,
+      repository: actionRepository,
+      onEditProfile: onEditProfile ?? () {},
     );
   }
 }

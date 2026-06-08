@@ -69,7 +69,7 @@ document for stack decisions and constraints.
 | Mobile frontend | Flutter (Dart) | Android + iOS primary, Web secondary |
 | Local storage | Hive | Profile, gamification, session cache |
 | Backend | FastAPI (Python 3.12) | Gunicorn + Uvicorn workers, Fly.io EU |
-| Database | PostgreSQL 16 via Neon | Serverless, EU region |
+| Database | PostgreSQL via Supabase | Managed, EU region (Frankfurt) |
 | AI provider | Mistral API | mistral-small for classification, mistral-medium for letters |
 | Web search | Tavily API | Background context per action |
 | News feed | NewsData.io (free tier) | German politics filter |
@@ -79,7 +79,7 @@ document for stack decisions and constraints.
 | Backend hosting | Fly.io (EU region) | GDPR: data stays in EU |
 | Frontend hosting | Cloudflare Pages | Web build |
 | Error tracking | Sentry (free tier) | Backend + Flutter |
-| Monitoring | Fly.io Metrics + Neon Dashboard + provider dashboards | See `technical/monitoring.md` |
+| Monitoring | Fly.io Metrics + Supabase Dashboard + provider dashboards | See `technical/monitoring.md` |
 
 ---
 

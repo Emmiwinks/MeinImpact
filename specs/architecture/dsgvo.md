@@ -30,7 +30,7 @@ implementation.
 
 - **Fly.io EU region is mandatory.** All backend infrastructure runs in the
   EU. Data never transits to non-EU regions. This applies to the database
-  (Neon EU), the backend (Fly.io Frankfurt), and any managed services used.
+  (Supabase Frankfurt), the backend (Fly.io Frankfurt), and any managed services used.
 
 - **Third-party AI providers receive no personal data.** Mistral API calls
   contain only action text and anonymous context. Personal identity values
@@ -179,7 +179,7 @@ Agreement (DPA).
 | Processor | Purpose | Data shared | Region |
 |---|---|---|---|
 | Fly.io | Backend hosting | Anonymous operational data | EU (Frankfurt) |
-| Neon | PostgreSQL hosting | Anonymous operational data | EU |
+| Supabase | PostgreSQL hosting | Anonymous operational data | EU (Frankfurt) |
 | Mistral AI | Letter + classification | Action text, no personal data | EU |
 | Tavily | Web search | Action title/query, no personal data | EU |
 | NewsData.io | News feed | No user data (outbound query only) | EU |

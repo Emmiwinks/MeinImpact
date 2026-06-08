@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from meinimpact.api.routes import actions, auth, health, news
+from meinimpact.api.routes import actions, auth, health, letters, news
 from meinimpact.core.config import Settings, get_settings
 from meinimpact.core.middleware import (
     RequestSizeLimitMiddleware,
@@ -35,6 +35,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health.router)
     app.include_router(auth.router)
     app.include_router(actions.router)
+    app.include_router(letters.router)
     app.include_router(news.router)
     return app
 

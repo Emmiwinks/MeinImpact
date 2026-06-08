@@ -8,7 +8,6 @@ abstract interface class ActionRepository {
   Stream<SseEvent> streamDraft({
     required String actionId,
     required UserProfile profile,
-    String? personalContext,
-    String tone,
+    String letterType,
   });
 }

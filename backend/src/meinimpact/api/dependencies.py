@@ -1,16 +1,20 @@
 """FastAPI dependency factories."""
 
+from collections.abc import AsyncIterator
+
 from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from meinimpact.core.config import Settings, get_settings
 from meinimpact.domain import repositories
-from meinimpact.infrastructure.actions.dummy_action_repository import (
-    DummyActionRepository,
+from meinimpact.infrastructure.actions.postgres_action_repository import (
+    PostgresActionRepository,
 )
 from meinimpact.infrastructure.ai.base import AiTextGenerator
 from meinimpact.infrastructure.ai.dummy_generator import DummyTextGenerator
 from meinimpact.infrastructure.ai.mistral_client import MistralTextGenerator
+from meinimpact.infrastructure.database import Database
 from meinimpact.infrastructure.news.dummy_news_repository import DummyNewsRepository
 from meinimpact.infrastructure.security.tokens import (
     Principal,
@@ -21,6 +25,8 @@ from meinimpact.services.draft_service import DraftService
 from meinimpact.services.recommendation_service import RecommendationService
 
 _bearer_scheme = HTTPBearer(auto_error=False)
+
+_db: Database | None = None
 
 
 def get_token_service(settings: Settings = Depends(get_settings)) -> TokenService:
@@ -52,9 +58,22 @@ def require_principal(
         ) from error
 
 
-def get_action_repository() -> repositories.CivicActionRepository:
-    """Returns the current civic action repository."""
-    return DummyActionRepository()
+async def get_db_session(
+    settings: Settings = Depends(get_settings),
+) -> AsyncIterator[AsyncSession]:
+    """Yields one database session per request."""
+    global _db
+    if _db is None:
+        _db = Database(settings.database_url)
+    async for session in _db.session():
+        yield session
+
+
+def get_action_repository(
+    session: AsyncSession = Depends(get_db_session),
+) -> repositories.CivicActionRepository:
+    """Returns the PostgreSQL-backed civic action repository."""
+    return PostgresActionRepository(session)
 
 
 def get_news_repository() -> repositories.NewsRepository:

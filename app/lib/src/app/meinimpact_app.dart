@@ -1,27 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:meinimpact/l10n/app_localizations.dart';
 
+import '../core/profile/user_profile_store.dart';
 import '../features/feed/domain/action_repository.dart';
+import '../features/feed/domain/user_profile.dart';
 import '../features/feed/presentation/action_feed_screen.dart';
-
-typedef ActionRepositoryFactory = ActionRepository Function(
-  AppLocalizations l10n,
-);
+import '../features/onboarding/topic_selection_screen.dart';
+import '../features/onboarding/value_profile_screen.dart';
 
 class MeinImpactApp extends StatefulWidget {
+  /// Direct constructor — bypasses onboarding (used in tests and demos).
   const MeinImpactApp({
     required ActionRepository actionRepository,
     super.key,
   })  : _actionRepository = actionRepository,
-        createActionRepository = null;
+        _profileStore = null,
+        _initialProfile = null;
 
-  const MeinImpactApp.localized({
-    required this.createActionRepository,
+  /// Production constructor — shows onboarding when no profile exists.
+  const MeinImpactApp.withProfile({
+    required ActionRepository actionRepository,
+    required UserProfileStore profileStore,
+    UserProfile? initialProfile,
     super.key,
-  }) : _actionRepository = null;
+  })  : _actionRepository = actionRepository,
+        _profileStore = profileStore,
+        _initialProfile = initialProfile;
 
-  final ActionRepository? _actionRepository;
-  final ActionRepositoryFactory? createActionRepository;
+  final ActionRepository _actionRepository;
+  final UserProfileStore? _profileStore;
+  final UserProfile? _initialProfile;
 
   @override
   State<MeinImpactApp> createState() => _MeinImpactAppState();
@@ -29,13 +37,44 @@ class MeinImpactApp extends StatefulWidget {
 
 class _MeinImpactAppState extends State<MeinImpactApp> {
   Locale _locale = const Locale('de');
+  UserProfile? _profile;
+  // Onboarding step: 0 = topics, 1 = values, 2 = feed
+  int _onboardingStep = 0;
+  List<String>? _pendingTopics;
+  List<String>? _pendingBlacklist;
+
+  @override
+  void initState() {
+    super.initState();
+    _profile = widget._initialProfile;
+  }
 
   void _setLocale(Locale locale) {
-    if (_locale == locale) {
-      return;
-    }
+    if (_locale == locale) return;
+    setState(() => _locale = locale);
+  }
+
+  Future<void> _onTopicsComplete(
+    List<String> topics,
+    List<String> blacklist,
+  ) async {
     setState(() {
-      _locale = locale;
+      _pendingTopics = topics;
+      _pendingBlacklist = blacklist;
+      _onboardingStep = 1;
+    });
+  }
+
+  Future<void> _onWerteComplete(Map<String, int> werte) async {
+    final profile = UserProfile(
+      topics: _pendingTopics!,
+      blacklist: _pendingBlacklist!,
+      werte: werte,
+    );
+    await widget._profileStore?.save(profile);
+    setState(() {
+      _profile = profile;
+      _onboardingStep = 2;
     });
   }
 
@@ -59,24 +98,42 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
             ),
         useMaterial3: true,
       ),
-      home: Builder(
-        builder: (context) {
-          final l10n = AppLocalizations.of(context);
-          return ActionFeedScreen(
-            actionRepository: _actionRepository(l10n),
-            selectedLocale: _locale,
-            onLocaleChanged: _setLocale,
-          );
-        },
-      ),
+      home: _buildHome(),
     );
   }
 
-  ActionRepository _actionRepository(AppLocalizations l10n) {
-    final createActionRepository = widget.createActionRepository;
-    if (createActionRepository != null) {
-      return createActionRepository(l10n);
+  Widget _buildHome() {
+    // No profile store → tests / demo mode, go straight to feed
+    if (widget._profileStore == null) {
+      return ActionFeedScreen(
+        actionRepository: widget._actionRepository,
+        selectedLocale: _locale,
+        onLocaleChanged: _setLocale,
+      );
     }
-    return widget._actionRepository!;
+
+    // Profile loaded → show feed
+    if (_profile != null) {
+      return ActionFeedScreen(
+        actionRepository: widget._actionRepository,
+        selectedLocale: _locale,
+        onLocaleChanged: _setLocale,
+        profile: _profile,
+        onEditProfile: () => setState(() {
+          _profile = null;
+          _onboardingStep = 0;
+          _pendingTopics = null;
+          _pendingBlacklist = null;
+        }),
+      );
+    }
+
+    // Onboarding step 0: topic selection
+    if (_onboardingStep == 0) {
+      return TopicSelectionScreen(onComplete: _onTopicsComplete);
+    }
+
+    // Onboarding step 1: value profile
+    return ValueProfileScreen(onComplete: _onWerteComplete);
   }
 }

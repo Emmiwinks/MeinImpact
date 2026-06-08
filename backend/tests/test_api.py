@@ -4,7 +4,11 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
+from meinimpact.api.dependencies import get_action_repository
 from meinimpact.core.config import Settings
+from meinimpact.infrastructure.actions.dummy_action_repository import (
+    DummyActionRepository,
+)
 from meinimpact.main import create_app
 
 
@@ -13,7 +17,9 @@ def _client() -> TestClient:
         jwt_secret="test-secret",
         allowed_origins=["http://testserver"],
     )
-    return TestClient(create_app(settings))
+    app = create_app(settings)
+    app.dependency_overrides[get_action_repository] = DummyActionRepository
+    return TestClient(app)
 
 
 def _auth_headers(client: TestClient) -> dict[str, str]:
@@ -94,43 +100,51 @@ def test_action_route_returns_action() -> None:
     assert response.json()["id"] == "solar-letter-bundestag"
 
 
-def test_draft_stream_returns_404_for_unknown_action() -> None:
+def test_letter_stream_returns_404_for_unknown_action() -> None:
     client = _client()
     response = client.post(
-        "/v1/actions/missing/drafts/stream",
+        "/v1/letters/stream",
         headers=_auth_headers(client),
         json={
-            "profile": {
-                "topics": ["climate"],
-                "value_axes": {},
-                "region": "Germany",
-            }
+            "action_id": "missing-action",
+            "type": "brief",
+            "recipient_name": "Test MdB",
+            "recipient_party": "Test",
+            "tone_descriptors": ["balanced"],
         },
     )
     assert response.status_code == 404
 
 
-def test_draft_stream_returns_sse_events() -> None:
+def test_letter_stream_returns_raw_sse_tokens() -> None:
     client = _client()
     with client.stream(
         "POST",
-        "/v1/actions/solar-letter-bundestag/drafts/stream",
+        "/v1/letters/stream",
         headers=_auth_headers(client),
         json={
-            "profile": {
-                "topics": ["climate"],
-                "value_axes": {},
-                "region": "Germany",
-            },
-            "personal_context": "I rent an apartment.",
-            "tone": "respectful",
+            "action_id": "solar-letter-bundestag",
+            "type": "brief",
+            "recipient_name": "Test MdB",
+            "recipient_party": "Test",
+            "tone_descriptors": ["balanced"],
+            "lebenssituation": [],
         },
     ) as response:
         assert response.status_code == 200
         body = response.read().decode()
-    assert "event: draft.started" in body
-    assert "event: draft.delta" in body
-    assert "event: draft.completed" in body
+    assert "data: " in body
+    assert "data: [DONE]" in body
+
+
+def test_pool_route_returns_all_actions() -> None:
+    client = _client()
+    response = client.get("/v1/actions/pool", headers=_auth_headers(client))
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["actions"]) == 3
+    assert "version" in body
+    assert body["actions"][0]["werte_relevanz"] == {}
 
 
 def test_ready_health_route() -> None:

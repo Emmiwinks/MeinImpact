@@ -118,7 +118,7 @@ jobs:
         run: flutter gen-l10n
 
       - name: Build web release
-        run: flutter build web --release
+        run: flutter build web --release --dart-define=MEINIMPACT_API_BASE_URL=https://api.meinimpact.de
 
       - name: Upload web artifact
         uses: actions/upload-artifact@v4
@@ -200,6 +200,27 @@ jobs:
         with:
           name: windows-debug
           path: app/build/windows
+
+  deploy_web:
+    name: Deploy web to Cloudflare Pages
+    runs-on: ubuntu-latest
+    needs: web
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Download web artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: web-release
+          path: build/web
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: meinimpact
+          directory: build/web
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
   apple:
     name: Build Apple apps

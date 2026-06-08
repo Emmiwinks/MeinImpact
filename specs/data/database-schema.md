@@ -327,7 +327,7 @@ LIMIT 100;
 
 ## Open Questions
 
-- [ ] Confirm Neon free tier storage limit (0.5 GB) is sufficient
+- [ ] Confirm Supabase project is in Frankfurt EU region (GDPR requirement)
       for MVP. Estimated DB size at 100 actions + 6 months history: ~50 MB.
 - [ ] Add `previous_signature_count` to actions if WeAct velocity
       tracking is needed. See `data/ingestion-pipeline.md`.

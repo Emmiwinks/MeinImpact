@@ -10,11 +10,15 @@ class ActionTile extends StatelessWidget {
   const ActionTile({
     required this.l10n,
     required this.recommendation,
+    required this.onTap,
+    this.isSelected = false,
     super.key,
   });
 
   final AppLocalizations l10n;
   final ActionRecommendation recommendation;
+  final VoidCallback onTap;
+  final bool isSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -23,11 +27,17 @@ class ActionTile extends StatelessWidget {
         action.topics.isEmpty ? l10n.actionTypeAction : action.topics.first;
     final accent = actionTypeColor(action.actionType);
 
-    return Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: AppColors.phoneSurface,
-        border: Border.all(color: AppColors.subtleBorder),
+        color: isSelected ? AppColors.greenWash : AppColors.phoneSurface,
+        border: Border.all(
+          color: isSelected ? AppColors.green : AppColors.subtleBorder,
+          width: isSelected ? 1.5 : 1,
+        ),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -88,6 +98,6 @@ class ActionTile extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ));
   }
 }

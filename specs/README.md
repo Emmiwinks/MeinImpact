@@ -93,7 +93,7 @@ specs/
 | Mobile frontend | Flutter (Dart) — Android + iOS primary, Web secondary |
 | Local storage | Hive — all profile and gamification data |
 | Backend | FastAPI (Python 3.12) — Gunicorn + Uvicorn |
-| Database | PostgreSQL 16 via Neon (EU region) |
+| Database | PostgreSQL via Supabase (EU region, Frankfurt) |
 | Cache | Redis via Fly.io managed |
 | AI | Mistral API (mistral-small for classification, mistral-medium for letters) |
 | Web search | Tavily API |

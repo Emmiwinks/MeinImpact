@@ -97,10 +97,10 @@ class _FakeActionRepository implements ActionRepository {
   Stream<SseEvent> streamDraft({
     required String actionId,
     required UserProfile profile,
-    String? personalContext,
-    String tone = 'respectful',
+    String letterType = 'brief',
   }) async* {
-    yield const SseEvent(event: 'draft.delta', data: 'Draft');
+    yield const SseEvent(event: 'message', data: 'Draft');
+    yield const SseEvent(event: 'message', data: '[DONE]');
   }
 }
 
@@ -116,8 +116,7 @@ class _EmptyActionRepository implements ActionRepository {
   Stream<SseEvent> streamDraft({
     required String actionId,
     required UserProfile profile,
-    String? personalContext,
-    String tone = 'respectful',
+    String letterType = 'brief',
   }) async* {}
 }
 
@@ -133,7 +132,6 @@ class _FailingActionRepository implements ActionRepository {
   Stream<SseEvent> streamDraft({
     required String actionId,
     required UserProfile profile,
-    String? personalContext,
-    String tone = 'respectful',
+    String letterType = 'brief',
   }) async* {}
 }
