@@ -1,5 +1,6 @@
 import '../../../core/network/sse_event_parser.dart';
 import 'civic_action.dart';
+import 'mdb.dart';
 import 'user_profile.dart';
 
 abstract interface class ActionRepository {
@@ -10,4 +11,6 @@ abstract interface class ActionRepository {
     required UserProfile profile,
     String letterType,
   });
+
+  Future<List<MdbOption>> lookupMdb(String plz);
 }

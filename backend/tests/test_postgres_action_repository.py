@@ -3,8 +3,6 @@
 from datetime import date
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
-
 from meinimpact.domain.entities import ActionType, CivicAction
 from meinimpact.infrastructure.actions.postgres_action_repository import (
     PostgresActionRepository,

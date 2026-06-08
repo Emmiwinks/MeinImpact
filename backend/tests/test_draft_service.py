@@ -27,9 +27,7 @@ async def test_draft_service_streams_tokens_for_brief() -> None:
         impact_hint="Wird nachverfolgt.",
         source_url="https://example.org",
     )
-    chunks = [
-        chunk async for chunk in service.stream_letter(request, action)
-    ]
+    chunks = [chunk async for chunk in service.stream_letter(request, action)]
     assert len(chunks) > 0
     assert "".join(chunks).strip()
 
@@ -55,7 +53,5 @@ async def test_draft_service_streams_tokens_for_anfrage() -> None:
         impact_hint="Antwort öffentlich einsehbar.",
         source_url="https://example.org",
     )
-    chunks = [
-        chunk async for chunk in service.stream_letter(request, action)
-    ]
+    chunks = [chunk async for chunk in service.stream_letter(request, action)]
     assert len(chunks) > 0

@@ -185,7 +185,10 @@ class ApiClient {
 
   Map<String, Object?> _decodeJson(http.Response response) {
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw ApiException('Request failed: ${response.statusCode}.');
+      throw ApiException(
+        'Request failed: ${response.statusCode}.',
+        statusCode: response.statusCode,
+      );
     }
     final decoded = jsonDecode(response.body);
     if (decoded is Map<String, Object?>) {
@@ -201,9 +204,10 @@ class ApiClient {
 }
 
 class ApiException implements Exception {
-  const ApiException(this.message);
+  const ApiException(this.message, {this.statusCode});
 
   final String message;
+  final int? statusCode;
 
   @override
   String toString() => 'ApiException: $message';

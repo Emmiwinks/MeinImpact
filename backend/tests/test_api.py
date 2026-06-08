@@ -9,7 +9,25 @@ from meinimpact.core.config import Settings
 from meinimpact.infrastructure.actions.dummy_action_repository import (
     DummyActionRepository,
 )
+from meinimpact.infrastructure.mdb.wks_service import MdbInfo, WksService
 from meinimpact.main import create_app
+
+
+def _mock_wks() -> WksService:
+    svc = WksService()
+    svc._index = {
+        "10115": [
+            MdbInfo(
+                wahlkreis_nr=75,
+                wahlkreis_name="Berlin-Mitte",
+                mdb_name="Test Person",
+                mdb_party="Test Partei",
+                mdb_link=None,
+            )
+        ]
+    }
+    svc._load_error = None
+    return svc
 
 
 def _client() -> TestClient:
@@ -19,6 +37,8 @@ def _client() -> TestClient:
     )
     app = create_app(settings)
     app.dependency_overrides[get_action_repository] = DummyActionRepository
+    # Inject mock WKS service so tests don't hit the Bundestag endpoint
+    app.state.wks_service = _mock_wks()
     return TestClient(app)
 
 
@@ -145,6 +165,29 @@ def test_pool_route_returns_all_actions() -> None:
     assert len(body["actions"]) == 3
     assert "version" in body
     assert body["actions"][0]["werte_relevanz"] == {}
+
+
+def test_mdb_returns_result_for_known_plz() -> None:
+    client = _client()
+    response = client.get("/v1/mdb?plz=10115", headers=_auth_headers(client))
+    assert response.status_code == 200
+    body = response.json()
+    assert body["plz"] == "10115"
+    assert len(body["results"]) == 1
+    assert body["results"][0]["mdb_name"] == "Test Person"
+    assert body["results"][0]["wahlkreis_nr"] == 75
+
+
+def test_mdb_returns_404_for_unknown_plz() -> None:
+    client = _client()
+    response = client.get("/v1/mdb?plz=99999", headers=_auth_headers(client))
+    assert response.status_code == 404
+
+
+def test_mdb_returns_400_for_invalid_plz() -> None:
+    client = _client()
+    response = client.get("/v1/mdb?plz=abc", headers=_auth_headers(client))
+    assert response.status_code == 400
 
 
 def test_ready_health_route() -> None:

@@ -13,6 +13,23 @@ from meinimpact.domain.entities import (
 )
 
 
+class MdbOption(BaseModel):
+    """One Wahlkreis/MdB match for a PLZ lookup."""
+
+    wahlkreis_nr: int
+    wahlkreis_name: str
+    mdb_name: str
+    mdb_party: str
+    mdb_link: str | None = None
+
+
+class MdbResponse(BaseModel):
+    """Response for GET /v1/mdb?plz={plz}."""
+
+    plz: str
+    results: list[MdbOption]
+
+
 class HealthResponse(BaseModel):
     """Health endpoint response."""
 

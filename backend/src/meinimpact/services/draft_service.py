@@ -56,7 +56,7 @@ Bürger-Profil:
 - Region: {plz_region}
 
 Schreibe einen Brief der:
-- 150–200 Wörter hat
+- 150-200 Wörter hat
 - Persönlich klingt, nicht wie eine Vorlage
 - Eine konkrete Bitte oder Frage enthält
 - Keine Parteinamen nennt außer dem Empfänger
@@ -80,7 +80,7 @@ Bürger-Profil:
 - Region: {plz_region}
 
 Schreibe eine öffentliche Frage die:
-- 2–3 Sätze lang ist
+- 2-3 Sätze lang ist
 - Konkret und beantwortbar ist (keine Ja/Nein-Frage)
 - Sachlich und respektvoll formuliert ist
 - Mit der direkten Frage beginnt

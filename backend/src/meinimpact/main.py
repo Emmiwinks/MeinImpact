@@ -1,24 +1,45 @@
 """FastAPI application factory."""
 
+import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from meinimpact.api.routes import actions, auth, health, letters, news
+from meinimpact.api.routes import actions, auth, health, letters, mdb, news
 from meinimpact.core.config import Settings, get_settings
 from meinimpact.core.middleware import (
     RequestSizeLimitMiddleware,
     SecurityHeadersMiddleware,
 )
+from meinimpact.infrastructure.mdb.wks_service import WksService
+
+logger = logging.getLogger(__name__)
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     """Creates and configures the FastAPI app."""
     resolved_settings = settings or get_settings()
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        wks = WksService()
+        await wks.load()
+        if not wks.is_healthy:
+            logger.critical(
+                "WKS SERVICE DID NOT LOAD — /v1/mdb will return 503. Error: %s",
+                wks.load_error,
+            )
+        app.state.wks_service = wks
+        yield
+
     app = FastAPI(
         title=resolved_settings.app_name,
         version=resolved_settings.api_version,
         docs_url="/docs" if resolved_settings.environment != "production" else None,
         redoc_url="/redoc" if resolved_settings.environment != "production" else None,
+        lifespan=lifespan,
     )
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(
@@ -36,6 +57,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(auth.router)
     app.include_router(actions.router)
     app.include_router(letters.router)
+    app.include_router(mdb.router)
     app.include_router(news.router)
     return app
 

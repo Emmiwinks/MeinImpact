@@ -52,7 +52,7 @@ _SEED_ROWS = [
         "region": "Germany",
         "deadline": date(2026, 6, 21),
         "effort_minutes": 3,
-        "impact_hint": "Die Abstimmungsposition deines MdB ist nach der Ausschusswoche einsehbar.",
+        "impact_hint": "Die Abstimmungsposition deines MdB ist nach der Ausschusswoche einsehbar.",  # noqa: E501
         "source_url": "https://www.abgeordnetenwatch.de/",
     },
     {
@@ -67,7 +67,7 @@ _SEED_ROWS = [
         "region": "Germany",
         "deadline": date(2026, 6, 28),
         "effort_minutes": 2,
-        "impact_hint": "Bei 50.000 Unterschriften muss der Bundestag die Petition behandeln.",
+        "impact_hint": "Bei 50.000 Unterschriften muss der Bundestag die Petition behandeln.",  # noqa: E501
         "source_url": "https://epetitionen.bundestag.de/",
     },
     {
@@ -83,7 +83,7 @@ _SEED_ROWS = [
         "region": "Germany",
         "deadline": date(2026, 7, 15),
         "effort_minutes": 3,
-        "impact_hint": "MdBs müssen öffentliche Anfragen über Abgeordnetenwatch beantworten.",
+        "impact_hint": "MdBs müssen öffentliche Anfragen über Abgeordnetenwatch beantworten.",  # noqa: E501
         "source_url": "https://www.abgeordnetenwatch.de/",
     },
     {
@@ -99,7 +99,7 @@ _SEED_ROWS = [
         "region": "Germany",
         "deadline": date(2026, 7, 5),
         "effort_minutes": 3,
-        "impact_hint": "Das Abstimmungsergebnis ist nach der zweiten Lesung öffentlich einsehbar.",
+        "impact_hint": "Das Abstimmungsergebnis ist nach der zweiten Lesung öffentlich einsehbar.",  # noqa: E501
         "source_url": "https://www.abgeordnetenwatch.de/",
     },
     {
@@ -130,7 +130,7 @@ _SEED_ROWS = [
         "region": "Germany",
         "deadline": date(2026, 8, 1),
         "effort_minutes": 2,
-        "impact_hint": "Campact leitet die Petition bei Erreichen des Quorums an das Bundesverkehrsministerium weiter.",
+        "impact_hint": "Campact leitet die Petition bei Erreichen des Quorums an das Bundesverkehrsministerium weiter.",  # noqa: E501
         "source_url": "https://weact.campact.de/",
     },
     {
@@ -145,7 +145,7 @@ _SEED_ROWS = [
         "region": "Germany",
         "deadline": date(2026, 6, 20),
         "effort_minutes": 3,
-        "impact_hint": "Das Förderprogramm wird nach der Bundestagsabstimmung veröffentlicht.",
+        "impact_hint": "Das Förderprogramm wird nach der Bundestagsabstimmung veröffentlicht.",  # noqa: E501
         "source_url": "https://www.abgeordnetenwatch.de/",
     },
     {
@@ -161,7 +161,7 @@ _SEED_ROWS = [
         "region": "Germany",
         "deadline": date(2026, 7, 20),
         "effort_minutes": 3,
-        "impact_hint": "Öffentliche Antworten auf Abgeordnetenwatch sind für alle einsehbar.",
+        "impact_hint": "Öffentliche Antworten auf Abgeordnetenwatch sind für alle einsehbar.",  # noqa: E501
         "source_url": "https://www.abgeordnetenwatch.de/",
     },
     {
@@ -193,7 +193,7 @@ _SEED_ROWS = [
         "region": "Germany",
         "deadline": date(2026, 8, 15),
         "effort_minutes": 2,
-        "impact_hint": "Bei 50.000 Unterschriften muss der Bundestag die Petition behandeln.",
+        "impact_hint": "Bei 50.000 Unterschriften muss der Bundestag die Petition behandeln.",  # noqa: E501
         "source_url": "https://epetitionen.bundestag.de/",
     },
 ]
@@ -206,8 +206,4 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Removes seed civic actions."""
-    op.execute(
-        _actions_table.delete().where(
-            _actions_table.c.id.in_(_SEED_IDS)
-        )
-    )
+    op.execute(_actions_table.delete().where(_actions_table.c.id.in_(_SEED_IDS)))

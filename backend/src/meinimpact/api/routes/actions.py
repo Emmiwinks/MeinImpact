@@ -67,5 +67,3 @@ async def get_action(
             detail="Action not found.",
         )
     return schemas.ActionResponse.from_domain(action)
-
-

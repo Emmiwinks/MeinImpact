@@ -4,6 +4,10 @@ class UserProfile {
     this.blacklist = const [],
     this.werte = const {},
     this.region,
+    this.plz,
+    this.mdbName,
+    this.mdbParty,
+    this.mdbWahlkreis,
   });
 
   factory UserProfile.fromJson(Map<String, Object?> json) {
@@ -13,13 +17,15 @@ class UserProfile {
       blacklist: (json['blacklist'] as List<Object?>? ?? []).cast<String>(),
       werte: werteRaw.map((k, v) => MapEntry(k, v as int)),
       region: json['region'] as String?,
+      plz: json['plz'] as String?,
+      mdbName: json['mdb_name'] as String?,
+      mdbParty: json['mdb_party'] as String?,
+      mdbWahlkreis: json['mdb_wahlkreis'] as String?,
     );
   }
 
   /// Selected topic keys (whitelist).
   final List<String> topics;
-
-  /// Topic keys the user never wants to see.
   final List<String> blacklist;
 
   /// Raw 8values question scores (-2 to +2, 0 = neutral/unanswered).
@@ -27,8 +33,11 @@ class UserProfile {
   ///       diplomatie_welt, freiheit_staat, freiheit_sicherheit,
   ///       wandel_tradition, wandel_zukunft
   final Map<String, int> werte;
-
   final String? region;
+  final String? plz;
+  final String? mdbName;
+  final String? mdbParty;
+  final String? mdbWahlkreis;
 
   // Derived axes (-2.0 to +2.0)
   double get axisWirtschaft =>
@@ -64,6 +73,10 @@ class UserProfile {
       'blacklist': blacklist,
       'werte': werte,
       'region': region,
+      'plz': plz,
+      'mdb_name': mdbName,
+      'mdb_party': mdbParty,
+      'mdb_wahlkreis': mdbWahlkreis,
     };
   }
 }

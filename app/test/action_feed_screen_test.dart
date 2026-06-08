@@ -4,6 +4,7 @@ import 'package:meinimpact/src/app/meinimpact_app.dart';
 import 'package:meinimpact/src/core/network/sse_event_parser.dart';
 import 'package:meinimpact/src/features/feed/domain/action_repository.dart';
 import 'package:meinimpact/src/features/feed/domain/civic_action.dart';
+import 'package:meinimpact/src/features/feed/domain/mdb.dart';
 import 'package:meinimpact/src/features/feed/domain/user_profile.dart';
 
 void main() {
@@ -102,6 +103,9 @@ class _FakeActionRepository implements ActionRepository {
     yield const SseEvent(event: 'message', data: 'Draft');
     yield const SseEvent(event: 'message', data: '[DONE]');
   }
+
+  @override
+  Future<List<MdbOption>> lookupMdb(String plz) async => const [];
 }
 
 class _EmptyActionRepository implements ActionRepository {
@@ -118,6 +122,9 @@ class _EmptyActionRepository implements ActionRepository {
     required UserProfile profile,
     String letterType = 'brief',
   }) async* {}
+
+  @override
+  Future<List<MdbOption>> lookupMdb(String plz) async => const [];
 }
 
 class _FailingActionRepository implements ActionRepository {
@@ -134,4 +141,7 @@ class _FailingActionRepository implements ActionRepository {
     required UserProfile profile,
     String letterType = 'brief',
   }) async* {}
+
+  @override
+  Future<List<MdbOption>> lookupMdb(String plz) async => const [];
 }

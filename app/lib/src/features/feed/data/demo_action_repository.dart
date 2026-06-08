@@ -1,5 +1,6 @@
 import '../../feed/domain/action_repository.dart';
 import '../../feed/domain/civic_action.dart';
+import '../../feed/domain/mdb.dart';
 import '../../feed/domain/user_profile.dart';
 import '../../../core/network/sse_event_parser.dart';
 import 'demo_action_copy.dart';
@@ -62,4 +63,7 @@ class DemoActionRepository implements ActionRepository {
     yield SseEvent(event: 'message', data: copy.draftDelta);
     yield const SseEvent(event: 'message', data: '[DONE]');
   }
+
+  @override
+  Future<List<MdbOption>> lookupMdb(String plz) async => const [];
 }
