@@ -1,6 +1,6 @@
 """Domain entities for civic recommendations."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from enum import StrEnum
 
@@ -33,6 +33,7 @@ class CivicAction:
     impact_hint: str
     source_url: str
     urgency: str = "low"
+    werte_relevanz: dict[str, float] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

@@ -43,4 +43,5 @@ def _to_domain(record: CivicActionRecord) -> CivicAction:
         impact_hint=record.impact_hint,
         source_url=record.source_url,
         urgency=record.urgency,
+        werte_relevanz=dict(record.werte_relevanz),
     )

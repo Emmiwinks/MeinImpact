@@ -132,6 +132,7 @@ class ActionPoolItemResponse(BaseModel):
             impact_hint=action.impact_hint,
             source_url=action.source_url,
             urgency=action.urgency,
+            werte_relevanz=dict(action.werte_relevanz),
         )
 
 

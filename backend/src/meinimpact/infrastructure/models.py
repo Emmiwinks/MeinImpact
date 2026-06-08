@@ -56,6 +56,9 @@ class CivicActionRecord(Base):
     urgency: Mapped[str] = mapped_column(
         String(length=10), nullable=False, default="low"
     )
+    werte_relevanz: Mapped[dict[str, float]] = mapped_column(
+        JSONB, nullable=False, server_default="{}"
+    )
 
 
 class NewsItemRecord(Base):
