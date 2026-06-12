@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from meinimpact.api.routes import actions, auth, health, letters, mdb, news
+from meinimpact.api.routes import actions, auth, beta, feedback, health, letters, mdb, news, push
 from meinimpact.core.config import Settings, get_settings
 from meinimpact.core.middleware import (
     RequestSizeLimitMiddleware,
@@ -59,6 +59,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(letters.router)
     app.include_router(mdb.router)
     app.include_router(news.router)
+    app.include_router(push.router)
+    app.include_router(feedback.router)
+    app.include_router(beta.router)
     return app
 
 

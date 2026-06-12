@@ -1,5 +1,6 @@
 """Domain entities for civic recommendations."""
 
+import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from enum import StrEnum
@@ -34,6 +35,40 @@ class CivicAction:
     source_url: str
     urgency: str = "low"
     werte_relevanz: dict[str, float] = field(default_factory=dict)
+    # Spec-added fields
+    pro_argumente: tuple[str, ...] = field(default_factory=tuple)
+    contra_argumente: tuple[str, ...] = field(default_factory=tuple)
+    action_types: tuple[str, ...] = field(default_factory=tuple)
+    is_controversial: bool = False
+    position_required: bool = False
+    momentum_score: float = 0.3
+    active: bool = True
+    tavily_context: str | None = None
+
+
+@dataclass(frozen=True)
+class TrackingEvent:
+    """A civic outcome event for a tracked action."""
+
+    id: uuid.UUID
+    action_id: str
+    event_type: str
+    title: str
+    description: str
+    outcome: str | None
+    source_url: str | None
+    occurred_at: datetime
+
+
+@dataclass(frozen=True)
+class MdbStatement:
+    """Cached MdB public statement result for a tracked action."""
+
+    mdb_name: str
+    found: bool
+    statement_summary: str | None
+    source_url: str | None
+    searched_at: datetime
 
 
 @dataclass(frozen=True)

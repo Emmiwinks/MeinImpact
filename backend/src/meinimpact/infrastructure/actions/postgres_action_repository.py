@@ -17,8 +17,10 @@ class PostgresActionRepository:
         self._session = session
 
     async def list_open_actions(self) -> Sequence[CivicAction]:
-        """Returns all actions currently in the pool."""
-        result = await self._session.execute(select(CivicActionRecord))
+        """Returns all active actions currently in the pool."""
+        result = await self._session.execute(
+            select(CivicActionRecord).where(CivicActionRecord.active == True)  # noqa: E712
+        )
         return [_to_domain(r) for r in result.scalars().all()]
 
     async def get_action(self, action_id: str) -> CivicAction | None:
@@ -44,4 +46,12 @@ def _to_domain(record: CivicActionRecord) -> CivicAction:
         source_url=record.source_url,
         urgency=record.urgency,
         werte_relevanz=dict(record.werte_relevanz),
+        pro_argumente=tuple(record.pro_argumente or []),
+        contra_argumente=tuple(record.contra_argumente or []),
+        action_types=tuple(record.action_types or []),
+        is_controversial=record.is_controversial,
+        position_required=record.position_required,
+        momentum_score=record.momentum_score,
+        active=record.active,
+        tavily_context=record.tavily_context,
     )

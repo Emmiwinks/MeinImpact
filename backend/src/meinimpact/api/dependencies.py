@@ -11,15 +11,30 @@ from meinimpact.domain import repositories
 from meinimpact.infrastructure.actions.postgres_action_repository import (
     PostgresActionRepository,
 )
+from meinimpact.infrastructure.actions.postgres_stats_repository import (
+    PostgresActionStatsRepository,
+)
 from meinimpact.infrastructure.ai.base import AiTextGenerator
 from meinimpact.infrastructure.ai.dummy_generator import DummyTextGenerator
 from meinimpact.infrastructure.ai.mistral_client import MistralTextGenerator
+from meinimpact.infrastructure.beta.postgres_beta_repository import (
+    PostgresBetaTokenRepository,
+)
 from meinimpact.infrastructure.database import Database
+from meinimpact.infrastructure.feedback.postgres_feedback_repository import (
+    PostgresFeedbackRepository,
+)
 from meinimpact.infrastructure.news.dummy_news_repository import DummyNewsRepository
+from meinimpact.infrastructure.push.postgres_push_repository import (
+    PostgresPushSubscriptionRepository,
+)
 from meinimpact.infrastructure.security.tokens import (
     Principal,
     TokenError,
     TokenService,
+)
+from meinimpact.infrastructure.tracking.postgres_tracking_repository import (
+    PostgresTrackingRepository,
 )
 from meinimpact.services.draft_service import DraftService
 from meinimpact.services.recommendation_service import RecommendationService
@@ -74,6 +89,41 @@ def get_action_repository(
 ) -> repositories.CivicActionRepository:
     """Returns the PostgreSQL-backed civic action repository."""
     return PostgresActionRepository(session)
+
+
+def get_action_stats_repository(
+    session: AsyncSession = Depends(get_db_session),
+) -> repositories.ActionStatsRepository:
+    """Returns the PostgreSQL-backed action stats repository."""
+    return PostgresActionStatsRepository(session)
+
+
+def get_tracking_repository(
+    session: AsyncSession = Depends(get_db_session),
+) -> repositories.TrackingRepository:
+    """Returns the PostgreSQL-backed tracking repository."""
+    return PostgresTrackingRepository(session)
+
+
+def get_push_repository(
+    session: AsyncSession = Depends(get_db_session),
+) -> repositories.PushSubscriptionRepository:
+    """Returns the PostgreSQL-backed push subscription repository."""
+    return PostgresPushSubscriptionRepository(session)
+
+
+def get_feedback_repository(
+    session: AsyncSession = Depends(get_db_session),
+) -> repositories.FeedbackRepository:
+    """Returns the PostgreSQL-backed feedback repository."""
+    return PostgresFeedbackRepository(session)
+
+
+def get_beta_repository(
+    session: AsyncSession = Depends(get_db_session),
+) -> repositories.BetaTokenRepository:
+    """Returns the PostgreSQL-backed beta token repository."""
+    return PostgresBetaTokenRepository(session)
 
 
 def get_news_repository() -> repositories.NewsRepository:

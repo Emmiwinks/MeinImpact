@@ -1,6 +1,6 @@
 """Tests for the PostgreSQL-backed civic action repository."""
 
-from datetime import date
+from datetime import UTC, date, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 from meinimpact.domain.entities import ActionType, CivicAction
@@ -23,6 +23,17 @@ def _make_record(action_id: str = "test-action") -> CivicActionRecord:
     record.effort_minutes = 3
     record.impact_hint = "Der Ausgang ist öffentlich einsehbar."
     record.source_url = "https://epetitionen.bundestag.de/"
+    record.urgency = "mid"
+    record.werte_relevanz = {"wandel": 0.5}
+    record.pro_argumente = ["Arg 1"]
+    record.contra_argumente = ["Gegenarg 1"]
+    record.action_types = ["petition"]
+    record.is_controversial = False
+    record.position_required = False
+    record.momentum_score = 0.4
+    record.active = True
+    record.tavily_context = None
+    record.updated_at = datetime(2026, 6, 8, 0, 0, tzinfo=UTC)
     return record
 
 

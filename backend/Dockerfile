@@ -9,11 +9,13 @@ RUN useradd --create-home --shell /usr/sbin/nologin appuser
 
 COPY pyproject.toml README.md ./
 COPY src ./src
+COPY tests ./tests
+COPY scripts ./scripts
 COPY alembic.ini ./
 COPY migrations ./migrations
 
 RUN python -m pip install --no-cache-dir --upgrade pip \
-    && python -m pip install --no-cache-dir .
+    && python -m pip install --no-cache-dir ".[dev]"
 
 USER appuser
 
