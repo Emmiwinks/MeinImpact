@@ -117,7 +117,7 @@ jobs:
         run: flutter gen-l10n
 
       - name: Build web release
-        run: flutter build web --release --dart-define=MEINIMPACT_API_BASE_URL=https://api.meinimpact.de
+        run: flutter build web --release --pwa-strategy=none --dart-define=MEINIMPACT_API_BASE_URL=https://api.meinimpact.de
 
       - name: Upload web artifact
         uses: actions/upload-artifact@v4

@@ -89,7 +89,7 @@ if (-not (Get-Command flutter -ErrorAction SilentlyContinue)) {
 
     Step "app: flutter build web" {
         Set-Location $app
-        flutter build web --release `
+        flutter build web --release --pwa-strategy=none `
             --dart-define=MEINIMPACT_API_BASE_URL=https://api.meinimpact.de
     }
 

@@ -18,15 +18,6 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
-  <script>
-    // Auto-reload silently when a new service worker version is available —
-    // no confirm() popup shown to the user.
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.addEventListener('controllerchange', function () {
-        window.location.reload();
-      });
-    }
-  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
