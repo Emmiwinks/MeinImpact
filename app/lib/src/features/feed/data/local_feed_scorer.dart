@@ -36,9 +36,8 @@ class LocalFeedScorer {
     }
 
     // 2. Werte match (0.0–1.0) — neutral 0.5 when no axes overlap
-    final werteMatch = profile.answeredCount >= 4
-        ? _computeWerteMatch(action, profile)
-        : 0.5;
+    final werteMatch =
+        profile.answeredCount >= 4 ? _computeWerteMatch(action, profile) : 0.5;
 
     // 3. Urgency
     final urgencyScore = switch (action.urgency) {
@@ -51,8 +50,7 @@ class LocalFeedScorer {
     // 4. Deadline proximity bonus (0.0–0.4)
     final deadlineBonus = action.deadline == null
         ? 0.0
-        : (1.0 -
-                (action.deadline!.difference(DateTime.now()).inDays / 60.0))
+        : (1.0 - (action.deadline!.difference(DateTime.now()).inDays / 60.0))
             .clamp(0.0, 0.4);
 
     // 5. Momentum (0.05 weight, no data yet → 0)

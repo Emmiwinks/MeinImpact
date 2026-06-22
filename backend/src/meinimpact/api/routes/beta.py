@@ -19,6 +19,9 @@ async def activate_beta_token(
     if not valid:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error": "Token not found or already used", "code": "TOKEN_INVALID"},
+            detail={
+                "error": "Token not found or already used",
+                "code": "TOKEN_INVALID",
+            },
         )
     return schemas.BetaActivateResponse(valid=True)

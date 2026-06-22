@@ -2,9 +2,7 @@
 
 import uuid
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
+from unittest.mock import AsyncMock, MagicMock
 
 from meinimpact.infrastructure.actions.postgres_stats_repository import (
     PostgresActionStatsRepository,
@@ -15,16 +13,13 @@ from meinimpact.infrastructure.beta.postgres_beta_repository import (
 from meinimpact.infrastructure.feedback.postgres_feedback_repository import (
     PostgresFeedbackRepository,
 )
+from meinimpact.infrastructure.models import MdbStatementRecord, TrackingEventRecord
 from meinimpact.infrastructure.push.postgres_push_repository import (
     PostgresPushSubscriptionRepository,
 )
 from meinimpact.infrastructure.tracking.postgres_tracking_repository import (
     PostgresTrackingRepository,
-    _event_to_domain,
-    _statement_to_domain,
 )
-from meinimpact.infrastructure.models import MdbStatementRecord, TrackingEventRecord
-
 
 # ── Stats repository ──────────────────────────────────────────────────────────
 

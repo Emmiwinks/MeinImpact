@@ -7,58 +7,74 @@ const _kQuestions = [
   _Question(
     key: 'wirtschaft_gleichheit',
     leftLabel: 'Umverteilung',
-    leftDesc: 'Der Staat sollte große Vermögen und Einkommen stärker ausgleichen.',
+    leftDesc:
+        'Der Staat sollte große Vermögen und Einkommen stärker ausgleichen.',
     rightLabel: 'Eigenverantwortung',
-    rightDesc: 'Wer Leistung bringt, sollte davon profitieren — mit möglichst wenig staatlichem Eingriff.',
+    rightDesc:
+        'Wer Leistung bringt, sollte davon profitieren — mit möglichst wenig staatlichem Eingriff.',
   ),
   _Question(
     key: 'wirtschaft_staat',
     leftLabel: 'Staatliche Steuerung',
-    leftDesc: 'Der Staat muss Märkte regulieren und wichtige Bereiche selbst kontrollieren.',
+    leftDesc:
+        'Der Staat muss Märkte regulieren und wichtige Bereiche selbst kontrollieren.',
     rightLabel: 'Freier Markt',
-    rightDesc: 'Privatwirtschaft und Wettbewerb lösen Probleme besser als der Staat.',
+    rightDesc:
+        'Privatwirtschaft und Wettbewerb lösen Probleme besser als der Staat.',
   ),
   _Question(
     key: 'diplomatie_nation',
     leftLabel: 'Nationale Interessen',
-    leftDesc: 'Deutschland sollte seine eigenen Interessen klar vertreten, auch wenn das Partner vor den Kopf stößt.',
+    leftDesc:
+        'Deutschland sollte seine eigenen Interessen klar vertreten, auch wenn das Partner vor den Kopf stößt.',
     rightLabel: 'Internationale Kooperation',
-    rightDesc: 'Globale Probleme lassen sich nur gemeinsam lösen — nationale Alleingänge bringen nichts.',
+    rightDesc:
+        'Globale Probleme lassen sich nur gemeinsam lösen — nationale Alleingänge bringen nichts.',
   ),
   _Question(
     key: 'diplomatie_welt',
     leftLabel: 'Souveränität',
-    leftDesc: 'Deutschland sollte außenpolitisch unabhängiger werden und weniger Verpflichtungen eingehen.',
+    leftDesc:
+        'Deutschland sollte außenpolitisch unabhängiger werden und weniger Verpflichtungen eingehen.',
     rightLabel: 'Globale Verantwortung',
-    rightDesc: 'Deutschland muss mehr globale Verantwortung übernehmen, auch wenn das kostet.',
+    rightDesc:
+        'Deutschland muss mehr globale Verantwortung übernehmen, auch wenn das kostet.',
   ),
   _Question(
     key: 'freiheit_staat',
     leftLabel: 'Persönliche Freiheit',
-    leftDesc: 'Der Staat soll so wenig wie möglich in das Leben der Menschen eingreifen.',
+    leftDesc:
+        'Der Staat soll so wenig wie möglich in das Leben der Menschen eingreifen.',
     rightLabel: 'Gesellschaftliche Ordnung',
-    rightDesc: 'Mehr staatliche Regeln und Kontrolle sind nötig, um Sicherheit und Zusammenhalt zu gewährleisten.',
+    rightDesc:
+        'Mehr staatliche Regeln und Kontrolle sind nötig, um Sicherheit und Zusammenhalt zu gewährleisten.',
   ),
   _Question(
     key: 'freiheit_sicherheit',
     leftLabel: 'Bürgerrechte',
-    leftDesc: 'Im Zweifel sind Bürgerrechte wichtiger als staatliche Sicherheitsinteressen.',
+    leftDesc:
+        'Im Zweifel sind Bürgerrechte wichtiger als staatliche Sicherheitsinteressen.',
     rightLabel: 'Innere Sicherheit',
-    rightDesc: 'Im Zweifel ist Sicherheit wichtiger als individuelle Freiheiten.',
+    rightDesc:
+        'Im Zweifel ist Sicherheit wichtiger als individuelle Freiheiten.',
   ),
   _Question(
     key: 'wandel_tradition',
     leftLabel: 'Bewährtes erhalten',
-    leftDesc: 'Gesellschaftliche Strukturen, die sich bewährt haben, sollten erhalten bleiben.',
+    leftDesc:
+        'Gesellschaftliche Strukturen, die sich bewährt haben, sollten erhalten bleiben.',
     rightLabel: 'Wandel gestalten',
-    rightDesc: 'Die Gesellschaft muss sich mutig weiterentwickeln, auch wenn das unbequem ist.',
+    rightDesc:
+        'Die Gesellschaft muss sich mutig weiterentwickeln, auch wenn das unbequem ist.',
   ),
   _Question(
     key: 'wandel_zukunft',
     leftLabel: 'Generationengerechtigkeit',
-    leftDesc: 'Wir fordern zu viel von der heutigen Generation für Probleme, die erst in der Zukunft spürbar werden.',
+    leftDesc:
+        'Wir fordern zu viel von der heutigen Generation für Probleme, die erst in der Zukunft spürbar werden.',
     rightLabel: 'Zukunftsverantwortung',
-    rightDesc: 'Ich bin bereit, heute auf Komfort zu verzichten, damit zukünftige Generationen es besser haben.',
+    rightDesc:
+        'Ich bin bereit, heute auf Komfort zu verzichten, damit zukünftige Generationen es besser haben.',
   ),
 ];
 

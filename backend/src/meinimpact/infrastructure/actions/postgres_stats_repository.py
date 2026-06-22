@@ -5,8 +5,6 @@ from datetime import UTC, datetime
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from meinimpact.infrastructure.models import ActionStatsRecord
-
 
 class PostgresActionStatsRepository:
     """Increments and reads anonymous completion counters."""

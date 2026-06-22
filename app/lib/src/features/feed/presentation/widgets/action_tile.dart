@@ -28,76 +28,76 @@ class ActionTile extends StatelessWidget {
     final accent = actionTypeColor(action.actionType);
 
     return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-      duration: const Duration(milliseconds: 150),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: isSelected ? AppColors.greenWash : AppColors.phoneSurface,
-        border: Border.all(
-          color: isSelected ? AppColors.green : AppColors.subtleBorder,
-          width: isSelected ? 1.5 : 1,
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.greenWash : AppColors.phoneSurface,
+            border: Border.all(
+              color: isSelected ? AppColors.green : AppColors.subtleBorder,
+              width: isSelected ? 1.5 : 1,
+            ),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: AppColors.greenWash,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  actionTypeIcon(action.actionType),
-                  color: accent,
-                  size: 19,
-                ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: AppColors.greenWash,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      actionTypeIcon(action.actionType),
+                      color: accent,
+                      size: 19,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      action.title,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            height: 1.12,
+                          ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Pill(
+                    label: actionTypeLabel(l10n, action.actionType),
+                    color: accent,
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  action.title,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        height: 1.12,
-                      ),
-                ),
+              const SizedBox(height: 11),
+              Text(
+                action.summary,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.mutedText,
+                      height: 1.25,
+                    ),
               ),
-              const SizedBox(width: 10),
-              Pill(
-                label: actionTypeLabel(l10n, action.actionType),
-                color: accent,
+              const SizedBox(height: 13),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  SignalDots(score: recommendation.score),
+                  MetaChip(label: l10n.valueMeta(topic)),
+                  MetaChip(label: l10n.effortMinutes(action.effortMinutes)),
+                  MetaChip(label: l10n.scoreLabel(recommendation.score)),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 11),
-          Text(
-            action.summary,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.mutedText,
-                  height: 1.25,
-                ),
-          ),
-          const SizedBox(height: 13),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              SignalDots(score: recommendation.score),
-              MetaChip(label: l10n.valueMeta(topic)),
-              MetaChip(label: l10n.effortMinutes(action.effortMinutes)),
-              MetaChip(label: l10n.scoreLabel(recommendation.score)),
-            ],
-          ),
-        ],
-      ),
-    ));
+        ));
   }
 }

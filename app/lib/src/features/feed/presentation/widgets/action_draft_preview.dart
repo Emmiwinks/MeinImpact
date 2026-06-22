@@ -38,8 +38,7 @@ class _ActionDetailCardState extends State<ActionDetailCard> {
   @override
   void didUpdateWidget(ActionDetailCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.recommendation.action.id !=
-        widget.recommendation.action.id) {
+    if (oldWidget.recommendation.action.id != widget.recommendation.action.id) {
       _draftState = _DraftState.idle;
       _draftController.clear();
     }
@@ -169,8 +168,7 @@ class _SourceButton extends StatelessWidget {
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        child: Text(label,
-            style: const TextStyle(fontWeight: FontWeight.w600)),
+        child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
       ),
     );
   }
@@ -292,8 +290,7 @@ class _PrimaryButton extends StatelessWidget {
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        child: Text(label,
-            style: const TextStyle(fontWeight: FontWeight.w700)),
+        child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
       ),
     );
   }

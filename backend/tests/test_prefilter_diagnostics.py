@@ -17,6 +17,7 @@ from meinimpact.infrastructure.sources.dip_adapter import DipAdapter
 
 
 @pytest.mark.asyncio
+@pytest.mark.live
 async def test_prefilter_breakdown_live():
     """Fetches live DIP data and prints a per-item filter decision table."""
     settings = get_settings()
@@ -35,21 +36,25 @@ async def test_prefilter_breakdown_live():
         else:
             dropped.append((item, reason))
 
-    print(f"\n{'='*80}")
-    print(f"PREFILTER BREAKDOWN  —  {len(items)} fetched, {len(passed)} pass, {len(dropped)} dropped")
-    print(f"{'='*80}")
+    print(f"\n{'=' * 80}")
+    n_pass, n_drop = len(passed), len(dropped)
+    print(
+        f"PREFILTER BREAKDOWN  -  {len(items)} fetched, {n_pass} pass, {n_drop} dropped"
+    )
+    print(f"{'=' * 80}")
 
     if passed:
         print(f"\n✓ PASSED ({len(passed)})")
         print(f"  {'TYPE':<16} {'DEADLINE':<12} {'TITLE'}")
-        print(f"  {'-'*14}  {'-'*10}  {'-'*50}")
+        print(f"  {'-' * 14}  {'-' * 10}  {'-' * 50}")
         for item, _ in passed:
-            print(f"  {item['type']:<16} {str(item.get('deadline') or ''):<12}  {item['title'][:70]}")
+            deadline = str(item.get("deadline") or "")
+            print(f"  {item['type']:<16} {deadline:<12}  {item['title'][:70]}")
 
     if dropped:
         print(f"\n✗ DROPPED ({len(dropped)})")
         print(f"  {'TYPE':<16} {'REASON':<45} {'TITLE'}")
-        print(f"  {'-'*14}  {'-'*43}  {'-'*40}")
+        print(f"  {'-' * 14}  {'-' * 43}  {'-' * 40}")
         for item, reason in dropped:
             print(f"  {item['type']:<16} {reason:<45}  {item['title'][:50]}")
 
@@ -66,6 +71,7 @@ async def test_prefilter_breakdown_live():
 
 
 @pytest.mark.asyncio
+@pytest.mark.live
 async def test_german_detection_on_dip_titles():
     """Checks langdetect accuracy on a sample of real DIP titles."""
     settings = get_settings()
@@ -76,9 +82,7 @@ async def test_german_detection_on_dip_titles():
     since = datetime.now(UTC) - timedelta(hours=25)
     items = await adapter.fetch_new_items(since)
 
-    misdetected = [
-        item for item in items if not _is_german(item["title"])
-    ]
+    misdetected = [item for item in items if not _is_german(item["title"])]
 
     if misdetected:
         print(f"\n⚠ Titles misdetected as non-German ({len(misdetected)}):")

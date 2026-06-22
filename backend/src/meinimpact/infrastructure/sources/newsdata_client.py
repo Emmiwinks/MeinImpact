@@ -14,15 +14,15 @@ _BASE_URL = "https://newsdata.io/api/1/latest"
 
 # Maps our topic taxonomy to German search keywords for NewsData queries.
 TOPIC_KEYWORDS: dict[str, list[str]] = {
-    "klimaschutz":   ["Klimaschutz", "CO2", "Erneuerbare", "Energiewende"],
-    "soziales":      ["Sozialleistungen", "Bürgergeld", "Rente", "Pflege"],
-    "demokratie":    ["Demokratie", "Verfassung", "Wahl", "Rechtsstaat"],
-    "bildung":       ["Bildung", "Schule", "BAföG", "Studium"],
-    "gesundheit":    ["Gesundheit", "Krankenhaus", "Pflege", "Medizin"],
-    "wirtschaft":    ["Wirtschaft", "Inflation", "Haushalt", "Unternehmen"],
-    "wohnen":        ["Wohnen", "Miete", "Wohnungsbau", "Mietpreise"],
-    "digital":       ["Digital", "Datenschutz", "KI", "Technologie"],
-    "verkehr":       ["Verkehr", "Bahn", "Straßen", "Mobilität"],
+    "klimaschutz": ["Klimaschutz", "CO2", "Erneuerbare", "Energiewende"],
+    "soziales": ["Sozialleistungen", "Bürgergeld", "Rente", "Pflege"],
+    "demokratie": ["Demokratie", "Verfassung", "Wahl", "Rechtsstaat"],
+    "bildung": ["Bildung", "Schule", "BAföG", "Studium"],
+    "gesundheit": ["Gesundheit", "Krankenhaus", "Pflege", "Medizin"],
+    "wirtschaft": ["Wirtschaft", "Inflation", "Haushalt", "Unternehmen"],
+    "wohnen": ["Wohnen", "Miete", "Wohnungsbau", "Mietpreise"],
+    "digital": ["Digital", "Datenschutz", "KI", "Technologie"],
+    "verkehr": ["Verkehr", "Bahn", "Straßen", "Mobilität"],
     "aussenpolitik": ["Außenpolitik", "Ukraine", "NATO", "Diplomatie"],
 }
 

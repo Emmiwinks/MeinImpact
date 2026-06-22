@@ -11,7 +11,17 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
-from meinimpact.api.routes import actions, auth, beta, feedback, health, letters, mdb, news, push
+from meinimpact.api.routes import (
+    actions,
+    auth,
+    beta,
+    feedback,
+    health,
+    letters,
+    mdb,
+    news,
+    push,
+)
 from meinimpact.core.config import Settings, get_settings
 from meinimpact.core.middleware import (
     RequestSizeLimitMiddleware,
@@ -82,7 +92,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             _static_dir / "index.html",
             media_type="text/html",
             headers={
-                # Allow inline <style> and <script> needed by the landing page animation.
+                # Allow inline <style> and <script> needed by the
+                # landing page animation.
                 "Content-Security-Policy": (
                     "default-src 'none'; "
                     "script-src 'unsafe-inline'; "

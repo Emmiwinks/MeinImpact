@@ -14,8 +14,8 @@ from meinimpact.domain.entities import (
     UserProfile,
 )
 
-
 # ── Auth ──────────────────────────────────────────────────────────────────────
+
 
 class AnonymousSessionRequest(BaseModel):
     """Request to create an anonymous installation session."""
@@ -34,6 +34,7 @@ class TokenResponse(BaseModel):
 
 
 # ── MdB lookup ────────────────────────────────────────────────────────────────
+
 
 class MdbOption(BaseModel):
     """One Wahlkreis/MdB match for a PLZ lookup."""
@@ -54,6 +55,7 @@ class MdbResponse(BaseModel):
 
 # ── Health ────────────────────────────────────────────────────────────────────
 
+
 class HealthResponse(BaseModel):
     """Health endpoint response."""
 
@@ -65,6 +67,7 @@ class HealthResponse(BaseModel):
 
 
 # ── User profile ──────────────────────────────────────────────────────────────
+
 
 class UserProfileRequest(BaseModel):
     """User profile fragment needed for recommendations."""
@@ -84,6 +87,7 @@ class UserProfileRequest(BaseModel):
 
 # ── Actions ───────────────────────────────────────────────────────────────────
 
+
 class ActionResponse(BaseModel):
     """Public civic action representation."""
 
@@ -99,7 +103,7 @@ class ActionResponse(BaseModel):
     source_url: str
 
     @classmethod
-    def from_domain(cls, action: CivicAction) -> "ActionResponse":
+    def from_domain(cls, action: CivicAction) -> ActionResponse:
         """Builds an API response from a domain action."""
         return cls(
             id=action.id,
@@ -139,7 +143,7 @@ class ActionPoolItemResponse(BaseModel):
     created_at: datetime | None = None
 
     @classmethod
-    def from_domain(cls, action: CivicAction) -> "ActionPoolItemResponse":
+    def from_domain(cls, action: CivicAction) -> ActionPoolItemResponse:
         """Builds a pool item from a domain action."""
         return cls(
             id=action.id,
@@ -173,6 +177,7 @@ class ActionPoolResponse(BaseModel):
 
 # ── Recommendations ───────────────────────────────────────────────────────────
 
+
 class RecommendationResponse(BaseModel):
     """Recommended action with transparent scoring reasons."""
 
@@ -181,7 +186,7 @@ class RecommendationResponse(BaseModel):
     reasons: list[str]
 
     @classmethod
-    def from_domain(cls, recommendation: Recommendation) -> "RecommendationResponse":
+    def from_domain(cls, recommendation: Recommendation) -> RecommendationResponse:
         """Builds an API response from a domain recommendation."""
         return cls(
             action=ActionResponse.from_domain(recommendation.action),
@@ -205,6 +210,7 @@ class RecommendationsResponse(BaseModel):
 
 # ── Action context ────────────────────────────────────────────────────────────
 
+
 class ActionContextRequest(BaseModel):
     """Demographics for personalised action context generation."""
 
@@ -223,6 +229,7 @@ class ActionContextResponse(BaseModel):
 
 # ── Action completion ─────────────────────────────────────────────────────────
 
+
 class ActionCompleteRequest(BaseModel):
     """Request to record that a user completed an action."""
 
@@ -238,6 +245,7 @@ class ActionCompleteResponse(BaseModel):
 
 # ── Tracking ──────────────────────────────────────────────────────────────────
 
+
 class TrackingEventResponse(BaseModel):
     """One civic outcome event."""
 
@@ -250,7 +258,7 @@ class TrackingEventResponse(BaseModel):
     occurred_at: datetime
 
     @classmethod
-    def from_domain(cls, event: TrackingEvent) -> "TrackingEventResponse":
+    def from_domain(cls, event: TrackingEvent) -> TrackingEventResponse:
         return cls(
             id=event.id,
             event_type=event.event_type,
@@ -272,7 +280,7 @@ class MdbStatementResponse(BaseModel):
     searched_at: datetime
 
     @classmethod
-    def from_domain(cls, stmt: MdbStatement) -> "MdbStatementResponse":
+    def from_domain(cls, stmt: MdbStatement) -> MdbStatementResponse:
         return cls(
             mdb_name=stmt.mdb_name,
             found=stmt.found,
@@ -291,6 +299,7 @@ class ActionTrackingResponse(BaseModel):
 
 
 # ── Push notifications ────────────────────────────────────────────────────────
+
 
 class PushRegisterRequest(BaseModel):
     """Push token registration."""
@@ -314,6 +323,7 @@ class OkResponse(BaseModel):
 
 # ── Feedback ──────────────────────────────────────────────────────────────────
 
+
 class FeedbackRequest(BaseModel):
     """Anonymous in-app feedback submission."""
 
@@ -323,6 +333,7 @@ class FeedbackRequest(BaseModel):
 
 
 # ── Beta token ────────────────────────────────────────────────────────────────
+
 
 class BetaActivateRequest(BaseModel):
     """Beta token activation request."""
@@ -338,6 +349,7 @@ class BetaActivateResponse(BaseModel):
 
 # ── News ──────────────────────────────────────────────────────────────────────
 
+
 class NewsItemResponse(BaseModel):
     """Public news item representation."""
 
@@ -350,7 +362,7 @@ class NewsItemResponse(BaseModel):
     url: str
 
     @classmethod
-    def from_domain(cls, news_item: NewsItem) -> "NewsItemResponse":
+    def from_domain(cls, news_item: NewsItem) -> NewsItemResponse:
         """Builds an API response from a domain news item."""
         return cls(
             id=news_item.id,
@@ -370,6 +382,7 @@ class NewsResponse(BaseModel):
 
 
 # ── Letters ───────────────────────────────────────────────────────────────────
+
 
 class LetterRequest(BaseModel):
     """Request for a streaming letter or public question draft."""

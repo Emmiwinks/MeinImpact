@@ -126,8 +126,8 @@ class _DemographicScreenState extends State<DemographicScreen> {
                     onPressed: _skip,
                     child: Text(
                       'Überspringen',
-                      style: TextStyle(
-                          color: AppColors.mutedText, fontSize: 13),
+                      style:
+                          TextStyle(color: AppColors.mutedText, fontSize: 13),
                     ),
                   ),
                 ],
@@ -298,8 +298,7 @@ class _DemographicScreenState extends State<DemographicScreen> {
                           ),
                         )
                         .toList(),
-                    onChanged: (opt) =>
-                        setState(() => _selected = opt),
+                    onChanged: (opt) => setState(() => _selected = opt),
                   ),
                 ),
               ),

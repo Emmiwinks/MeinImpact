@@ -1,8 +1,8 @@
-"""Ingestion pipeline orchestrator — runs Stages 0–9 once per invocation.
+"""Ingestion pipeline orchestrator - runs Stages 0-9 once per invocation.
 
-Stage 0: Topic Radar — DIP + NewsData.io → ranked hot topics
-Stage 1: Action Search per Topic — find best action per hot topic
-Stages 2–9: Dedup, prefilter, enrich, classify, persist, deactivate, log.
+Stage 0: Topic Radar - DIP + NewsData.io -> ranked hot topics
+Stage 1: Action Search per Topic - find best action per hot topic
+Stages 2-9: Dedup, prefilter, enrich, classify, persist, deactivate, log.
 
 Designed to be called daily by APScheduler (03:00 CET) or manually.
 Creates its own DB connection and closes it on exit.
@@ -32,7 +32,10 @@ from meinimpact.infrastructure.pipeline.stages import (
 )
 from meinimpact.infrastructure.pipeline.types import ClassifiedAction
 from meinimpact.infrastructure.sources.dip_adapter import DipAdapter
-from meinimpact.infrastructure.sources.newsdata_client import NewsDataClient, TOPIC_KEYWORDS
+from meinimpact.infrastructure.sources.newsdata_client import (
+    TOPIC_KEYWORDS,
+    NewsDataClient,
+)
 from meinimpact.infrastructure.sources.protocol import RawSourceItem
 from meinimpact.infrastructure.sources.tavily_client import TavilyClient
 
@@ -58,22 +61,34 @@ async def run_ingestion_pipeline(settings: Settings) -> None:
         # ── Stage 0: Topic Radar ──────────────────────────────────────────────
         hot_topics = await _run_topic_radar(settings, existing["existing_urls"], errors)
         topics_above = [t for t, _ in hot_topics]
-        logger.info("Stage 0: %d/%d topics above threshold: %s",
-                    len(topics_above), len(TOPIC_KEYWORDS), topics_above)
+        logger.info(
+            "Stage 0: %d/%d topics above threshold: %s",
+            len(topics_above),
+            len(TOPIC_KEYWORDS),
+            topics_above,
+        )
 
         # ── Stage 1: Action Search per Topic ─────────────────────────────────
-        raw_items = await _search_actions_for_topics(hot_topics, existing["existing_urls"], settings, errors)
+        raw_items = await _search_actions_for_topics(
+            hot_topics, existing["existing_urls"], settings, errors
+        )
         logger.info("Stage 1: found %d candidate actions", len(raw_items))
 
         # ── Stage 2: Deduplicate ──────────────────────────────────────────────
         new_items = deduplicate(raw_items, **existing)
-        logger.info("Stage 2: %d new after dedup (dropped %d)",
-                    len(new_items), len(raw_items) - len(new_items))
+        logger.info(
+            "Stage 2: %d new after dedup (dropped %d)",
+            len(new_items),
+            len(raw_items) - len(new_items),
+        )
 
         # ── Stage 3: Prefilter ────────────────────────────────────────────────
         filtered = prefilter(new_items)
-        logger.info("Stage 3: %d pass prefilter (dropped %d)",
-                    len(filtered), len(new_items) - len(filtered))
+        logger.info(
+            "Stage 3: %d pass prefilter (dropped %d)",
+            len(filtered),
+            len(new_items) - len(filtered),
+        )
 
         # ── Stage 4: Tavily enrichment — SKIPPED in MVP ───────────────────────
         logger.info("Stage 4: skipped (MVP)")
@@ -83,7 +98,7 @@ async def run_ingestion_pipeline(settings: Settings) -> None:
         classified_count = sum(1 for c in classified if c is not None)
         logger.info("Stage 5: %d classified", classified_count)
 
-        # ── Stages 6–9: Persist, deactivate, log ─────────────────────────────
+        # -- Stages 6-9: Persist, deactivate, log --------------------------------
         inserted = 0
         async with db._session_factory() as session:
             inserted = await _persist(classified, session)
@@ -101,8 +116,12 @@ async def run_ingestion_pipeline(settings: Settings) -> None:
             )
             await session.commit()
 
-        logger.info("Pipeline run %s complete: %d inserted in %.1fs",
-                    run_id, inserted, time.monotonic() - start)
+        logger.info(
+            "Pipeline run %s complete: %d inserted in %.1fs",
+            run_id,
+            inserted,
+            time.monotonic() - start,
+        )
 
     except Exception as exc:
         logger.exception("Pipeline run %s failed: %s", run_id, exc)
@@ -114,6 +133,7 @@ async def run_ingestion_pipeline(settings: Settings) -> None:
 # ---------------------------------------------------------------------------
 # Stage 0: Topic Radar
 # ---------------------------------------------------------------------------
+
 
 async def _run_topic_radar(
     settings: Settings,
@@ -133,8 +153,13 @@ async def _run_topic_radar(
         norm_parl = parl_counts.get(topic, 0) / max(max_parl, 1)
         norm_news = news_counts.get(topic, 0) / max(max_news, 1)
         score = norm_parl * 0.6 + norm_news * 0.4
-        logger.debug("Topic radar: %s parl=%d news=%d score=%.3f",
-                     topic, parl_counts.get(topic, 0), news_counts.get(topic, 0), score)
+        logger.debug(
+            "Topic radar: %s parl=%d news=%d score=%.3f",
+            topic,
+            parl_counts.get(topic, 0),
+            news_counts.get(topic, 0),
+            score,
+        )
         if score >= _TOPIC_URGENCY_THRESHOLD:
             scored.append((topic, score))
 
@@ -192,6 +217,7 @@ async def _count_news_activity(
 # Stage 1: Action Search per Topic
 # ---------------------------------------------------------------------------
 
+
 async def _search_actions_for_topics(
     hot_topics: list[tuple[str, float]],
     existing_urls: set[str],
@@ -204,7 +230,9 @@ async def _search_actions_for_topics(
 
     for topic, score in hot_topics:
         keywords = TOPIC_KEYWORDS[topic]
-        item = await _find_best_action(topic, keywords, score, seen_urls, settings, errors)
+        item = await _find_best_action(
+            topic, keywords, score, seen_urls, settings, errors
+        )
         if item:
             results.append(item)
             seen_urls.add(item["source_url"])
@@ -224,13 +252,17 @@ async def _find_best_action(
 
     # Priority 1 & 2: DIP (Bundestag votes and petitions)
     if settings.dip_api_key:
-        item = await _find_dip_action(topic, keywords, urgency_score, existing_urls, settings.dip_api_key, errors)
+        item = await _find_dip_action(
+            topic, keywords, urgency_score, existing_urls, settings.dip_api_key, errors
+        )
         if item:
             return item
 
     # Priority 3: Civil society petition via Tavily
     if settings.tavily_api_key:
-        item = await _find_civil_petition(topic, keywords, existing_urls, settings.tavily_api_key, errors)
+        item = await _find_civil_petition(
+            topic, keywords, existing_urls, settings.tavily_api_key, errors
+        )
         if item:
             return item
 
@@ -316,6 +348,7 @@ async def _find_civil_petition(
 # Stage 2 helper — load existing URLs and titles from DB
 # ---------------------------------------------------------------------------
 
+
 async def _load_existing(conn: object) -> dict[str, object]:
     result = await conn.execute(  # type: ignore[union-attr]
         text("SELECT source_url, title FROM civic_actions WHERE active = true")
@@ -331,13 +364,16 @@ async def _load_existing(conn: object) -> dict[str, object]:
 # Stage 5: Classification
 # ---------------------------------------------------------------------------
 
+
 async def _classify_all(
     items: list[RawSourceItem],
     settings: Settings,
     errors: list[str],
 ) -> list[ClassifiedAction | None]:
     if not settings.mistral_api_key:
-        logger.warning("MEINIMPACT_MISTRAL_API_KEY not set — inserting without classification")
+        logger.warning(
+            "MEINIMPACT_MISTRAL_API_KEY not set — inserting without classification"
+        )
         return [_default_classified(item) for item in items]
 
     classifier = MistralClassifier(
@@ -377,6 +413,7 @@ def _default_classified(item: RawSourceItem) -> ClassifiedAction:
 # ---------------------------------------------------------------------------
 # Stage 6: Persist
 # ---------------------------------------------------------------------------
+
 
 async def _persist(
     items: list[ClassifiedAction | None],
@@ -431,6 +468,7 @@ async def _persist(
 # Stage 7: Deactivate expired
 # ---------------------------------------------------------------------------
 
+
 async def _deactivate_expired(session: AsyncSession) -> None:
     await session.execute(
         update(CivicActionRecord)
@@ -446,6 +484,7 @@ async def _deactivate_expired(session: AsyncSession) -> None:
 # ---------------------------------------------------------------------------
 # Stage 9: Log run
 # ---------------------------------------------------------------------------
+
 
 async def _log_run(
     session: AsyncSession,

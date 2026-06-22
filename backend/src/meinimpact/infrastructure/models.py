@@ -67,7 +67,9 @@ class CivicActionRecord(Base):
     deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
     effort_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
     impact_hint: Mapped[str] = mapped_column(Text, nullable=False)
-    source_url: Mapped[str] = mapped_column(String(length=500), nullable=False, unique=True)
+    source_url: Mapped[str] = mapped_column(
+        String(length=500), nullable=False, unique=True
+    )
     urgency: Mapped[str] = mapped_column(
         String(length=10), nullable=False, default="low"
     )
@@ -95,9 +97,7 @@ class CivicActionRecord(Base):
     momentum_score: Mapped[float] = mapped_column(
         Float, nullable=False, server_default="0.3"
     )
-    active: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default="true"
-    )
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
@@ -207,9 +207,7 @@ class ActionStatsRecord(Base):
         ForeignKey("civic_actions.id", ondelete="CASCADE"),
         primary_key=True,
     )
-    completion_count: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=0
-    )
+    completion_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),

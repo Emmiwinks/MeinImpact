@@ -78,7 +78,7 @@ async def get_action_context(
     service = ContextService(ai_generator)
     try:
         context_text = await service.generate(action, request)
-    except Exception:
+    except Exception as err:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail={
@@ -86,7 +86,7 @@ async def get_action_context(
                 "code": "AI_UNAVAILABLE",
                 "fallback": True,
             },
-        )
+        ) from err
     return schemas.ActionContextResponse(action_id=action_id, context=context_text)
 
 
@@ -134,7 +134,9 @@ async def get_action_tracking(
     return schemas.ActionTrackingResponse(
         action_id=action_id,
         events=[schemas.TrackingEventResponse.from_domain(e) for e in events],
-        mdb_statements=[schemas.MdbStatementResponse.from_domain(s) for s in statements],
+        mdb_statements=[
+            schemas.MdbStatementResponse.from_domain(s) for s in statements
+        ],
     )
 
 

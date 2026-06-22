@@ -42,9 +42,11 @@ urgency rules:
 - mid: deadline within 60 days OR active public debate
 - low: ongoing, no imminent deadline
 
-werte_relevanz: 0.0 = axis not relevant, positive = positive pole, negative = negative pole.
+werte_relevanz: 0.0 = axis not relevant, positive = positive pole,
+negative = negative pole.
 
-is_controversial: true if reasonable people with different values would strongly disagree.
+is_controversial: true if reasonable people with different values would
+strongly disagree.
 position_required: true if a letter can only be written from a clear political position.
 
 Action and context:
@@ -53,9 +55,16 @@ Description: {description}
 Web context: {tavily_context}
 """
 
-_REQUIRED_FIELDS = {"topics", "urgency", "werte_relevanz", "pro_argumente",
-                    "contra_argumente", "action_types", "is_controversial",
-                    "position_required"}
+_REQUIRED_FIELDS = {
+    "topics",
+    "urgency",
+    "werte_relevanz",
+    "pro_argumente",
+    "contra_argumente",
+    "action_types",
+    "is_controversial",
+    "position_required",
+}
 
 
 class MistralClassifier:
