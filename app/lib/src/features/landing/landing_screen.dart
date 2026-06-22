@@ -52,15 +52,23 @@ class _LandingScreenState extends State<LandingScreen> {
       body: Stack(
         children: [
           SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const _Nav(),
-                _Hero(megaphoneKey: _megaphoneKey),
-                const _Features(),
-                const _Contact(),
-                const _Footer(),
-              ],
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                // Cap content width so it doesn't stretch on wide monitors.
+                constraints: const BoxConstraints(maxWidth: 1100),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const _Nav(),
+                    _Hero(megaphoneKey: _megaphoneKey),
+                    const _Features(),
+                    const _Beta(),
+                    const _Contact(),
+                    const _Footer(),
+                  ],
+                ),
+              ),
             ),
           ),
           Positioned.fill(
@@ -234,19 +242,22 @@ class _Features extends StatelessWidget {
       icon: '🏛️',
       title: 'Politische Aktionen',
       body: 'Entdecke Aktionen auf Bundes-, Landes- und Regionalebene, '
-          'die zu deinen Werten passen.',
+          'die zu deinen Werten und Interessen passen.',
     ),
     (
       icon: '🧭',
       title: 'Dein Werteprofil',
-      body: 'Finde heraus, welche Themen relevant sind und welchen Effekt '
-          'politische Entscheidungen auf deinen Alltag haben.',
+      body:
+          'Finde heraus, welche Themen für dich relevant sind und welchen Effekt '
+          'politische Entscheidungen auf deinen Alltag haben könnten.',
     ),
     (
       icon: '📰',
       title: 'Tracke deinen Impact',
-      body: 'Nach einer Aktion bleibst du informiert — wie Abgeordnete '
-          'gestimmt haben und was entschieden wurde.',
+      body:
+          'Nach einer Aktion bleibst du weiterhin informiert. Was Abgeordnete '
+          'darüber gesagt haben, wie sie gestimmt haben und welche Entscheidungen '
+          'getroffen wurden.',
     ),
     (
       icon: '✉️',
@@ -268,12 +279,12 @@ class _Features extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'WAS DICH ERWARTET',
+            'Was dich erwartet',
             style: TextStyle(
               color: _green,
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w700,
-              letterSpacing: 1.6,
+              letterSpacing: 0.2,
             ),
           ),
           const SizedBox(height: 10),
@@ -289,24 +300,36 @@ class _Features extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           const Text(
-            'MeinImpact verbindet dich mit politischen Aktionen, die zu deinen Werten passen. '
-            'Dein wöchentlicher Beitrag zur Demokratie in drei Minuten.',
+            'MeinImpact verbindet dich mit politischen Aktionen, die zu deinen Werten passen '
+            'und dir wichtig sind. Dein wöchentlicher Beitrag zur Demokratie in drei Minuten.',
             style: TextStyle(color: _sub, fontSize: 16, height: 1.72),
           ),
           const SizedBox(height: 40),
-          GridView.count(
-            crossAxisCount: w < 600 ? 1 : 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 14,
-            crossAxisSpacing: 14,
-            childAspectRatio: w < 600 ? 3.2 : 1.6,
-            children: _cards
-                .map(
-                  (c) =>
-                      _FeatureCard(icon: c.icon, title: c.title, body: c.body),
-                )
-                .toList(),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final cols = constraints.maxWidth > 860
+                  ? 4
+                  : constraints.maxWidth > 500
+                      ? 2
+                      : 1;
+              final cardW = (constraints.maxWidth - (cols - 1) * 14) / cols;
+              return Wrap(
+                spacing: 14,
+                runSpacing: 14,
+                children: _cards
+                    .map(
+                      (c) => SizedBox(
+                        width: cardW,
+                        child: _FeatureCard(
+                          icon: c.icon,
+                          title: c.title,
+                          body: c.body,
+                        ),
+                      ),
+                    )
+                    .toList(),
+              );
+            },
           ),
         ],
       ),
@@ -348,12 +371,61 @@ class _FeatureCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          Expanded(
-            child: Text(
-              body,
-              style: const TextStyle(color: _sub, fontSize: 13, height: 1.6),
-              overflow: TextOverflow.fade,
+          Text(
+            body,
+            style: const TextStyle(color: _sub, fontSize: 13, height: 1.6),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Beta ──────────────────────────────────────────────────────────────────────
+
+class _Beta extends StatelessWidget {
+  const _Beta();
+
+  @override
+  Widget build(BuildContext context) {
+    final w = MediaQuery.sizeOf(context).width;
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: w < 600 ? 24 : 48,
+        vertical: 80,
+      ),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: _border)),
+      ),
+      child: const Column(
+        children: [
+          Text(
+            'Der frühe Vogel',
+            style: TextStyle(
+              color: _green,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
             ),
+          ),
+          SizedBox(height: 10),
+          Text(
+            'Beta-Tester:innen\nwerden.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: _text,
+              fontSize: 36,
+              fontWeight: FontWeight.w800,
+              height: 1.12,
+              letterSpacing: -1,
+            ),
+          ),
+          SizedBox(height: 14),
+          Text(
+            'Wir suchen engagierte Menschen, die MeinImpact als Erste ausprobieren '
+            'und aktiv mitgestalten wollen.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: _sub, fontSize: 16, height: 1.72),
           ),
         ],
       ),
@@ -380,12 +452,12 @@ class _Contact extends StatelessWidget {
       child: Column(
         children: [
           const Text(
-            'KONTAKT',
+            'Kontakt',
             style: TextStyle(
               color: _green,
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: FontWeight.w700,
-              letterSpacing: 1.6,
+              letterSpacing: 0.2,
             ),
           ),
           const SizedBox(height: 10),

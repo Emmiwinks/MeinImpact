@@ -53,5 +53,5 @@ app.*.map.json
 /ios/
 /linux/
 /macos/
-/web/
 /windows/
+# web/ is intentionally NOT ignored — index.html and manifest.json are committed.
