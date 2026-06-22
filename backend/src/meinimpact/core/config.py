@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     mistral_api_key: str | None = None
     mistral_model: str = "mistral-small-latest"
     mistral_base_url: str = "https://api.mistral.ai/v1"
+    dip_api_key: str | None = None
+    tavily_api_key: str | None = None
+    newsdata_api_key: str | None = None
+    google_cse_key: str | None = None
+    google_cse_id: str | None = None
     max_request_body_bytes: int = 65_536
 
     model_config = SettingsConfigDict(

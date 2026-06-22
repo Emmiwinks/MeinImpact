@@ -32,41 +32,119 @@ MeinImpact.
 ## Pipeline Stages
 
 ```
-Stage 1: Fetch
-Stage 2: Deduplicate
-Stage 3: Prefilter
-Stage 4: Tavily context enrichment
-Stage 5: Mistral classification
-Stage 6: Persist
-Stage 7: Deactivate expired
-Stage 8: Log run
+Stage 0: Topic Radar              ← NEW
+  DIP API + NewsData.io → ranked hot topics
+
+Stage 1: Action Search            ← REPLACED (was: multi-source fetch)
+  Per topic → find best action by priority
+
+Stage 2: Deduplicate              ← same
+Stage 3: Prefilter                ← same
+Stage 4: Tavily Enrich            ← SKIPPED in MVP (see Stage 4 note)
+Stage 5: Mistral Classify         ← same
+Stage 6: Persist                  ← same
+Stage 7: Deactivate expired       ← same
+Stage 8: MdB Statements           ← same
+Stage 9: Log Run                  ← same + topics_scanned, topics_above_threshold
 ```
 
 ---
 
-## Stage 1: Fetch
+## Stage 0: Topic Radar
 
-Parallel fetch from all configured source adapters.
-See `data/sources-federal.md` for adapter specifications.
+Before fetching actions, the pipeline identifies which topics are currently
+"burning" by combining two signals.
+
+**Signal A — Parliamentary activity (DIP API):**
+Count active Vorgang items per topic area in the last 14 days using the
+`deskriptor` field to map items to our topic taxonomy.
+
+**Signal B — News attention (NewsData.io):**
+Count how many political news articles mention each topic in the last 7 days
+using keyword matching per topic (e.g. `"Pflege" OR "Krankenhaus"` → `gesundheit`).
 
 ```python
-async def fetch_all(since: datetime) -> list[RawSourceItem]:
-    results = await asyncio.gather(
-        dip_adapter.fetch_new_items(since),
-        weact_adapter.fetch_new_items(since),
-        newsdata_adapter.fetch_new_items(since),
-        return_exceptions=True,
-    )
-    items = []
-    for source, result in zip(SOURCE_NAMES, results):
-        if isinstance(result, Exception):
-            sentry.capture_exception(result, tags={'source': source})
-            continue
-        items.extend(result)
-    return items
+TOPIC_KEYWORDS: dict[str, list[str]] = {
+    "klimaschutz":   ["Klimaschutz", "CO2", "Erneuerbare", "Energiewende"],
+    "soziales":      ["Sozialleistungen", "Bürgergeld", "Rente", "Pflege"],
+    "demokratie":    ["Demokratie", "Verfassung", "Wahl", "Rechtsstaat"],
+    "bildung":       ["Bildung", "Schule", "BAföG", "Studium"],
+    "gesundheit":    ["Gesundheit", "Krankenhaus", "Pflege", "Medizin"],
+    "wirtschaft":    ["Wirtschaft", "Inflation", "Haushalt", "Unternehmen"],
+    "wohnen":        ["Wohnen", "Miete", "Wohnungsbau", "Mietpreise"],
+    "digital":       ["Digital", "Datenschutz", "KI", "Technologie"],
+    "verkehr":       ["Verkehr", "Bahn", "Straßen", "Mobilität"],
+    "aussenpolitik": ["Außenpolitik", "Ukraine", "NATO", "Diplomatie"],
+}
+
+def calculate_topic_urgency(
+    parliamentary_count: int,
+    news_count: int,
+    max_parliamentary: int,
+    max_news: int,
+) -> float:
+    norm_parl = parliamentary_count / max(max_parliamentary, 1)
+    norm_news = news_count / max(max_news, 1)
+    return norm_parl * 0.6 + norm_news * 0.4
 ```
 
-**Output:** List of `RawSourceItem` dicts, mixed sources.
+**Output:** Ranked list of `(topic, urgency_score)` tuples.
+Only topics scoring above a minimum threshold (`TOPIC_URGENCY_THRESHOLD = 0.1`)
+proceed to Stage 1.
+
+---
+
+## Stage 1: Action Search per Topic
+
+For each hot topic from Stage 0, search for the single best available action
+using this priority order. Only one action per topic enters the pool per run.
+If a topic already has an active action in the pool, it is skipped.
+
+```
+Priority 1: Active Bundestag vote on this topic
+  Source: DIP API /vorgang with topic keyword + beratungsstand="Abstimmung"
+  Action type: representative_letter
+
+Priority 2: Bundestag petition close to quorum (>30,000 signatures)
+  Source: DIP API /vorgang?f.vorgangstyp=Petition
+  Action type: petition_signature
+
+Priority 3: Civil society petition with strong momentum
+  Source: Tavily search restricted to weact.campact.de OR openpetition.de
+  Fallback: Google Custom Search API (100 queries/day free tier)
+  Action type: petition_signature
+
+Priority 4: MdB has not publicly positioned on this topic
+  Determined from mdb_statements table (found=false for this topic)
+  Action type: public_question
+
+Priority 5: Fallback — letter to MdB always possible
+  No external source needed
+  Action type: representative_letter
+```
+
+```python
+async def find_best_action_for_topic(
+    topic: str,
+    keywords: list[str],
+    existing_action_ids: set[str],
+) -> RawSourceItem | None:
+    # Try each priority in order, return first match
+    for finder in [
+        find_bundestag_vote,
+        find_bundestag_petition,
+        find_civil_society_petition,  # Tavily/Google search
+        find_mdb_anfrage_opportunity,
+    ]:
+        result = await finder(topic, keywords)
+        if result and result['source_url'] not in existing_action_ids:
+            return result
+    return None  # Fallback letter handled at persist time
+```
+
+**Output:** List of `RawSourceItem` dicts, one per hot topic at most.
+
+See `data/sources-federal.md` for civil society petition search details.
 
 ---
 
@@ -138,6 +216,14 @@ Target: ≤ 30 items proceed to AI classification per daily run.
 ---
 
 ## Stage 4: Tavily Context Enrichment
+
+> **MVP STATUS: SKIPPED.**
+> Tavily enrichment is not run in the MVP. `tavily_context` is left empty and
+> Mistral classifies from title + DIP abstract alone. This is sufficient for
+> initial classification quality. Re-enable when there is a concrete use case
+> that needs news coverage context (e.g. momentum scoring from media mentions,
+> or richer pro/contra arguments). Requires `MEINIMPACT_TAVILY_API_KEY` to be
+> set and the `TavilyClient` call to be re-enabled in the orchestrator.
 
 For each item passing prefilter, fetch current web context.
 This gives Mistral fresh background for classification and context generation.
@@ -302,7 +388,7 @@ async def deactivate_expired():
 
 ---
 
-## Stage 8: Log Run
+## Stage 9: Log Run
 
 ```python
 async def log_run(
@@ -315,6 +401,8 @@ async def log_run(
     errors: list[str],
     duration_seconds: float,
     ai_cost_eur: float,
+    topics_scanned: int,        # ← NEW: total topics evaluated in Stage 0
+    topics_above_threshold: int, # ← NEW: topics that passed urgency threshold
 ):
     await db.execute("""
         INSERT INTO pipeline_runs (
@@ -327,6 +415,9 @@ async def log_run(
 
 Pipeline run logs are stored in `pipeline_runs` table for monitoring.
 See `technical/monitoring.md`.
+
+> **Schema note:** `topics_scanned` and `topics_above_threshold` are not yet
+> columns in `pipeline_runs`. Add via migration when Stage 0 is implemented.
 
 ---
 
@@ -389,22 +480,26 @@ async def run_ingestion_pipeline():
     start = time.time()
     errors = []
 
-    since = datetime.now() - timedelta(hours=25)  # 1h overlap
+    # Stage 0: Topic Radar
+    hot_topics = await run_topic_radar()  # list[(topic, urgency_score)]
+    topics_above_threshold = [t for t, s in hot_topics if s >= TOPIC_URGENCY_THRESHOLD]
 
-    # Stage 1
-    raw_items = await fetch_all(since)
+    # Stage 1: Action Search per Topic
+    existing = await db.fetch_existing_urls_and_titles()
+    raw_items = []
+    for topic in topics_above_threshold:
+        item = await find_best_action_for_topic(topic, TOPIC_KEYWORDS[topic], existing['urls'])
+        if item:
+            raw_items.append(item)
 
     # Stage 2
-    existing = await db.fetch_existing_urls_and_titles()
     new_items = deduplicate(raw_items, **existing)
 
     # Stage 3
     filtered_items = prefilter(new_items)
 
-    # Stage 4
-    enriched = await asyncio.gather(*[
-        enrich_with_tavily(item) for item in filtered_items
-    ])
+    # Stage 4: SKIPPED in MVP
+    enriched = filtered_items
 
     # Stage 5
     classified = await asyncio.gather(*[
@@ -417,7 +512,7 @@ async def run_ingestion_pipeline():
     # Stage 7
     await deactivate_expired()
 
-    # Stage 8: MdB statement tracking (separate from action ingestion)
+    # Stage 8: MdB statement tracking
     await refresh_mdb_statements()
 
     # Stage 9
@@ -431,6 +526,8 @@ async def run_ingestion_pipeline():
         errors=errors,
         duration_seconds=time.time() - start,
         ai_cost_eur=await get_today_ai_spend(),
+        topics_scanned=len(TOPIC_KEYWORDS),
+        topics_above_threshold=len(topics_above_threshold),
     )
 ```
 

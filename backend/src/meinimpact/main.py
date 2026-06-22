@@ -3,9 +3,13 @@
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 from meinimpact.api.routes import actions, auth, beta, feedback, health, letters, mdb, news, push
 from meinimpact.core.config import Settings, get_settings
@@ -14,6 +18,7 @@ from meinimpact.core.middleware import (
     SecurityHeadersMiddleware,
 )
 from meinimpact.infrastructure.mdb.wks_service import WksService
+from meinimpact.infrastructure.pipeline.orchestrator import run_ingestion_pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +37,23 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 wks.load_error,
             )
         app.state.wks_service = wks
-        yield
+
+        scheduler = AsyncIOScheduler()
+        scheduler.add_job(
+            run_ingestion_pipeline,
+            CronTrigger(hour=3, minute=0, timezone="Europe/Berlin"),
+            args=[resolved_settings],
+            id="daily_ingestion",
+            replace_existing=True,
+        )
+        scheduler.start()
+        logger.info("Ingestion scheduler started (daily 03:00 CET)")
+
+        try:
+            yield
+        finally:
+            scheduler.shutdown(wait=False)
+            logger.info("Ingestion scheduler stopped")
 
     app = FastAPI(
         title=resolved_settings.app_name,
@@ -53,6 +74,27 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_methods=["GET", "POST"],
         allow_headers=["Authorization", "Content-Type"],
     )
+    _static_dir = Path(__file__).parent / "static"
+
+    @app.get("/", include_in_schema=False)
+    async def landing_page() -> FileResponse:
+        return FileResponse(
+            _static_dir / "index.html",
+            media_type="text/html",
+            headers={
+                # Allow inline <style> and <script> needed by the landing page animation.
+                "Content-Security-Policy": (
+                    "default-src 'none'; "
+                    "script-src 'unsafe-inline'; "
+                    "style-src 'unsafe-inline'; "
+                    "img-src data:; "
+                    "frame-ancestors 'none'"
+                ),
+                # Short cache so updates propagate quickly.
+                "Cache-Control": "public, max-age=300",
+            },
+        )
+
     app.include_router(health.router)
     app.include_router(auth.router)
     app.include_router(actions.router)

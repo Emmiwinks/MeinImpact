@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="MeinImpact – Deine Plattform für politisches Engagement. Kommt bald.">
+  <title>MeinImpact – Kommt bald</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #080F1E;
+      --card: rgba(255,255,255,0.05);
+      --border: rgba(255,255,255,0.09);
+      --green: #22C55E;
+      --amber: #F59E0B;
+      --text: #F1F5F9;
+      --muted: #64748B;
+      --sub: #94A3B8;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+
+    /* ─── Butterfly layer ─── */
+    .butterfly {
+      position: fixed;
+      pointer-events: none;
+      z-index: 60;
+      will-change: left, top, transform;
+    }
+
+    @keyframes wingsFlap {
+      from { transform: scaleX(1); }
+      to   { transform: scaleX(0.22); }
+    }
+
+    /* ─── Nav ─── */
+    nav {
+      position: fixed;
+      inset: 0 0 auto;
+      z-index: 100;
+      padding: 20px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: linear-gradient(to bottom, rgba(8,15,30,.95) 0%, transparent 100%);
+    }
+
+    .logo { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.4px; }
+    .logo em { font-style: normal; color: var(--green); }
+
+    .pill-status {
+      background: rgba(245,158,11,.12);
+      border: 1px solid rgba(245,158,11,.35);
+      color: #FCD34D;
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      padding: 5px 13px;
+      border-radius: 999px;
+    }
+
+    /* ─── Hero ─── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 100px 24px 64px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 90% 55% at 50% 38%, rgba(34,197,94,.055) 0%, transparent 65%),
+        radial-gradient(ellipse 55% 40% at 65% 55%, rgba(245,158,11,.04) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    /* ─── Megaphone ─── */
+    .megaphone-wrap {
+      position: relative;
+      z-index: 1;
+      margin-bottom: 52px;
+      display: flex;
+      justify-content: center;
+    }
+
+    #megaphone {
+      width: min(440px, 88vw);
+      height: auto;
+      filter: drop-shadow(0 6px 40px rgba(245,158,11,.22))
+              drop-shadow(0 2px 12px rgba(0,0,0,.5));
+    }
+
+    /* ─── Hero text ─── */
+    .hero-text {
+      text-align: center;
+      max-width: 580px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-text h1 {
+      font-size: clamp(2.4rem, 6.5vw, 4rem);
+      font-weight: 800;
+      line-height: 1.08;
+      letter-spacing: -.035em;
+      margin-bottom: 18px;
+    }
+
+    .hero-text h1 em { font-style: normal; color: var(--green); }
+
+    .hero-text p {
+      font-size: clamp(.95rem, 2.4vw, 1.15rem);
+      color: var(--sub);
+      line-height: 1.7;
+      margin-bottom: 44px;
+    }
+
+    .scroll-hint {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      font-size: .78rem;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      animation: nudge 2s ease-in-out infinite;
+    }
+
+    .scroll-hint svg { opacity: .45; }
+
+    @keyframes nudge {
+      0%,100% { transform: translateY(0); }
+      55%      { transform: translateY(9px); }
+    }
+
+    /* ─── Sections ─── */
+    section {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 88px 24px;
+    }
+
+    .label {
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-size: clamp(1.7rem, 4.5vw, 2.6rem);
+      font-weight: 800;
+      letter-spacing: -.025em;
+      line-height: 1.12;
+      margin-bottom: 14px;
+    }
+
+    .section-sub {
+      font-size: 1.05rem;
+      color: var(--sub);
+      line-height: 1.72;
+      max-width: 520px;
+      margin-bottom: 48px;
+    }
+
+    /* ─── Feature cards ─── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 28px 24px;
+      transition: border-color .2s, background .2s;
+    }
+
+    .card:hover {
+      border-color: rgba(255,255,255,.16);
+      background: rgba(255,255,255,.07);
+    }
+
+    .card-icon { font-size: 1.9rem; margin-bottom: 14px; }
+
+    .card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 7px; }
+
+    .card p { font-size: .88rem; color: var(--sub); line-height: 1.62; }
+
+    /* ─── Beta section ─── */
+    .beta { border-top: 1px solid var(--border); }
+
+    .beta-box {
+      background: linear-gradient(135deg, rgba(34,197,94,.07) 0%, rgba(245,158,11,.05) 100%);
+      border: 1px solid rgba(34,197,94,.18);
+      border-radius: 24px;
+      padding: 44px 48px;
+    }
+
+    .timeline { display: flex; flex-direction: column; gap: 22px; margin-top: 28px; }
+
+    .tl-item { display: flex; gap: 16px; align-items: flex-start; }
+
+    .tl-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--green);
+      flex-shrink: 0;
+      margin-top: 5px;
+    }
+
+    .tl-dot.dim { background: var(--muted); }
+
+    .tl-item strong { display: block; font-weight: 600; font-size: .95rem; margin-bottom: 2px; }
+    .tl-item span   { color: var(--sub); font-size: .85rem; }
+
+    /* ─── Contact section ─── */
+    .contact { border-top: 1px solid var(--border); text-align: center; }
+
+    .contact .section-sub { margin-inline: auto; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--green);
+      color: #052e16;
+      font-weight: 800;
+      font-size: 1rem;
+      padding: 15px 34px;
+      border-radius: 999px;
+      text-decoration: none;
+      transition: opacity .2s, transform .15s;
+      letter-spacing: -.01em;
+    }
+
+    .btn:hover { opacity: .88; transform: translateY(-2px); }
+
+    /* ─── Footer ─── */
+    footer {
+      text-align: center;
+      padding: 28px 24px;
+      color: var(--muted);
+      font-size: .78rem;
+      border-top: 1px solid var(--border);
+    }
+
+    footer a { color: var(--muted); text-decoration: none; }
+    footer a:hover { color: var(--sub); }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 600px) {
+      nav { padding: 16px 20px; }
+      .beta-box { padding: 32px 22px; }
+      section { padding: 64px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ───────────── Nav ───────────── -->
+  <nav aria-label="Hauptnavigation">
+    <span class="logo">mein<em>Impact</em></span>
+    <span class="pill-status" aria-label="Status: Im Aufbau">Im Aufbau</span>
+  </nav>
+
+  <!-- ───────────── Hero ───────────── -->
+  <div class="hero">
+    <div class="megaphone-wrap">
+      <!--
+        Megaphone SVG — pointing RIGHT, speaker bell opens to the RIGHT.
+        Handle on left → body cone → bell/rim on right.
+        #speaker-marker is the invisible anchor for butterfly spawning.
+      -->
+      <svg id="megaphone" viewBox="0 0 390 210" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+        <!-- Handle grip body -->
+        <rect x="3" y="91" width="57" height="26" rx="10" fill="#6B3A0F"/>
+        <rect x="3" y="91" width="57" height="13" rx="10" fill="#7C4A1A"/>
+        <!-- Grip ridges -->
+        <rect x="16" y="93" width="3.5" height="22" rx="1.75" fill="#3D1C07"/>
+        <rect x="25" y="93" width="3.5" height="22" rx="1.75" fill="#3D1C07"/>
+        <rect x="34" y="93" width="3.5" height="22" rx="1.75" fill="#3D1C07"/>
+        <rect x="43" y="93" width="3.5" height="22" rx="1.75" fill="#3D1C07"/>
+
+        <!-- Body cone: narrow at left (handle end), wide at right (bell end) -->
+        <!-- Shadow layer -->
+        <polygon points="60,93 60,115 168,158 168,50" fill="#92400E" opacity="0.5"/>
+        <!-- Main body -->
+        <polygon points="60,92 60,116 166,156 166,52" fill="#F59E0B"/>
+        <!-- Highlight (top ridge) -->
+        <polygon points="60,92 60,103 166,80 166,52" fill="#FCD34D" opacity="0.45"/>
+        <!-- Center seam -->
+        <line x1="60" y1="104" x2="166" y2="104" stroke="#D97706" stroke-width=".8" opacity="0.4"/>
+
+        <!-- Bell / speaker end: wide funnel on the RIGHT -->
+        <!-- Outer shadow -->
+        <path d="M166,52 C215,33 278,48 308,104 C278,160 215,173 166,156 Z" fill="#78350F"/>
+        <!-- Main bell -->
+        <path d="M166,52 C213,34 275,49 305,104 C275,159 213,172 166,156 Z" fill="#D97706"/>
+        <!-- Bell highlight -->
+        <path d="M166,52 C213,34 264,46 292,80 C268,52 216,37 166,52 Z" fill="#F59E0B" opacity="0.5"/>
+
+        <!-- Speaker rim (the open end) -->
+        <ellipse cx="305" cy="104" rx="23" ry="58" fill="#6B3A0F"/>
+        <ellipse cx="305" cy="104" rx="18" ry="52" fill="#7C4A1A"/>
+        <!-- Deep opening -->
+        <ellipse cx="305" cy="104" rx="12" ry="44" fill="#2C1001"/>
+
+        <!-- Sound arcs radiating right from the opening -->
+        <path d="M329,80 Q348,104 329,128" fill="none" stroke="#FDE68A" stroke-width="2.6" stroke-linecap="round" opacity=".72"/>
+        <path d="M339,64 Q362,104 339,144" fill="none" stroke="#FDE68A" stroke-width="2"   stroke-linecap="round" opacity=".48"/>
+        <path d="M349,49 Q376,104 349,159" fill="none" stroke="#FDE68A" stroke-width="1.4" stroke-linecap="round" opacity=".28"/>
+
+        <!--
+          SPEAKER MARKER — invisible; used by JS to locate the spawn point for butterflies.
+          Placed at the open center of the speaker bell (right side).
+        -->
+        <circle id="speaker-marker" cx="318" cy="104" r="2" fill="transparent"/>
+      </svg>
+    </div>
+
+    <div class="hero-text">
+      <h1>Deine Stimme.<br><em>Dein Impact.</em></h1>
+      <p>
+        MeinImpact macht politisches Engagement einfach und wirkungsvoll —<br>
+        für alle, die etwas verändern wollen.
+      </p>
+      <a class="scroll-hint" href="#features" aria-label="Mehr erfahren">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+          <path d="M6 9l6 6 6-6"/>
+        </svg>
+        Mehr erfahren
+      </a>
+    </div>
+  </div>
+
+  <!-- ───────────── Features ───────────── -->
+  <section id="features">
+    <p class="label">Was dich erwartet</p>
+    <h2 class="section-title">Demokratie,<br>neu gedacht.</h2>
+    <p class="section-sub">
+      MeinImpact verbindet dich mit politischen Aktionen, die zu deinen Werten passen —
+      und macht es leicht, wirklich etwas zu tun.
+    </p>
+    <div class="grid">
+      <div class="card">
+        <div class="card-icon">🏛️</div>
+        <h3>Politische Aktionen</h3>
+        <p>Entdecke Aktionen in deiner Region, die zu deinen Werten und Interessen passen.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">✉️</div>
+        <h3>Briefe an Abgeordnete</h3>
+        <p>Schreibe mit KI-Unterstützung wirkungsvolle Briefe direkt an deine Volksvertreter.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🧭</div>
+        <h3>Dein Werteprofil</h3>
+        <p>Finde heraus, was dir wirklich wichtig ist — und was das politisch bedeutet.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📰</div>
+        <h3>Relevante Nachrichten</h3>
+        <p>Bleib informiert mit Nachrichten, die dich und deine Themen wirklich betreffen.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────── Beta ───────────── -->
+  <section id="beta" class="beta">
+    <p class="label">Früher Zugang</p>
+    <h2 class="section-title">Beta-Tester<br>werden.</h2>
+    <p class="section-sub">
+      Wir suchen engagierte Menschen, die MeinImpact als Erste ausprobieren
+      und aktiv mitgestalten wollen.
+    </p>
+    <div class="beta-box">
+      <div class="timeline">
+        <div class="tl-item">
+          <div class="tl-dot"></div>
+          <div>
+            <strong>Jetzt: Interesse anmelden</strong>
+            <span>Schreib uns — wir informieren dich, sobald der Beta-Test startet.</span>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot"></div>
+          <div>
+            <strong>Beta: Geschlossener Test</strong>
+            <span>Die ersten Nutzer:innen testen die App und geben direktes Feedback.</span>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-dot dim"></div>
+          <div>
+            <strong>Launch: Öffentliche Version</strong>
+            <span>MeinImpact geht für alle live — im App-Store und als Web-App.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────── Contact ───────────── -->
+  <section id="kontakt" class="contact">
+    <p class="label">Kontakt</p>
+    <h2 class="section-title">Meld dich bei uns!</h2>
+    <p class="section-sub">
+      Fragen, Feedback oder Interesse am Beta-Test? Wir freuen uns über jede Nachricht.
+    </p>
+    <a href="mailto:hallo@meinimpact.de" class="btn">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+        <rect x="2" y="4" width="20" height="16" rx="2"/>
+        <path d="M22,6 L12,13 L2,6"/>
+      </svg>
+      hallo@meinimpact.de
+    </a>
+  </section>
+
+  <!-- ───────────── Footer ───────────── -->
+  <footer>
+    <p>© 2025 MeinImpact &nbsp;·&nbsp; <a href="#">Impressum</a> &nbsp;·&nbsp; <a href="#">Datenschutz</a></p>
+  </footer>
+
+  <!-- ───────────── Butterfly animation ───────────── -->
+  <script>
+  (function () {
+    'use strict';
+
+    var COLORS = [
+      '#F97316','#EC4899','#A855F7','#06B6D4',
+      '#22C55E','#EAB308','#F43F5E','#8B5CF6',
+      '#14B8A6','#FB923C','#E879F9','#38BDF8',
+      '#84CC16','#F59E0B'
+    ];
+
+    var NUM = 14;
+    var bflies = [];
+
+    // Build butterfly SVG markup
+    function makeSVG(color, w, h, flapMs) {
+      var c = color;
+      var body = '#1a1a2e';
+      return '<svg width="' + w + '" height="' + h + '" viewBox="0 0 34 30" '
+        + 'xmlns="http://www.w3.org/2000/svg" '
+        + 'style="animation: wingsFlap ' + flapMs + 'ms ease-in-out infinite alternate;'
+        + 'transform-origin: 50% 50%; display:block;">'
+        // upper left wing
+        + '<path d="M17,15 Q10,2 1,4 Q-1,15 17,15" fill="' + c + '"/>'
+        // upper right wing
+        + '<path d="M17,15 Q24,2 33,4 Q35,15 17,15" fill="' + c + '"/>'
+        // lower left wing
+        + '<path d="M17,15 Q7,27 1,24 Q3,15 17,15" fill="' + c + '" opacity="0.75"/>'
+        // lower right wing
+        + '<path d="M17,15 Q27,27 33,24 Q31,15 17,15" fill="' + c + '" opacity="0.75"/>'
+        // body
+        + '<ellipse cx="17" cy="15" rx="2" ry="7" fill="' + body + '"/>'
+        // head
+        + '<circle cx="17" cy="8" r="2.2" fill="' + body + '"/>'
+        // left antenna
+        + '<line x1="17" y1="7" x2="12" y2="1" stroke="' + body + '" stroke-width="1" stroke-linecap="round"/>'
+        + '<circle cx="12" cy="1" r="1.3" fill="' + body + '"/>'
+        // right antenna
+        + '<line x1="17" y1="7" x2="22" y2="1" stroke="' + body + '" stroke-width="1" stroke-linecap="round"/>'
+        + '<circle cx="22" cy="1" r="1.3" fill="' + body + '"/>'
+        + '</svg>';
+    }
+
+    function speakerPos() {
+      var m = document.getElementById('speaker-marker');
+      if (!m) return { x: window.innerWidth * 0.65, y: window.innerHeight * 0.42 };
+      var r = m.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    }
+
+    function randTarget() {
+      return {
+        x: 50 + Math.random() * (window.innerWidth  - 100),
+        y: 70 + Math.random() * (window.innerHeight - 140)
+      };
+    }
+
+    function startFlight(b, isFirst) {
+      var sp = speakerPos();
+      var tgt;
+
+      if (isFirst) {
+        // Burst outward from the speaker in a wide spread
+        var angle = (Math.random() - 0.5) * Math.PI * 1.6;
+        var dist  = 130 + Math.random() * 240;
+        tgt = {
+          x: Math.max(40, Math.min(window.innerWidth  - 40, sp.x + Math.cos(angle) * dist)),
+          y: Math.max(60, Math.min(window.innerHeight - 60, sp.y + Math.sin(angle) * dist))
+        };
+      } else {
+        tgt = randTarget();
+      }
+
+      b.sx = b.x; b.sy = b.y;
+      b.tx = tgt.x; b.ty = tgt.y;
+
+      // Curved control points (perpendicular offset for arc)
+      var mx   = (b.sx + b.tx) / 2,  my   = (b.sy + b.ty) / 2;
+      var perpX = -(b.ty - b.sy) * 0.45, perpY = (b.tx - b.sx) * 0.45;
+      var jitter = isFirst ? 80 : 130;
+
+      b.cp1x = mx + perpX + (Math.random() - 0.5) * jitter;
+      b.cp1y = my + perpY + (Math.random() - 0.5) * jitter;
+      b.cp2x = mx - perpX * 0.6 + (Math.random() - 0.5) * jitter * 0.7;
+      b.cp2y = my - perpY * 0.6 + (Math.random() - 0.5) * jitter * 0.7;
+
+      b.dur  = isFirst ? (900 + Math.random() * 700) : (2800 + Math.random() * 3200);
+      b.t0   = performance.now();
+      b.going = true;
+    }
+
+    function cubic(t, p0, c1, c2, p1) {
+      var m = 1 - t;
+      return m*m*m*p0 + 3*m*m*t*c1 + 3*m*t*t*c2 + t*t*t*p1;
+    }
+
+    function eio(t) {
+      return t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t+2,2)/2;
+    }
+
+    function tick(now) {
+      for (var i = 0; i < bflies.length; i++) {
+        var b = bflies[i];
+        if (!b.going) continue;
+
+        var raw = Math.min((now - b.t0) / b.dur, 1);
+        var e   = eio(raw);
+        var nx  = cubic(e, b.sx, b.cp1x, b.cp2x, b.tx);
+        var ny  = cubic(e, b.sy, b.cp1y, b.cp2y, b.ty);
+
+        // Compute movement direction for gentle tilt (clamped to ±28°)
+        var dx = nx - b.x, dy = ny - b.y;
+        if (Math.abs(dx) > 0.05 || Math.abs(dy) > 0.05) {
+          var raw_angle = Math.atan2(dy, dx) * (180 / Math.PI);
+          // Clamp so butterfly never flips upside-down
+          b.tilt = Math.max(-28, Math.min(28, raw_angle));
+        }
+
+        b.x = nx; b.y = ny;
+        b.el.style.left = (nx - b.hw) + 'px';
+        b.el.style.top  = (ny - b.hh) + 'px';
+        b.el.style.transform = 'rotate(' + b.tilt + 'deg)';
+
+        if (raw >= 1) startFlight(b, false);
+      }
+      requestAnimationFrame(tick);
+    }
+
+    function spawn(i) {
+      var el     = document.createElement('div');
+      var color  = COLORS[i % COLORS.length];
+      var scale  = 0.7 + Math.random() * 0.65;
+      var w      = Math.round(34 * scale);
+      var h      = Math.round(30 * scale);
+      var flapMs = 260 + Math.random() * 180;
+      var delay  = i * 260 + Math.random() * 350;
+
+      el.className = 'butterfly';
+      el.innerHTML = makeSVG(color, w, h, flapMs);
+      el.style.opacity = '0';
+
+      var sp = speakerPos();
+      el.style.left = (sp.x - w/2) + 'px';
+      el.style.top  = (sp.y - h/2) + 'px';
+
+      document.body.appendChild(el);
+
+      var b = {
+        el: el,
+        x: sp.x, y: sp.y,
+        sx: sp.x, sy: sp.y,
+        tx: 0, ty: 0,
+        cp1x:0, cp1y:0, cp2x:0, cp2y:0,
+        dur: 0, t0: 0,
+        tilt: 0,
+        going: false,
+        hw: w / 2, hh: h / 2
+      };
+
+      bflies.push(b);
+
+      setTimeout(function () {
+        el.style.transition = 'opacity .35s';
+        el.style.opacity = '1';
+        startFlight(b, true);
+      }, delay);
+    }
+
+    function init() {
+      for (var i = 0; i < NUM; i++) spawn(i);
+      requestAnimationFrame(tick);
+    }
+
+    if (document.readyState === 'complete') {
+      init();
+    } else {
+      window.addEventListener('load', init);
+    }
+  }());
+  </script>
+</body>
+</html>

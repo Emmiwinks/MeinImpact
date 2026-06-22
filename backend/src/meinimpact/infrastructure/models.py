@@ -67,7 +67,7 @@ class CivicActionRecord(Base):
     deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
     effort_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
     impact_hint: Mapped[str] = mapped_column(Text, nullable=False)
-    source_url: Mapped[str] = mapped_column(String(length=500), nullable=False)
+    source_url: Mapped[str] = mapped_column(String(length=500), nullable=False, unique=True)
     urgency: Mapped[str] = mapped_column(
         String(length=10), nullable=False, default="low"
     )

@@ -29,58 +29,72 @@ State (Länder) and municipal sources are out of scope for MVP.
 
 ## Source 1: Bundestag DIP API
 
-**Purpose:** Abstimmungen (votes), Drucksachen (parliamentary papers),
-Petitionen (petitions), upcoming agenda items.
+**Purpose:** Gesetzentwürfe, Anträge, and open Petitionen from the
+Bundestag parliamentary record. Votes (Abstimmungen) are tracked via
+the `beratungsstand` field on Vorgänge, not a separate endpoint.
 
 **Base URL:** `https://search.dip.bundestag.de/api/v1`
-**Authentication:** API key (free registration at dip.bundestag.de)
+**OpenAPI spec:** v1.5 (downloaded 2026-06-12)
+**Authentication:** API key required for all requests (401 otherwise).
+Pass as query param `apikey=` or header `Authorization: ApiKey <key>`.
+Free registration at dip.bundestag.de. A public demo key is available.
 **Rate limit:** ~10 requests/second; batch fetching is safe at 1 req/sec
 
 **Key endpoints used:**
 
 ```
 GET /vorgang
-  ?f.vorgangstyp=Antrag,Gesetzentwurf
+  ?f.vorgangstyp=Antrag          ← repeated for each type (NOT comma-separated)
+  &f.vorgangstyp=Gesetzentwurf
   &f.datum.start={yesterday}
   &format=json
   → Parliamentary processes (Gesetzentwürfe, Anträge)
 
-GET /abstimmung
-  ?f.datum.start={yesterday}
-  &format=json
-  → Recent and upcoming votes
-
 GET /vorgang
   ?f.vorgangstyp=Petition
-  &f.status=offen
+  &f.beratungsstand=Noch+nicht+beraten   ← f.status does not exist; use f.beratungsstand
   &format=json
   → Open Bundestag petitions
+```
 
-GET /aktivitaet
-  ?f.datum.start={yesterday}
-  &format=json
-  → Recent parliamentary activities
+**Endpoints that do NOT exist (corrected from earlier assumptions):**
+- `GET /abstimmung` — this endpoint is not in the API. Votes are
+  represented as Vorgänge with `beratungsstand` indicating the outcome.
+- `f.status` filter — does not exist. Use `f.beratungsstand` instead.
+
+**Pagination:**
+All list endpoints return a `cursor` field (always present, never null).
+Send the cursor back in the next request. Stop when the returned cursor
+equals the cursor you just sent (i.e., it stops changing).
+
+```
+GET /vorgang?...&cursor={prev_cursor}
+  → Stop when response.cursor == prev_cursor
 ```
 
 **Fields extracted per item:**
 
 ```python
 {
-  "external_id": str,           # DIP Vorgangs-ID
-  "title": str,                 # Betreff / Titel
-  "type": str,                  # "abstimmung" | "petition" | "gesetzentwurf"
-  "status": str,                # current parliamentary status
-  "deadline": date | None,      # Abstimmungstermin if known
-  "source_url": str,            # Link to DIP detail page
-  "full_text": str,             # Beschreibung / Betreff for AI classification
-  "initiated_by": str,          # Fraktion or Bundesregierung
+  "external_id": str,           # DIP Vorgangs-ID (string matching ^\d+$)
+  "title": str,                 # Vorgang.titel  (NOT betreff — that field does not exist)
+  "type": str,                  # "antrag" | "petition" | "gesetzentwurf"
+  "status": str,                # Vorgang.beratungsstand
+  "deadline": date | None,      # Vorgang.datum (date of latest associated document)
+  "source_url": str,            # https://dip.bundestag.de/vorgang/{id}
+  "description": str,           # Vorgang.abstract if present, else titel
+  "initiated_by": str,          # Vorgang.initiative[] joined as comma-separated string
 }
 ```
 
 **Known limitations:**
-- Abstimmungstermine are often not available far in advance
-- Full bill text requires separate fetch by Drucksachen-ID
-- API occasionally returns incomplete data for new items; retry after 24h
+- No `/abstimmung` endpoint: vote outcomes must be inferred from
+  `beratungsstand` (e.g. "Angenommen", "Abgelehnt") on the Vorgang.
+- Full bill text requires a secondary fetch via `/drucksache-text/{id}`.
+- API occasionally returns incomplete data for new items; retry after 24h.
+- `f.beratungsstand` values for "open petitions" may need tuning as the
+  controlled vocabulary is not published; "Noch nicht beraten" is the
+  current best guess.
 
 ---
 
@@ -148,35 +162,66 @@ store either the PLZ or the MdB result.
 
 ---
 
-## Source 4: WeAct RSS Feed
+## Source 4: Civil Society Petitions (Tavily / Google Custom Search)
 
-**Purpose:** Civil society petitions from WeAct (Campact's petition platform).
+**Purpose:** Civil society petitions from WeAct (weact.campact.de) and
+openPetition (openpetition.de) for active topics.
 
-**Feed URL:** `https://weact.campact.de/petitions.rss`
-**Authentication:** None
-**Update frequency:** Multiple times daily
+**Why not an RSS/API:** Neither platform provides a documented public API or
+RSS feed. WeAct has no feed; openPetition has no public API. Data is accessed
+via web search instead.
+
+**Primary method — Tavily search:**
+```python
+async def find_civil_society_petition(topic: str, keywords: list[str]) -> RawSourceItem | None:
+    query = f"{' OR '.join(keywords)} Petition unterzeichnen 2026"
+    results = await tavily_client.search(
+        query=query,
+        include_domains=["weact.campact.de", "openpetition.de"],
+        search_depth="basic",
+        max_results=3,
+        days=30,
+    )
+    if not results.get("results"):
+        return None
+    best = results["results"][0]
+    return RawSourceItem(
+        external_id=slugify(best["url"]),
+        title=best["title"],
+        description=best["content"][:500],
+        source_url=best["url"],
+        type="petition",
+        status="offen",
+        deadline=None,
+        initiated_by="Zivilgesellschaft",
+        source="tavily_petition_search",
+    )
+```
+
+**Fallback method — Google Custom Search API:**
+If Tavily returns no results, fall back to Google Custom Search
+(`site:openpetition.de OR site:weact.campact.de`).
+Free tier: 100 queries/day (sufficient for MVP at ≤10 topics/day).
+
+**Requires:** `MEINIMPACT_TAVILY_API_KEY` or `MEINIMPACT_GOOGLE_CSE_KEY` +
+`MEINIMPACT_GOOGLE_CSE_ID`.
 
 **Fields extracted:**
-
 ```python
 {
-  "external_id": str,      # Derived from URL slug
-  "title": str,
-  "description": str,      # First 500 chars of petition description
-  "source_url": str,
-  "signature_count": int,  # If available in RSS item
-  "deadline": date | None,
+  "external_id": str,      # Slugified URL
+  "title": str,            # From search result title
+  "description": str,      # First 500 chars of search result content
+  "source_url": str,       # Direct petition URL
+  "type": "petition",
+  "source": "tavily_petition_search",
 }
 ```
 
-**Prefilter applied:**
-- Minimum 500 signatures (filters out very new petitions with no momentum)
-- German-language titles only (lang detection via langdetect library)
-- Deduplication against existing `actions` table by `source_url`
-
 **Known limitations:**
-- Signature counts not always in RSS; may require HTML scrape for count
-- Some petitions are regional or very niche; topic classification handles this
+- No signature count available via search (prefilter signature rule skipped)
+- Result quality depends on Tavily indexing freshness (~24h lag)
+- May occasionally surface expired petitions; deadline check in prefilter catches these
 
 ---
 
@@ -332,3 +377,6 @@ Actions expire naturally via their `deadline` field.
 - [ ] MdB Twitter/X access: evaluate whether Nitter RSS is reliable
       enough or whether Twitter API v2 bearer token is needed.
       Twitter API v2 free tier: 1,500,000 tweets/month read access.
+- [ ] DIP petition beratungsstand: confirm the exact `beratungsstand`
+      values used for open/active public petitions. Current assumption
+      is "Noch nicht beraten" — verify against live API data.

@@ -7,11 +7,16 @@ services:
         required: false
     environment:
       MEINIMPACT_DATABASE_URL: postgresql+asyncpg://meinimpact:meinimpact@db:5432/meinimpact
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+      - ./migrations:/app/migrations
     ports:
       - "8000:8000"
     depends_on:
       db:
         condition: service_healthy
+    command: ["uvicorn", "meinimpact.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live')\""]
       interval: 5s

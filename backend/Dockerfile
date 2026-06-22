@@ -15,7 +15,7 @@ COPY alembic.ini ./
 COPY migrations ./migrations
 
 RUN python -m pip install --no-cache-dir --upgrade pip \
-    && python -m pip install --no-cache-dir ".[dev]"
+    && python -m pip install --no-cache-dir -e ".[dev]"
 
 USER appuser
 
