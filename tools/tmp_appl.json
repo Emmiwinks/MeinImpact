@@ -6,11 +6,11 @@
     "dateOfBirth": "1993-08-17",
     "email": "sophie.emmrich@connect-data.de"
   },
-  "curriculum": "Die richtige Lösung für das richtige Problem, intern sowie für den Kunden. Ich bin Wirtschaftsingenieurin mit 6 Jahren Berufserfahrung in der industrienahen (KI-)Softwareentwicklung. Fach- und Führungsexpertise zusammen mit internationaler Kunden- und Projektmanagementerfahrung.",
+  "curriculum": "Die richtige Lösung für das richtige Problem, intern sowie für den Kunden. Ich bin Wirtschaftsingenieurin mit 6 Jahren Berufserfahrung in der industrienahen (KI-)Softwareentwicklung. Fach- und Führungsexpertise zusammen mit internationaler Kunden- und Projektmanagementerfahrung, besprenkelt mit viel Begeisterung und Enthusiasmus.",
   "previousProjects": [
     {
       "title": "Edge-ML-Pipeline - watttron GmbH",
-      "description": "Architektur und Entwicklung einer industriellen Edge-ML-Pipeline von Scratch für Siegelqualitätskontrolle. Factory-Pattern für Verarbeitungsschritte, schnelles Daten-Processing, Modellversionierung auf IPC. Teamverantwortung für Programmierung, Testing und Dokumentation.",
+      "description": "Architektur und Entwicklung einer industriellen Edge-ML-Pipeline von Scratch für Siegelqualitätskontrolle. Factory-Pattern für Verarbeitungsschritte, schnelles Data-Processing, Modellversionierung auf IPC. Teamverantwortung für Programmierung, Testing und Dokumentation.",
       "startDate": "2022-08-01",
       "endDate": "2024-05-31",
       "relatedSkills": ["Python", "MLOps", "ClearML", "Modbus TCP", "PostgreSQL", "Docker", "Modellversionierung"]
@@ -24,10 +24,10 @@
     },
     {
       "title": "Produktstrategie und Markteinführung KI-Softwarelösungen - watttron GmbH",
-      "description": "Strategische Konzeption, technische Leitung und Markteinführung zweier Softwareprodukte (cera2seal und watttrix). Verantwortung für Produktarchitektur, Roadmap und Priorisierung von KI-Use-Cases. Fachliche Führung des Entwicklungsteams, Sales Enablement und Schulungen für internationale Kunden.",
+      "description": "Strategische Konzeption, technische Leitung und Markteinführung zweier Softwareprodukte (In-Line Qualitätskontrolle und Datenanalyse). Verantwortung für Produktarchitektur, Roadmap und Priorisierung von Use-Cases. Fachliche Führung des Entwicklungsteams, Sales Enablement und Schulungen für internationale Kunden.",
       "startDate": "2024-06-01",
       "endDate": "2026-01-31",
-      "relatedSkills": ["Produktstrategie", "Roadmap", "KI-Use-Case-Bewertung", "Fachliche Führung", "Sales Enablement", "Schulungen", "ML on-premise"]
+      "relatedSkills": ["Produktstrategie", "Roadmap", "Use-Case-Bewertung", "Fachliche Führung", "Sales Enablement", "Schulungen", "ML on-premise"]
     },
     {
       "title": "EU-Forschungsprojekt KIOptiPack - watttron GmbH",
@@ -65,7 +65,7 @@
       "relatedSkills": ["PyTorch", "Computer Vision", "Bildklassifikation", "Python", "Image Recognition"]
     },
     {
-      "title": "Predictive Maintenance Fehlervorhersage - ABB DataLab Cottbus",
+      "title": "Predictive Maintenance / Fehlervorhersage - ABB DataLab Cottbus",
       "description": "Entwicklung von ML-Modellen mit TensorFlow zur Fehlervorhersage auf Basis von Maschinendaten auf MES/SCADA-Ebene. Methoden: NLP, PCA, Klassifikation. SCRUM Master für das Fehleranalyse-Tool.",
       "startDate": "2019-03-01",
       "endDate": "2020-08-31",
@@ -80,7 +80,7 @@
     },
     {
       "title": "MeinImpact.de - Civic Engagement App",
-      "description": "Eigenständige Full-Stack-Entwicklung einer mobile-first PWA zur personalisierten politischen Partizipation mit Gamification. KI-Pipeline zur wöchentlichen Aktionsempfehlung basierend auf Nutzerwerteprofil (LLM + 8values-Framework).",
+      "description": "Eigenständige Full-Stack-Entwicklung einer mobile-first Applikation zur personalisierten politischen Partizipation. KI-Pipeline zur wöchentlichen Aktionsempfehlung basierend auf Nutzerwerteprofil (LLM + 8values-Framework).",
       "startDate": "2026-02-01",
       "relatedSkills": ["FastAPI", "Supabase", "LLM", "Flutter"]
     },

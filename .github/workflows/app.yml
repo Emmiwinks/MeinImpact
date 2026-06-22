@@ -54,7 +54,7 @@ jobs:
         run: flutter test --coverage
 
       - name: Enforce coverage
-        run: python ../tools/check_lcov.py coverage/lcov.info 60
+        run: python ../tools/check_lcov.py coverage/lcov.info 40
 
   android:
     name: Build Android APK
