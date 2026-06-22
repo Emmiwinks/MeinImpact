@@ -40,6 +40,10 @@ void main() {
       'blacklist': <String>[],
       'werte': {'wirtschaft_gleichheit': 2},
       'region': 'Germany',
+      'plz': null,
+      'mdb_name': null,
+      'mdb_party': null,
+      'mdb_wahlkreis': null,
     });
   });
 

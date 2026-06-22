@@ -51,9 +51,7 @@ class ContextService:
         action: CivicAction,
         request: ActionContextRequest,
     ) -> str:
-        leben_labels = [
-            _LEBENS_DE.get(l, l) for l in request.lebenssituation
-        ]
+        leben_labels = [_LEBENS_DE.get(s, s) for s in request.lebenssituation]
         region = (
             _PLZ_REGION.get(request.plz_prefix[0], "Deutschland")
             if request.plz_prefix
@@ -71,9 +69,7 @@ class ContextService:
             profile_parts.append(f"Region: {region}")
 
         profile_desc = (
-            "; ".join(profile_parts)
-            if profile_parts
-            else "allgemeine Bevölkerung"
+            "; ".join(profile_parts) if profile_parts else "allgemeine Bevölkerung"
         )
 
         return (

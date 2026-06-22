@@ -58,7 +58,7 @@ _PREFILTER_MIN_PETITION_SIGNATURES = 500
 def prefilter(items: list[RawSourceItem]) -> list[RawSourceItem]:
     """Rule-based filter applied before any AI call.
 
-    Expected to drop ~60–70% of raw items, keeping only those worth
+    Expected to drop ~60-70% of raw items, keeping only those worth
     the cost of Mistral classification.
     """
     passed = []
@@ -74,17 +74,24 @@ def prefilter(items: list[RawSourceItem]) -> list[RawSourceItem]:
 def _drop_reason(item: RawSourceItem) -> str | None:
     """Returns the drop reason string, or None if the item passes."""
     if len(item["title"]) < _PREFILTER_MIN_TITLE_LEN:
-        return f"title too short ({len(item['title'])} chars < {_PREFILTER_MIN_TITLE_LEN})"
+        return (
+            f"title too short ({len(item['title'])} chars < {_PREFILTER_MIN_TITLE_LEN})"
+        )
 
     # For petitions: enforce future deadline and minimum signatures.
     # Bundestag items (antrag, gesetzentwurf) use deadline as activity date, not expiry.
     if item["type"] == "petition":
         deadline = item.get("deadline")  # type: ignore[misc]
-        if deadline is not None and isinstance(deadline, date) and deadline < date.today():
+        if (
+            deadline is not None
+            and isinstance(deadline, date)
+            and deadline < date.today()
+        ):
             return f"petition deadline in past ({deadline})"
         sigs = item.get("signature_count")  # type: ignore[misc]
         if sigs is not None and sigs < _PREFILTER_MIN_PETITION_SIGNATURES:
-            return f"petition signatures too low ({sigs} < {_PREFILTER_MIN_PETITION_SIGNATURES})"
+            min_sigs = _PREFILTER_MIN_PETITION_SIGNATURES
+            return f"petition signatures too low ({sigs} < {min_sigs})"
 
     if not _is_german(item["title"]):
         return "title not detected as German"
@@ -100,7 +107,10 @@ def _is_german(text: str) -> bool:
     if not text.strip():
         return False
     try:
-        from langdetect import LangDetectException, detect  # type: ignore[import-untyped]
+        from langdetect import (  # type: ignore[import-untyped]
+            LangDetectException,
+            detect,
+        )
 
         try:
             return detect(text) == "de"
@@ -126,7 +136,7 @@ def calculate_momentum(
     news_mention_count: int,
     signature_velocity: float | None = None,
 ) -> float:
-    """Calculates a 0.0–1.0 momentum score from news coverage and petition velocity."""
+    """Calculates a 0.0-1.0 momentum score from news coverage and petition velocity."""
     score = 0.3
 
     if news_mention_count >= 5:
@@ -173,7 +183,7 @@ _IMPACT_HINT: dict[str, str] = {
 }
 
 
-def map_domain_action_type(classified: "ClassifiedActionLike") -> str:
+def map_domain_action_type(classified: ClassifiedActionLike) -> str:
     """Maps classification output to a domain ActionType string."""
     # Prefer explicit action_types list from classification
     for at in classified.get("action_types", []):  # type: ignore[misc]
@@ -192,5 +202,6 @@ def impact_hint_for(urgency: str) -> str:
 
 
 # Type alias used above to avoid circular import
-from typing import Any
+from typing import Any  # noqa: E402
+
 ClassifiedActionLike = dict[str, Any]

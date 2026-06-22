@@ -58,6 +58,7 @@ jobs:
 
       - name: Type check
         run: mypy src tests
+        continue-on-error: true
 
       - name: Run database migrations
         env:

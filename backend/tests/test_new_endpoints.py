@@ -1,5 +1,6 @@
 """Tests for new API endpoints added in spec implementation."""
 
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
@@ -19,9 +20,6 @@ from meinimpact.infrastructure.actions.dummy_action_repository import (
 )
 from meinimpact.infrastructure.mdb.wks_service import MdbInfo, WksService
 from meinimpact.main import create_app
-
-from datetime import datetime, UTC
-
 
 # ── Stubs ─────────────────────────────────────────────────────────────────────
 
@@ -88,7 +86,9 @@ class StubFeedbackRepository:
         rating: int | None,
         comment: str | None,
     ) -> None:
-        self.entries.append({"action_id": action_id, "rating": rating, "comment": comment})
+        self.entries.append(
+            {"action_id": action_id, "rating": rating, "comment": comment}
+        )
 
 
 class StubBetaRepository:

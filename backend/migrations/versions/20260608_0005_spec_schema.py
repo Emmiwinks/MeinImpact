@@ -13,7 +13,6 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects.postgresql import JSONB
 
 revision: str = "202606080005"
 down_revision: str | None = "202606080004"
@@ -144,9 +143,7 @@ def upgrade() -> None:
             primary_key=True,
             default=uuid.uuid4,
         ),
-        sa.Column(
-            "used", sa.Boolean(), nullable=False, server_default="false"
-        ),
+        sa.Column("used", sa.Boolean(), nullable=False, server_default="false"),
         sa.Column("activated_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
             "created_at",
@@ -242,9 +239,7 @@ def upgrade() -> None:
         sa.Column("description", sa.Text(), nullable=False),
         sa.Column("outcome", sa.Text(), nullable=True),
         sa.Column("source_url", sa.Text(), nullable=True),
-        sa.Column(
-            "occurred_at", sa.DateTime(timezone=True), nullable=False
-        ),
+        sa.Column("occurred_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -372,9 +367,7 @@ def upgrade() -> None:
             primary_key=True,
             server_default=sa.text("gen_random_uuid()"),
         ),
-        sa.Column(
-            "fetched_count", sa.Integer(), nullable=False, server_default="0"
-        ),
+        sa.Column("fetched_count", sa.Integer(), nullable=False, server_default="0"),
         sa.Column(
             "deduplicated_count",
             sa.Integer(),
@@ -414,9 +407,7 @@ def upgrade() -> None:
             server_default=sa.func.now(),
         ),
     )
-    op.create_index(
-        "idx_pipeline_ran_at", "pipeline_runs", [sa.text("ran_at DESC")]
-    )
+    op.create_index("idx_pipeline_ran_at", "pipeline_runs", [sa.text("ran_at DESC")])
 
 
 def downgrade() -> None:

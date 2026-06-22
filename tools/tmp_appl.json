@@ -1,0 +1,107 @@
+{
+  "jobIdReference": "lead-engineer-mwd",
+  "applicantDetails": {
+    "firstname": "Sophie",
+    "lastname": "Emmrich",
+    "dateOfBirth": "1993-08-17",
+    "email": "sophie.emmrich@connect-data.de"
+  },
+  "curriculum": "Die richtige Lösung für das richtige Problem, intern sowie für den Kunden. Ich bin Wirtschaftsingenieurin mit 6 Jahren Berufserfahrung in der industrienahen (KI-)Softwareentwicklung. Fach- und Führungsexpertise zusammen mit internationaler Kunden- und Projektmanagementerfahrung.",
+  "previousProjects": [
+    {
+      "title": "Edge-ML-Pipeline - watttron GmbH",
+      "description": "Architektur und Entwicklung einer industriellen Edge-ML-Pipeline von Scratch für Siegelqualitätskontrolle. Factory-Pattern für Verarbeitungsschritte, schnelles Daten-Processing, Modellversionierung auf IPC. Teamverantwortung für Programmierung, Testing und Dokumentation.",
+      "startDate": "2022-08-01",
+      "endDate": "2024-05-31",
+      "relatedSkills": ["Python", "MLOps", "ClearML", "Modbus TCP", "PostgreSQL", "Docker", "Modellversionierung"]
+    },
+    {
+      "title": "Cloud-Plattform zur Datenerfassung und Anomalieerkennung - watttron GmbH",
+      "description": "Entwicklung einer Cloud-Lösung zur Datenerfassung und -analyse von industriellen Siegelsystemen. ML-Dienste zur Anomalieerkennung mit Clusteranalyse, Gradientboosting, TSMixer und LSTM. Aufbau von MQTT/Modbus-Datenpipelines und Grafana-Monitoring. Experimentmanagement mit ClearML.",
+      "startDate": "2022-08-01",
+      "endDate": "2024-05-31",
+      "relatedSkills": ["Python", "PostgreSQL", "Kubernetes", "Docker", "MQTT", "Grafana", "ClearML", "LSTM", "Gradientboosting", "TSMixer"]
+    },
+    {
+      "title": "Produktstrategie und Markteinführung KI-Softwarelösungen - watttron GmbH",
+      "description": "Strategische Konzeption, technische Leitung und Markteinführung zweier Softwareprodukte (cera2seal und watttrix). Verantwortung für Produktarchitektur, Roadmap und Priorisierung von KI-Use-Cases. Fachliche Führung des Entwicklungsteams, Sales Enablement und Schulungen für internationale Kunden.",
+      "startDate": "2024-06-01",
+      "endDate": "2026-01-31",
+      "relatedSkills": ["Produktstrategie", "Roadmap", "KI-Use-Case-Bewertung", "Fachliche Führung", "Sales Enablement", "Schulungen", "ML on-premise"]
+    },
+    {
+      "title": "EU-Forschungsprojekt KIOptiPack - watttron GmbH",
+      "description": "Koordination des EU-geförderten Forschungsprojekts KIOptiPack im Konsortiumverbund. Verantwortung für Arbeitspakete, Meilensteinplanung und Abschlussberichterstattung gegenüber Fördergebern.",
+      "startDate": "2024-06-01",
+      "endDate": "2026-01-31",
+      "relatedSkills": ["Projektkoordination", "EU-Forschungsförderung", "Konsortialmanagement"]
+    },
+    {
+      "title": "Workshops zur Value Proposition mit Sales und Kunden - watttron GmbH",
+      "description": "Konzeption und Durchführung von Workshops zur Value Proposition mit internen Sales-Teams sowie Kunden weltweit. Gemeinsame Erarbeitung von Anwendungsszenarien für Heizerdaten vor Ort und remote. Übersetzung technischer Möglichkeiten in wirtschaftlichen Kundennutzen.",
+      "startDate": "2022-08-01",
+      "endDate": "2026-01-31",
+      "relatedSkills": ["Workshop-Moderation", "Value Proposition", "Kundenberatung", "Technikkommunikation", "Sales Enablement"]
+    },
+    {
+      "title": "Material Flow Digital Twin - ABB AG",
+      "description": "Internationale Projektleitung zur Entwicklung eines Digitalen Zwillings für Materialflussoptimierung in Prozessindustrien. Evaluierung und Implementierung von KI/ML-Edge- und Cloud-Lösungen. Fachliche Führung eines internationalen Projektteams.",
+      "startDate": "2020-09-01",
+      "endDate": "2022-06-30",
+      "relatedSkills": ["Projektleitung", "Digital Twin", "Edge Computing", "Cloud", "KI/ML", "Fachliche Führung", "Python"]
+    },
+    {
+      "title": "Digitalisierungs-Workshops mit Management-Teams - ABB AG",
+      "description": "Konzeption und Leitung von Workshops und Assessments zum Thema Digitalisierung und Digital Twin mit Management-Teams auf Kundenseite im Bergbauumfeld. Vermittlung komplexer technischer Konzepte auf Entscheiderebene.",
+      "startDate": "2020-09-01",
+      "endDate": "2022-06-30",
+      "relatedSkills": ["Workshop-Moderation", "Assessment", "Stakeholder-Management", "Technikkommunikation", "Digitalisierungsstrategie"]
+    },
+    {
+      "title": "Bildklassifikation Förderband-Umlenkrollen - ABB Mining Automation São Paulo",
+      "description": "Entwicklung eines Bildklassifikationsmodells mit PyTorch zur automatisierten Verschmutzungsgradanalyse von Förderband-Umlenkrollen. Datenerhebung, Modelltraining und Evaluierung vor Ort in Brasilien.",
+      "startDate": "2019-03-01",
+      "endDate": "2020-08-31",
+      "relatedSkills": ["PyTorch", "Computer Vision", "Bildklassifikation", "Python", "Image Recognition"]
+    },
+    {
+      "title": "Predictive Maintenance Fehlervorhersage - ABB DataLab Cottbus",
+      "description": "Entwicklung von ML-Modellen mit TensorFlow zur Fehlervorhersage auf Basis von Maschinendaten auf MES/SCADA-Ebene. Methoden: NLP, PCA, Klassifikation. SCRUM Master für das Fehleranalyse-Tool.",
+      "startDate": "2019-03-01",
+      "endDate": "2020-08-31",
+      "relatedSkills": ["TensorFlow", "Predictive Maintenance", "NLP", "PCA", "Klassifikation", "SCRUM", "MES/SCADA"]
+    },
+    {
+      "title": "Power BI Dashboard & Digital Twin - ABB Drives Division Ladenburg",
+      "description": "Entwicklung von Datenanalyse-Tools für Bergbau und Materialtransport. Demonstration programmierbarer Antriebe inkl. HMI, Simulation, Digital Twin und Daten-API zu Power BI Dashboards.",
+      "startDate": "2019-03-01",
+      "endDate": "2020-08-31",
+      "relatedSkills": ["Power BI", "Digital Twin", "HMI", "Daten-API", "Datenanalyse"]
+    },
+    {
+      "title": "MeinImpact.de - Civic Engagement App",
+      "description": "Eigenständige Full-Stack-Entwicklung einer mobile-first PWA zur personalisierten politischen Partizipation mit Gamification. KI-Pipeline zur wöchentlichen Aktionsempfehlung basierend auf Nutzerwerteprofil (LLM + 8values-Framework).",
+      "startDate": "2026-02-01",
+      "relatedSkills": ["FastAPI", "Supabase", "LLM", "Flutter"]
+    },
+    {
+      "title": "CURIA e.V. - IT Team",
+      "description": "MS365-Administration und Entwicklung von Power Automate Flows zur Prozessautomatisierung für den gemeinnützigen Verein.",
+      "startDate": "2023-01-01",
+      "relatedSkills": ["MS365", "Power Automate", "Administration", "Prozessautomatisierung"]
+    },
+    {
+      "title": "input_DD Bürgerinitiative - IT Team",
+      "description": "Entwicklung und Betrieb einer PWA sowie Newsletter-Infrastruktur für die Dresdner Bürgerinitiative. Aufbau von CI/CD-Pipelines und openAPI-Integration.",
+      "startDate": "2025-12-01",
+      "relatedSkills": ["Vue 3", "PWA", "GitHub CI/CD", "openAPI", "Newsletter-Infrastruktur"]
+    },
+    {
+      "title": "Garantiegenehmigungsqualität - Porsche AG Stuttgart",
+      "description": "Entwicklung und Pilotierung einer Anwendung zur Messung der Garantiegenehmigungsqualität im internationalen Vergleich. Datenbankmanagement und Auswertung.",
+      "startDate": "2017-09-01",
+      "endDate": "2018-03-31",
+      "relatedSkills": ["Datenbankmanagement", "Datenanalyse", "Anwendungsentwicklung"]
+    }
+  ]
+}

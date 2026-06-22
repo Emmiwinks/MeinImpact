@@ -127,7 +127,7 @@ async def classify_action(action: dict) -> dict | None:
     try:
         result = await call_mistral(prompt)
         if not result or not result.get("topics") or not result.get("urgency"):
-            print(f"  ⚠ Malformed classification — missing required fields")
+            print("  ⚠ Malformed classification — missing required fields")
             return None
         return result
     except Exception as e:
@@ -209,10 +209,10 @@ async def main() -> None:
         werte = {k: v for k, v in r["werte_relevanz"].items() if v != 0.0}
         print(f"  Werte:    {werte}")
         print(f"  Types:    {r['action_types']}")
-        print(f"  Pro:")
+        print("  Pro:")
         for arg in r["pro_argumente"]:
             print(f"    + {arg}")
-        print(f"  Contra:")
+        print("  Contra:")
         for arg in r["contra_argumente"]:
             print(f"    - {arg}")
         flags = []

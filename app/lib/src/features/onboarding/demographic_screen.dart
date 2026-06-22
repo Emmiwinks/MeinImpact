@@ -27,7 +27,6 @@ class _DemographicScreenState extends State<DemographicScreen> {
   _LookupState _state = _LookupState.idle;
   List<MdbOption> _results = const [];
   MdbOption? _selected;
-  String _errorMessage = '';
 
   @override
   void initState() {
@@ -65,7 +64,6 @@ class _DemographicScreenState extends State<DemographicScreen> {
       if (!mounted) return;
       setState(() {
         _state = _LookupState.error;
-        _errorMessage = e.toString();
       });
     }
   }
@@ -126,8 +124,8 @@ class _DemographicScreenState extends State<DemographicScreen> {
                     onPressed: _skip,
                     child: Text(
                       'Überspringen',
-                      style: TextStyle(
-                          color: AppColors.mutedText, fontSize: 13),
+                      style:
+                          TextStyle(color: AppColors.mutedText, fontSize: 13),
                     ),
                   ),
                 ],
@@ -196,8 +194,10 @@ class _DemographicScreenState extends State<DemographicScreen> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Text('Suchen',
-                              style: TextStyle(fontWeight: FontWeight.w700)),
+                          : const Text(
+                              'Suchen',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
                     ),
                   ),
                 ],
@@ -298,8 +298,7 @@ class _DemographicScreenState extends State<DemographicScreen> {
                           ),
                         )
                         .toList(),
-                    onChanged: (opt) =>
-                        setState(() => _selected = opt),
+                    onChanged: (opt) => setState(() => _selected = opt),
                   ),
                 ),
               ),
@@ -327,7 +326,7 @@ class _MdbCard extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: AppColors.green.withOpacity(0.15),
+              color: AppColors.green.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(

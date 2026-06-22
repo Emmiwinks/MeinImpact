@@ -14,15 +14,15 @@ from meinimpact.infrastructure.pipeline.stages import (
 )
 from meinimpact.infrastructure.sources.protocol import RawSourceItem
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_item(
     *,
     title: str = "Entwurf eines Gesetzes zur Änderung des Klimaschutzgesetzes",
-    description: str = "Dieser Antrag behandelt die Änderung des Klimaschutzgesetzes in mehreren Punkten.",
+    description: str = "Dieser Antrag behandelt die Änderung des Klimaschutzgesetzes.",
     source_url: str = "https://dip.bundestag.de/vorgang/1",
     type: str = "antrag",
     status: str = "Noch nicht beraten",
@@ -53,13 +53,17 @@ def _make_item(
 
 def test_deduplicate_removes_exact_url_match():
     item = _make_item(source_url="https://example.com/1")
-    result = deduplicate([item], existing_urls={"https://example.com/1"}, existing_titles=[])
+    result = deduplicate(
+        [item], existing_urls={"https://example.com/1"}, existing_titles=[]
+    )
     assert result == []
 
 
 def test_deduplicate_passes_new_url():
     item = _make_item(source_url="https://example.com/2")
-    result = deduplicate([item], existing_urls={"https://example.com/1"}, existing_titles=[])
+    result = deduplicate(
+        [item], existing_urls={"https://example.com/1"}, existing_titles=[]
+    )
     assert len(result) == 1
 
 
@@ -70,12 +74,16 @@ def test_deduplicate_fuzzy_title_match():
         title="Entwurf eines Gesetzes zur Änderung des Klimaschutzgesetzes 2024",
         source_url="https://example.com/3",
     )
-    result = deduplicate([near_duplicate], existing_urls=set(), existing_titles=[existing_title])
+    result = deduplicate(
+        [near_duplicate], existing_urls=set(), existing_titles=[existing_title]
+    )
     assert result == []
 
 
 def test_deduplicate_distinct_title_passes():
-    item = _make_item(title="Digitalpakt Schule Verlängerung", source_url="https://example.com/4")
+    item = _make_item(
+        title="Digitalpakt Schule Verlängerung", source_url="https://example.com/4"
+    )
     result = deduplicate(
         [item],
         existing_urls=set(),
@@ -109,7 +117,9 @@ def test_prefilter_drops_short_title():
 
 
 def test_prefilter_drops_petition_with_past_deadline():
-    item = _make_item(type="petition", deadline=date.today() - timedelta(days=1), signature_count=600)
+    item = _make_item(
+        type="petition", deadline=date.today() - timedelta(days=1), signature_count=600
+    )
     result = prefilter([item])
     assert result == []
 
@@ -122,7 +132,9 @@ def test_prefilter_passes_antrag_with_past_deadline():
 
 
 def test_prefilter_passes_petition_with_future_deadline():
-    item = _make_item(type="petition", deadline=date.today() + timedelta(days=10), signature_count=600)
+    item = _make_item(
+        type="petition", deadline=date.today() + timedelta(days=10), signature_count=600
+    )
     result = prefilter([item])
     assert len(result) == 1
 
@@ -140,14 +152,16 @@ def test_prefilter_passes_petition_above_threshold():
 
 
 def test_prefilter_passes_petition_without_signature_count():
-    # Sammelübersicht items from the Petitionsausschuss have no individual count — pass them through
+    # Sammelübersicht items from Petitionsausschuss have no individual count
     item = _make_item(type="petition")  # no signature_count key
     result = prefilter([item])
     assert len(result) == 1
 
 
 def test_prefilter_drops_non_german_title():
-    item = _make_item(title="This is a long English text about some policy that should be dropped from German pipeline")
+    item = _make_item(
+        title="This is a long English text about some policy that should be dropped"
+    )
     result = prefilter([item])
     assert result == []
 

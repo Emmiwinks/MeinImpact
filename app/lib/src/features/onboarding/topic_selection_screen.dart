@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../feed/domain/user_profile.dart';
 import '../feed/presentation/widgets/app_colors.dart';
 
 const _kTopics = [
@@ -323,8 +322,7 @@ class _CustomChip extends StatelessWidget {
               label,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: textColor,
-                    fontWeight:
-                        selected ? FontWeight.w700 : FontWeight.w500,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                     decoration: blacklisted
                         ? TextDecoration.lineThrough
                         : TextDecoration.none,
@@ -402,8 +400,7 @@ class _TopicTile extends StatelessWidget {
                 topic.label,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: textColor,
-                      fontWeight:
-                          selected ? FontWeight.w700 : FontWeight.w500,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                       decoration: blacklisted
                           ? TextDecoration.lineThrough
                           : TextDecoration.none,

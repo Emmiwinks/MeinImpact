@@ -117,9 +117,7 @@ class DipAdapter:
         )
         return [_parse_vorgang(d) for d in docs]
 
-    async def _fetch_petitionen(
-        self, client: httpx.AsyncClient
-    ) -> list[RawSourceItem]:
+    async def _fetch_petitionen(self, client: httpx.AsyncClient) -> list[RawSourceItem]:
         # f.beratungsstand is the correct filter (there is no f.status).
         # Sammelübersicht items are committee processing reports that bundle
         # already-closed petitions — not actionable for citizens, excluded here.
@@ -132,7 +130,8 @@ class DipAdapter:
             ],
         )
         return [
-            _parse_vorgang(d) for d in docs
+            _parse_vorgang(d)
+            for d in docs
             if not str(d.get("titel") or "").startswith("Sammelübersicht")
         ]
 

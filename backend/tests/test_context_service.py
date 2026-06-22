@@ -3,8 +3,6 @@
 from collections.abc import AsyncIterator
 from datetime import date
 
-import pytest
-
 from meinimpact.api.schemas import ActionContextRequest
 from meinimpact.domain.entities import ActionType, CivicAction
 from meinimpact.services.context_service import ContextService

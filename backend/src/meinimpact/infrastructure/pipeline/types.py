@@ -21,11 +21,11 @@ class ClassifiedAction(TypedDict):
     signature_count: NotRequired[int]
     # ── Classification output ─────────────────────────────────────────────────
     topics: list[str]
-    urgency: str                       # "high" | "mid" | "low"
+    urgency: str  # "high" | "mid" | "low"
     werte_relevanz: dict[str, float]
     pro_argumente: list[str]
     contra_argumente: list[str]
-    action_types: list[str]            # "brief" | "petition" | "anfrage"
+    action_types: list[str]  # "brief" | "petition" | "anfrage"
     is_controversial: bool
     position_required: bool
     momentum_score: float

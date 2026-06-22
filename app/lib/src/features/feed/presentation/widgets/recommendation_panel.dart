@@ -40,8 +40,7 @@ class RecommendationPanel extends StatelessWidget {
                 isSelected: i == selectedIndex,
                 onTap: () => onSelect(i),
               ),
-              if (i < recommendations.length - 1)
-                const SizedBox(height: 12),
+              if (i < recommendations.length - 1) const SizedBox(height: 12),
             ],
         ],
       ),
