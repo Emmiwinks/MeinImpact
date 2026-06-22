@@ -108,12 +108,19 @@ async def test_fetch_new_items_returns_vorgaenge_and_petitionen() -> None:
                 "cursor": _CURSOR_A,
                 "documents": [_GESETZENTWURF_DOC, _ANTRAG_DOC],
             }
+            {
+                "numFound": 2,
+                "cursor": _CURSOR_A,
+                "documents": [_GESETZENTWURF_DOC, _ANTRAG_DOC],
+            }
         ),
+        _make_response({"numFound": 2, "cursor": _CURSOR_A, "documents": []}),
         _make_response({"numFound": 2, "cursor": _CURSOR_A, "documents": []}),
         # Petitionen: single page, cursor unchanged
         _make_response(
             {"numFound": 1, "cursor": _CURSOR_B, "documents": [_PETITION_DOC]}
         ),
+        _make_response({"numFound": 1, "cursor": _CURSOR_B, "documents": []}),
         _make_response({"numFound": 1, "cursor": _CURSOR_B, "documents": []}),
     ]
     with patch(
@@ -166,7 +173,10 @@ async def test_fetch_paginated_follows_cursor_until_unchanged() -> None:
         ),
         # Third request with cursor=_CURSOR_B → same cursor → stop
         _make_response({"numFound": 2, "cursor": _CURSOR_B, "documents": []}),
+        _make_response({"numFound": 2, "cursor": _CURSOR_B, "documents": []}),
         # Petitionen: immediately stable cursor
+        _make_response({"numFound": 0, "cursor": _CURSOR_A, "documents": []}),
+        _make_response({"numFound": 0, "cursor": _CURSOR_A, "documents": []}),
         _make_response({"numFound": 0, "cursor": _CURSOR_A, "documents": []}),
         _make_response({"numFound": 0, "cursor": _CURSOR_A, "documents": []}),
     ]
@@ -257,6 +267,15 @@ def test_parse_vorgang_maps_all_fields() -> None:
 
 
 def test_parse_vorgang_handles_missing_optional_fields() -> None:
+    item = _parse_vorgang(
+        {
+            "id": "1",
+            "titel": "",
+            "vorgangstyp": "",
+            "wahlperiode": 20,
+            "aktualisiert": "",
+        }
+    )
     item = _parse_vorgang(
         {
             "id": "1",
