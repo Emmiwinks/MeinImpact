@@ -361,66 +361,41 @@
     <p class="label">Was dich erwartet</p>
     <h2 class="section-title">Demokratie,<br>neu gedacht.</h2>
     <p class="section-sub">
-      MeinImpact verbindet dich mit politischen Aktionen, die zu deinen Werten passen —
-      und macht es leicht, wirklich etwas zu tun.
+      MeinImpact verbindet dich mit politischen Aktionen, die zu deinen Werten passen und dir wichtig sind.
+      Dein wöchentlicher Beitrag zur Demokratie in drei Minuten.
     </p>
     <div class="grid">
       <div class="card">
         <div class="card-icon">🏛️</div>
         <h3>Politische Aktionen</h3>
-        <p>Entdecke Aktionen in deiner Region, die zu deinen Werten und Interessen passen.</p>
+        <p>Entdecke Aktionen auf Bundes-, Landes- und Regionalebene, die zu deinen Werten und Interessen passen.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🧭</div>
+        <h3>Dein Werteprofil</h3>
+        <p>Finde heraus, welche Themen für die relevant sind und welchen Effekt politische Entscheidungen auf deinen Alltag haben könnten.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📰</div>
+        <h3>Tracke deinen Impact</h3>
+        <p>Nach einer Aktion bleibst du weiterhin informiert. Was Abgeordnete darüber gesagt haben, wie sie gestimmt haben und welche Entscheidungen getroffen wurden.</p>
       </div>
       <div class="card">
         <div class="card-icon">✉️</div>
         <h3>Briefe an Abgeordnete</h3>
         <p>Schreibe mit KI-Unterstützung wirkungsvolle Briefe direkt an deine Volksvertreter.</p>
       </div>
-      <div class="card">
-        <div class="card-icon">🧭</div>
-        <h3>Dein Werteprofil</h3>
-        <p>Finde heraus, was dir wirklich wichtig ist — und was das politisch bedeutet.</p>
-      </div>
-      <div class="card">
-        <div class="card-icon">📰</div>
-        <h3>Relevante Nachrichten</h3>
-        <p>Bleib informiert mit Nachrichten, die dich und deine Themen wirklich betreffen.</p>
-      </div>
     </div>
   </section>
 
   <!-- ───────────── Beta ───────────── -->
   <section id="beta" class="beta">
-    <p class="label">Früher Zugang</p>
-    <h2 class="section-title">Beta-Tester<br>werden.</h2>
+    <p class="label">Der frühe Vogel</p>
+    <h2 class="section-title">Beta-Tester:innen<br>werden.</h2>
     <p class="section-sub">
       Wir suchen engagierte Menschen, die MeinImpact als Erste ausprobieren
       und aktiv mitgestalten wollen.
     </p>
-    <div class="beta-box">
-      <div class="timeline">
-        <div class="tl-item">
-          <div class="tl-dot"></div>
-          <div>
-            <strong>Jetzt: Interesse anmelden</strong>
-            <span>Schreib uns — wir informieren dich, sobald der Beta-Test startet.</span>
-          </div>
-        </div>
-        <div class="tl-item">
-          <div class="tl-dot"></div>
-          <div>
-            <strong>Beta: Geschlossener Test</strong>
-            <span>Die ersten Nutzer:innen testen die App und geben direktes Feedback.</span>
-          </div>
-        </div>
-        <div class="tl-item">
-          <div class="tl-dot dim"></div>
-          <div>
-            <strong>Launch: Öffentliche Version</strong>
-            <span>MeinImpact geht für alle live — im App-Store und als Web-App.</span>
-          </div>
-        </div>
-      </div>
-    </div>
   </section>
 
   <!-- ───────────── Contact ───────────── -->
@@ -531,7 +506,7 @@
       b.cp2x = mx - perpX * 0.6 + (Math.random() - 0.5) * jitter * 0.7;
       b.cp2y = my - perpY * 0.6 + (Math.random() - 0.5) * jitter * 0.7;
 
-      b.dur  = isFirst ? (900 + Math.random() * 700) : (2800 + Math.random() * 3200);
+      b.dur  = isFirst ? (1800 + Math.random() * 1200) : (5500 + Math.random() * 5000);
       b.t0   = performance.now();
       b.going = true;
     }
@@ -579,7 +554,7 @@
       var scale  = 0.7 + Math.random() * 0.65;
       var w      = Math.round(34 * scale);
       var h      = Math.round(30 * scale);
-      var flapMs = 260 + Math.random() * 180;
+      var flapMs = 600 + Math.random() * 300;
       var delay  = i * 260 + Math.random() * 350;
 
       el.className = 'butterfly';
@@ -607,8 +582,8 @@
       bflies.push(b);
 
       setTimeout(function () {
-        el.style.transition = 'opacity .35s';
-        el.style.opacity = '1';
+        el.style.transition = 'opacity .6s';
+        el.style.opacity = '0.72';
         startFlight(b, true);
       }, delay);
     }
