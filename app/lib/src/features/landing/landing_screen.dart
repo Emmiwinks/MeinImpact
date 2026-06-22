@@ -15,10 +15,20 @@ const _card = Color(0x0DFFFFFF);
 const _border = Color(0x17FFFFFF);
 
 const _kButterflyColors = [
-  Color(0xFFF97316), Color(0xFFEC4899), Color(0xFFA855F7), Color(0xFF06B6D4),
-  Color(0xFF22C55E), Color(0xFFEAB308), Color(0xFFF43F5E), Color(0xFF8B5CF6),
-  Color(0xFF14B8A6), Color(0xFFFB923C), Color(0xFFE879F9), Color(0xFF38BDF8),
-  Color(0xFF84CC16), Color(0xFFF59E0B),
+  Color(0xFFF97316),
+  Color(0xFFEC4899),
+  Color(0xFFA855F7),
+  Color(0xFF06B6D4),
+  Color(0xFF22C55E),
+  Color(0xFFEAB308),
+  Color(0xFFF43F5E),
+  Color(0xFF8B5CF6),
+  Color(0xFF14B8A6),
+  Color(0xFFFB923C),
+  Color(0xFFE879F9),
+  Color(0xFF38BDF8),
+  Color(0xFF84CC16),
+  Color(0xFFF59E0B),
 ];
 
 // ── Root screen ───────────────────────────────────────────────────────────────
@@ -223,29 +233,25 @@ class _Features extends StatelessWidget {
     (
       icon: '🏛️',
       title: 'Politische Aktionen',
-      body:
-          'Entdecke Aktionen auf Bundes-, Landes- und Regionalebene, '
+      body: 'Entdecke Aktionen auf Bundes-, Landes- und Regionalebene, '
           'die zu deinen Werten passen.',
     ),
     (
       icon: '🧭',
       title: 'Dein Werteprofil',
-      body:
-          'Finde heraus, welche Themen relevant sind und welchen Effekt '
+      body: 'Finde heraus, welche Themen relevant sind und welchen Effekt '
           'politische Entscheidungen auf deinen Alltag haben.',
     ),
     (
       icon: '📰',
       title: 'Tracke deinen Impact',
-      body:
-          'Nach einer Aktion bleibst du informiert — wie Abgeordnete '
+      body: 'Nach einer Aktion bleibst du informiert — wie Abgeordnete '
           'gestimmt haben und was entschieden wurde.',
     ),
     (
       icon: '✉️',
       title: 'Briefe an Abgeordnete',
-      body:
-          'Schreibe mit KI-Unterstützung wirkungsvolle Briefe '
+      body: 'Schreibe mit KI-Unterstützung wirkungsvolle Briefe '
           'direkt an deine Volksvertreter.',
     ),
   ];
@@ -402,8 +408,7 @@ class _Contact extends StatelessWidget {
           ),
           const SizedBox(height: 32),
           FilledButton.icon(
-            onPressed: () =>
-                launchUrl(Uri.parse('mailto:hallo@meinimpact.de')),
+            onPressed: () => launchUrl(Uri.parse('mailto:hallo@meinimpact.de')),
             icon: const Icon(Icons.mail_outline, size: 18),
             label: const Text('hallo@meinimpact.de'),
             style: FilledButton.styleFrom(
@@ -521,8 +526,8 @@ class _ButterflyOverlayState extends State<_ButterflyOverlay>
 
   void _init() {
     if (!mounted) return;
-    final box = widget.megaphoneKey.currentContext?.findRenderObject()
-        as RenderBox?;
+    final box =
+        widget.megaphoneKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null) return;
 
     // The 📣 emoji's output end is the right side of the icon circle.
@@ -622,7 +627,9 @@ class _ButterflyOverlayState extends State<_ButterflyOverlay>
 
   static double _cubic(double t, double p0, double c1, double c2, double p1) {
     final m = 1 - t;
-    return m * m * m * p0 + 3 * m * m * t * c1 + 3 * m * t * t * c2 +
+    return m * m * m * p0 +
+        3 * m * m * t * c1 +
+        3 * m * t * t * c2 +
         t * t * t * p1;
   }
 
