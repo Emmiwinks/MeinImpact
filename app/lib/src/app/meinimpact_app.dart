@@ -5,7 +5,6 @@ import '../core/profile/user_profile_store.dart';
 import '../features/feed/domain/action_repository.dart';
 import '../features/feed/domain/user_profile.dart';
 import '../features/feed/presentation/action_feed_screen.dart';
-import '../features/landing/landing_screen.dart';
 import '../features/onboarding/demographic_screen.dart';
 import '../features/onboarding/topic_selection_screen.dart';
 import '../features/onboarding/value_profile_screen.dart';
@@ -40,7 +39,6 @@ class MeinImpactApp extends StatefulWidget {
 class _MeinImpactAppState extends State<MeinImpactApp> {
   Locale _locale = const Locale('de');
   UserProfile? _profile;
-  bool _showLanding = true;
   // Onboarding steps: 0 = topics, 1 = values, 2 = demographics, 3 = feed
   int _onboardingStep = 0;
   List<String>? _pendingTopics;
@@ -133,19 +131,11 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
         profile: _profile,
         onEditProfile: () => setState(() {
           _profile = null;
-          _showLanding = false; // skip landing when re-editing
           _onboardingStep = 0;
           _pendingTopics = null;
           _pendingBlacklist = null;
           _pendingWerte = null;
         }),
-      );
-    }
-
-    // First visit → show landing page
-    if (_showLanding) {
-      return LandingScreen(
-        onStart: () => setState(() => _showLanding = false),
       );
     }
 
