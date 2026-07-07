@@ -43,7 +43,6 @@ class UserProfileRecord(Base):
         index=True,
         nullable=False,
     )
-    topics: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
     value_axes: Mapped[dict[str, int]] = mapped_column(JSONB, nullable=False)
     region: Mapped[str | None] = mapped_column(String(length=80), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -62,7 +61,6 @@ class CivicActionRecord(Base):
     title: Mapped[str] = mapped_column(String(length=240), nullable=False)
     action_type: Mapped[str] = mapped_column(String(length=80), nullable=False)
     summary: Mapped[str] = mapped_column(Text, nullable=False)
-    topics: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
     region: Mapped[str | None] = mapped_column(String(length=80), nullable=True)
     deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
     effort_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -118,7 +116,6 @@ class NewsItemRecord(Base):
         DateTime(timezone=True),
         nullable=False,
     )
-    topics: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
     url: Mapped[str] = mapped_column(String(length=500), nullable=False)
 
 

@@ -23,8 +23,6 @@ class ActionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final action = recommendation.action;
-    final topic =
-        action.topics.isEmpty ? l10n.actionTypeAction : action.topics.first;
     final accent = actionTypeColor(action.actionType);
 
     return GestureDetector(
@@ -91,7 +89,6 @@ class ActionTile extends StatelessWidget {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 SignalDots(score: recommendation.score),
-                MetaChip(label: l10n.valueMeta(topic)),
                 MetaChip(label: l10n.effortMinutes(action.effortMinutes)),
                 MetaChip(label: l10n.scoreLabel(recommendation.score)),
               ],

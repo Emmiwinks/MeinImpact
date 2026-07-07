@@ -82,7 +82,6 @@ class _FakeActionRepository implements ActionRepository {
           title: 'Write to your representative',
           actionType: 'representative_letter',
           summary: 'Ask a clear and respectful question.',
-          topics: ['democracy'],
           region: 'Germany',
           effortMinutes: 3,
           impactHint: 'The response can be tracked later.',

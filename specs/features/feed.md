@@ -21,11 +21,10 @@ pool.
   them out. In practice the pool size (≤ 100 active actions) and the
   relevance threshold naturally limit the feed to a manageable number.
 
-- **No surprise slot in MVP.** The feed shows only actions that match
-  the user's topic selection. Cross-topic discovery is a V2 feature.
-
-- **Blacklisted topics are always excluded.** Even if urgency is very
-  high, blacklisted topics never appear in the feed.
+- **No topic filtering.** The feed shows all actions from the pool,
+  ranked purely by value alignment and urgency. There is no topic
+  whitelist or blacklist — users see every action the pipeline surfaces,
+  scored by how well it matches their political values.
 
 - **Actions where `position_required=true` and user has no clear position
   are shown but letter generation is suppressed.** The action appears in
@@ -40,52 +39,43 @@ Each action receives a final score computed locally:
 ```dart
 double scoreAction(Action action, UserProfile profile) {
   // 1. Hard exclusions
-  if (!profile.topics.any((t) => action.topics.contains(t))) return -1;
-  if (action.topics.any((t) => profile.blacklist.contains(t))) return -1;
   if (completedThisWeek.contains(action.id)) return -1;
   if (dismissedThisWeek.contains(action.id)) return -1;
 
-  // 2. Topic match (0.0–1.0)
-  final topicMatch = action.topics
-      .where((t) => profile.topics.contains(t))
-      .length / action.topics.length.clamp(1, 10);
-
-  // 3. Werte match (0.0–1.0) — see user/value-profile.md
+  // 2. Werte match (0.0–1.0) — see user/value-profile.md
   final werteMatch = computeWerteMatch(action, profile.werte);
 
-  // 4. Urgency score (0.0–1.0)
+  // 3. Urgency score (0.0–1.0)
   final urgencyScore = switch (action.urgency) {
     'high' => 1.0,
     'mid'  => 0.6,
     _      => 0.3,
   };
 
-  // 5. Demographic boost (1.0–1.3) — see user/general-profile.md
-  final demoBoost = computeDemographicBoost(action, profile.demographic);
-
-  // 6. Deadline proximity bonus
+  // 4. Deadline proximity bonus (0.0–0.4)
   final deadlineBonus = action.deadline == null ? 0.0 :
       (1.0 - (action.deadline!.difference(DateTime.now()).inDays / 60.0))
       .clamp(0.0, 0.4);
 
-  // 7. Momentum
-  final momentumBonus = action.momentumScore * 0.2;
+  // 5. Momentum (from pipeline: beratungsstand imminence + petition velocity)
+  final momentumBonus = action.momentumScore * 0.1;
 
   // Final score
-  return (topicMatch * 0.35 +
-          werteMatch * 0.25 +
-          urgencyScore * 0.25 +
-          deadlineBonus * 0.1 +
-          momentumBonus * 0.05) * demoBoost;
+  return werteMatch * 0.60 +
+         urgencyScore * 0.25 +
+         deadlineBonus * 0.10 +
+         momentumBonus * 0.05;
 }
 ```
 
 **Score weight rationale:**
-- Topic match (35%): most important — user cares about this topic
-- Werte match (25%): letter will sound authentic
-- Urgency (25%): time-sensitive actions need priority
-- Deadline proximity (10%): fine-grained urgency within same urgency tier
-- Momentum (5%): slight boost for widely-discussed actions
+- Werte match (60%): primary signal — how well the action aligns with the
+  user's political values. With no topic filtering, this is the main
+  personalisation dimension.
+- Urgency (25%): time-sensitive actions are prioritised regardless of values.
+- Deadline proximity (10%): fine-grained urgency within the same urgency tier.
+- Momentum (5%): slight boost for actions with high parliamentary imminence
+  or fast petition velocity.
 
 ---
 
@@ -185,10 +175,8 @@ No negative feedback is recorded. Dismissal is local only.
 
 If fewer than 1 action passes scoring (unlikely but possible):
 
-*"Diese Woche gibt es keine neuen Aktionen die zu deinem Profil passen.
-Schau nächste Woche wieder vorbei — oder passe deine Themen an."*
-
-CTA: "Themen anpassen" → opens topic selection screen.
+*"Diese Woche gibt es keine neuen Aktionen. Schau nächste Woche wieder
+vorbei — die Aktionen werden täglich aktualisiert."*
 
 ---
 

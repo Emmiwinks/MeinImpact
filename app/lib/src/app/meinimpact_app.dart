@@ -6,7 +6,6 @@ import '../features/feed/domain/action_repository.dart';
 import '../features/feed/domain/user_profile.dart';
 import '../features/feed/presentation/action_feed_screen.dart';
 import '../features/onboarding/demographic_screen.dart';
-import '../features/onboarding/topic_selection_screen.dart';
 import '../features/onboarding/value_profile_screen.dart';
 
 class MeinImpactApp extends StatefulWidget {
@@ -39,10 +38,8 @@ class MeinImpactApp extends StatefulWidget {
 class _MeinImpactAppState extends State<MeinImpactApp> {
   Locale _locale = const Locale('de');
   UserProfile? _profile;
-  // Onboarding steps: 0 = topics, 1 = values, 2 = demographics, 3 = feed
+  // Onboarding steps: 0 = value profile, 1 = demographics, 2 = feed
   int _onboardingStep = 0;
-  List<String>? _pendingTopics;
-  List<String>? _pendingBlacklist;
   Map<String, int>? _pendingWerte;
 
   @override
@@ -56,28 +53,15 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
     setState(() => _locale = locale);
   }
 
-  Future<void> _onTopicsComplete(
-    List<String> topics,
-    List<String> blacklist,
-  ) async {
-    setState(() {
-      _pendingTopics = topics;
-      _pendingBlacklist = blacklist;
-      _onboardingStep = 1;
-    });
-  }
-
   Future<void> _onWerteComplete(Map<String, int> werte) async {
     setState(() {
       _pendingWerte = werte;
-      _onboardingStep = 2;
+      _onboardingStep = 1;
     });
   }
 
   Future<void> _onDemographicComplete(UserProfile? patch) async {
     final profile = UserProfile(
-      topics: _pendingTopics!,
-      blacklist: _pendingBlacklist!,
       werte: _pendingWerte!,
       plz: patch?.plz,
       mdbName: patch?.mdbName,
@@ -132,24 +116,17 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
         onEditProfile: () => setState(() {
           _profile = null;
           _onboardingStep = 0;
-          _pendingTopics = null;
-          _pendingBlacklist = null;
           _pendingWerte = null;
         }),
       );
     }
 
-    // Onboarding step 0: topic selection
+    // Onboarding step 0: value profile
     if (_onboardingStep == 0) {
-      return TopicSelectionScreen(onComplete: _onTopicsComplete);
-    }
-
-    // Onboarding step 1: value profile
-    if (_onboardingStep == 1) {
       return ValueProfileScreen(onComplete: _onWerteComplete);
     }
 
-    // Onboarding step 2: demographics (PLZ + MdB) — optional
+    // Onboarding step 1: demographics (PLZ + MdB) — optional
     return DemographicScreen(
       onComplete: _onDemographicComplete,
       onLookupMdb: widget._actionRepository.lookupMdb,

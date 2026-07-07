@@ -94,11 +94,13 @@ Response 200:
     {
       "id": "uuid",
       "title": "Brief an deinen Abgeordneten: Solaranlagen",
-      "type": "abstimmung",
-      "topics": ["klimaschutz", "wirtschaft"],
+      "action_type": "representative_letter",
+      "summary": "Kurzfassung der Maßnahme...",
       "urgency": "high",
       "deadline": "2026-06-14",       // null if no deadline
       "source_url": "https://...",
+      "effort_minutes": 15,
+      "impact_hint": "Abstimmung oder Frist steht kurz bevor",
       "pro_argumente": ["...", "..."],
       "contra_argumente": ["...", "..."],
       "werte_relevanz": {

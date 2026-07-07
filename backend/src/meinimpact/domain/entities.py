@@ -27,7 +27,6 @@ class CivicAction:
     title: str
     action_type: ActionType
     summary: str
-    topics: tuple[str, ...]
     region: str | None
     deadline: date | None
     effort_minutes: int
@@ -80,7 +79,6 @@ class NewsItem:
     summary: str
     source: str
     published_at: datetime
-    topics: tuple[str, ...]
     url: str
 
 
@@ -88,14 +86,8 @@ class NewsItem:
 class UserProfile:
     """The minimum profile data needed by the current recommendation engine."""
 
-    topics: tuple[str, ...]
     value_axes: dict[str, int]
     region: str | None = None
-
-    @property
-    def normalized_topics(self) -> set[str]:
-        """Returns lower-case topic names for matching."""
-        return {topic.strip().lower() for topic in self.topics if topic.strip()}
 
 
 @dataclass(frozen=True)

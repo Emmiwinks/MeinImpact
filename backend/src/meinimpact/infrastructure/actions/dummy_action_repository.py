@@ -14,7 +14,6 @@ _DUMMY_ACTIONS: tuple[CivicAction, ...] = (
             "A Bundestag committee vote will discuss community solar access "
             "rules next week."
         ),
-        topics=("klimaschutz", "wohnen"),
         region="Germany",
         deadline=date(2026, 6, 14),
         effort_minutes=3,
@@ -30,7 +29,6 @@ _DUMMY_ACTIONS: tuple[CivicAction, ...] = (
             "A public petition is close to its quorum and asks for clearer "
             "renovation funding timelines."
         ),
-        topics=("bildung", "demokratie"),
         region="Germany",
         deadline=date(2026, 6, 28),
         effort_minutes=2,
@@ -46,7 +44,6 @@ _DUMMY_ACTIONS: tuple[CivicAction, ...] = (
             "A city planning consultation accepts resident comments on safer "
             "school cycling routes."
         ),
-        topics=("verkehr", "bildung"),
         region="Dresden",
         deadline=date(2026, 7, 21),
         effort_minutes=3,

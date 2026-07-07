@@ -9,14 +9,13 @@
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
-      --bg: #080F1E;
-      --card: rgba(255,255,255,0.05);
-      --border: rgba(255,255,255,0.09);
-      --green: #22C55E;
-      --amber: #F59E0B;
-      --text: #F1F5F9;
-      --muted: #64748B;
-      --sub: #94A3B8;
+      --bg: #0F0F0F;
+      --card: rgba(255,255,255,0.04);
+      --border: rgba(255,255,255,0.08);
+      --green: #c59100;
+      --text: #EDE9E4;
+      --muted: #565250;
+      --sub: #8C8784;
     }
 
     html { scroll-behavior: smooth; }
@@ -51,18 +50,17 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: linear-gradient(to bottom, rgba(8,15,30,.95) 0%, transparent 100%);
+      background: linear-gradient(to bottom, rgba(15,15,15,.96) 0%, transparent 100%);
     }
 
     .logo { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.4px; }
     .logo em { font-style: normal; color: var(--green); }
 
     .pill-status {
-      background: rgba(245,158,11,.12);
-      border: 1px solid rgba(245,158,11,.35);
-      color: #FCD34D;
+      border: 1px solid rgba(255,255,255,0.16);
+      color: rgba(255,255,255,0.45);
       font-size: .72rem;
-      font-weight: 700;
+      font-weight: 600;
       letter-spacing: .08em;
       text-transform: uppercase;
       padding: 5px 13px;
@@ -85,9 +83,7 @@
       content: '';
       position: absolute;
       inset: 0;
-      background:
-        radial-gradient(ellipse 90% 55% at 50% 38%, rgba(34,197,94,.055) 0%, transparent 65%),
-        radial-gradient(ellipse 55% 40% at 65% 55%, rgba(245,158,11,.04) 0%, transparent 60%);
+      background: radial-gradient(ellipse 80% 50% at 50% 36%, rgba(24,148,74,.04) 0%, transparent 62%);
       pointer-events: none;
     }
 
@@ -101,10 +97,10 @@
     }
 
     #megaphone {
-      width: min(440px, 88vw);
+      width: min(400px, 82vw);
       height: auto;
-      filter: drop-shadow(0 6px 40px rgba(245,158,11,.22))
-              drop-shadow(0 2px 12px rgba(0,0,0,.5));
+      filter: drop-shadow(0 8px 48px rgba(212,146,14,.16))
+              drop-shadow(0 2px 10px rgba(0,0,0,.55));
     }
 
     /* ─── Hero text ─── */
@@ -203,7 +199,12 @@
       background: rgba(255,255,255,.07);
     }
 
-    .card-icon { font-size: 1.9rem; margin-bottom: 14px; }
+    .card-icon {
+      width: 30px;
+      height: 30px;
+      margin-bottom: 16px;
+      color: var(--green);
+    }
 
     .card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 7px; }
 
@@ -213,9 +214,9 @@
     .beta { border-top: 1px solid var(--border); }
 
     .beta-box {
-      background: linear-gradient(135deg, rgba(34,197,94,.07) 0%, rgba(245,158,11,.05) 100%);
-      border: 1px solid rgba(34,197,94,.18);
-      border-radius: 24px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 20px;
       padding: 44px 48px;
     }
 
@@ -246,7 +247,7 @@
       align-items: center;
       gap: 10px;
       background: var(--green);
-      color: #052e16;
+      color: #fff;
       font-weight: 800;
       font-size: 1rem;
       padding: 15px 34px;
@@ -289,63 +290,41 @@
   <!-- ───────────── Hero ───────────── -->
   <div class="hero">
     <div class="megaphone-wrap">
-      <!--
-        Megaphone SVG — pointing RIGHT, speaker bell opens to the RIGHT.
-        Handle on left → body cone → bell/rim on right.
-        #speaker-marker is the invisible anchor for butterfly spawning.
-      -->
-      <svg id="megaphone" viewBox="0 0 390 210" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-        <!-- Handle grip body -->
-        <rect x="3" y="91" width="57" height="26" rx="10" fill="#6B3A0F"/>
-        <rect x="3" y="91" width="57" height="13" rx="10" fill="#7C4A1A"/>
-        <!-- Grip ridges -->
-        <rect x="16" y="93" width="3.5" height="22" rx="1.75" fill="#3D1C07"/>
-        <rect x="25" y="93" width="3.5" height="22" rx="1.75" fill="#3D1C07"/>
-        <rect x="34" y="93" width="3.5" height="22" rx="1.75" fill="#3D1C07"/>
-        <rect x="43" y="93" width="3.5" height="22" rx="1.75" fill="#3D1C07"/>
-
-        <!-- Body cone: narrow at left (handle end), wide at right (bell end) -->
-        <!-- Shadow layer -->
-        <polygon points="60,93 60,115 168,158 168,50" fill="#92400E" opacity="0.5"/>
-        <!-- Main body -->
-        <polygon points="60,92 60,116 166,156 166,52" fill="#F59E0B"/>
-        <!-- Highlight (top ridge) -->
-        <polygon points="60,92 60,103 166,80 166,52" fill="#FCD34D" opacity="0.45"/>
-        <!-- Center seam -->
-        <line x1="60" y1="104" x2="166" y2="104" stroke="#D97706" stroke-width=".8" opacity="0.4"/>
-
-        <!-- Bell / speaker end: wide funnel on the RIGHT -->
-        <!-- Outer shadow -->
-        <path d="M166,52 C215,33 278,48 308,104 C278,160 215,173 166,156 Z" fill="#78350F"/>
-        <!-- Main bell -->
-        <path d="M166,52 C213,34 275,49 305,104 C275,159 213,172 166,156 Z" fill="#D97706"/>
-        <!-- Bell highlight -->
-        <path d="M166,52 C213,34 264,46 292,80 C268,52 216,37 166,52 Z" fill="#F59E0B" opacity="0.5"/>
-
-        <!-- Speaker rim (the open end) -->
-        <ellipse cx="305" cy="104" rx="23" ry="58" fill="#6B3A0F"/>
-        <ellipse cx="305" cy="104" rx="18" ry="52" fill="#7C4A1A"/>
-        <!-- Deep opening -->
-        <ellipse cx="305" cy="104" rx="12" ry="44" fill="#2C1001"/>
-
-        <!-- Sound arcs radiating right from the opening -->
-        <path d="M329,80 Q348,104 329,128" fill="none" stroke="#FDE68A" stroke-width="2.6" stroke-linecap="round" opacity=".72"/>
-        <path d="M339,64 Q362,104 339,144" fill="none" stroke="#FDE68A" stroke-width="2"   stroke-linecap="round" opacity=".48"/>
-        <path d="M349,49 Q376,104 349,159" fill="none" stroke="#FDE68A" stroke-width="1.4" stroke-linecap="round" opacity=".28"/>
-
+      <svg id="megaphone" viewBox="0 0 360 185" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
         <!--
-          SPEAKER MARKER — invisible; used by JS to locate the spawn point for butterflies.
-          Placed at the open center of the speaker bell (right side).
+          Real bullhorn silhouette:
+          ① handle (down)  ② housing box  ③ cone (right)  ④ bell rim  ⑤ waves
         -->
-        <circle id="speaker-marker" cx="318" cy="104" r="2" fill="transparent"/>
+
+        <!-- ① Grip — straight down from housing -->
+        <rect x="15" y="118" width="22" height="55" rx="9" fill="#7A4C04"/>
+
+        <!-- ② Housing — the rectangular body the speaker holds -->
+        <rect x="8"  y="52"  width="48" height="68" rx="7" fill="#A87010"/>
+        <rect x="8"  y="52"  width="48" height="22" rx="7" fill="white" opacity="0.07"/>
+
+        <!-- ③ Cone — attached to the RIGHT side of the housing -->
+        <path d="M56,52 L262,5 L262,177 L56,120 Z" fill="#D4920E"/>
+        <path d="M56,52 L262,5 L262,56 L56,72 Z"   fill="white" opacity="0.08"/>
+
+        <!-- ④ Bell rim -->
+        <ellipse cx="262" cy="91" rx="19" ry="86" fill="#8C5C06"/>
+        <ellipse cx="262" cy="91" rx="12" ry="75" fill="#0A0400"/>
+
+        <!-- ⑤ Sound waves -->
+        <path d="M287,65 Q305,91 287,117" fill="none" stroke="#F5C842" stroke-width="3.0" stroke-linecap="round" opacity="0.80"/>
+        <path d="M302,46 Q326,91 302,136" fill="none" stroke="#F5C842" stroke-width="2.2" stroke-linecap="round" opacity="0.55"/>
+        <path d="M317,27 Q348,91 317,155" fill="none" stroke="#F5C842" stroke-width="1.5" stroke-linecap="round" opacity="0.30"/>
+
+        <!-- butterfly spawn point -->
+        <circle id="speaker-marker" cx="278" cy="91" r="2" fill="transparent"/>
       </svg>
     </div>
 
     <div class="hero-text">
       <h1>Deine Stimme.<br><em>Dein Impact.</em></h1>
       <p>
-        MeinImpact macht politisches Engagement einfach und wirkungsvoll —<br>
-        für alle, die etwas verändern wollen.
+        MeinImpact macht politisches Engagement einfach und wirkungsvoll.
       </p>
       <a class="scroll-hint" href="#features" aria-label="Mehr erfahren">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
@@ -366,22 +345,42 @@
     </p>
     <div class="grid">
       <div class="card">
-        <div class="card-icon">🏛️</div>
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2" y="19" width="20" height="2" rx="1"/>
+          <rect x="2" y="4" width="20" height="2" rx="1"/>
+          <line x1="5" y1="6" x2="5" y2="19"/>
+          <line x1="9.5" y1="6" x2="9.5" y2="19"/>
+          <line x1="14.5" y1="6" x2="14.5" y2="19"/>
+          <line x1="19" y1="6" x2="19" y2="19"/>
+        </svg>
         <h3>Politische Aktionen</h3>
         <p>Entdecke Aktionen auf Bundes-, Landes- und Regionalebene, die zu deinen Werten und Interessen passen.</p>
       </div>
       <div class="card">
-        <div class="card-icon">🧭</div>
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <circle cx="8" cy="6" r="2" fill="currentColor" stroke="none"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+          <circle cx="10" cy="18" r="2" fill="currentColor" stroke="none"/>
+        </svg>
         <h3>Dein Werteprofil</h3>
-        <p>Finde heraus, welche Themen für die relevant sind und welchen Effekt politische Entscheidungen auf deinen Alltag haben könnten.</p>
+        <p>Finde heraus, welche Themen für dich relevant sind und welchen Effekt politische Entscheidungen auf deinen Alltag haben könnten.</p>
       </div>
       <div class="card">
-        <div class="card-icon">📰</div>
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="3,17 7,11 11,14 16,7 21,10"/>
+          <line x1="3" y1="21" x2="21" y2="21"/>
+        </svg>
         <h3>Tracke deinen Impact</h3>
         <p>Nach einer Aktion bleibst du weiterhin informiert. Was Abgeordnete darüber gesagt haben, wie sie gestimmt haben und welche Entscheidungen getroffen wurden.</p>
       </div>
       <div class="card">
-        <div class="card-icon">✉️</div>
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="5" width="18" height="14" rx="2"/>
+          <polyline points="3,7 12,13 21,7"/>
+        </svg>
         <h3>Briefe an Abgeordnete</h3>
         <p>Schreibe mit KI-Unterstützung wirkungsvolle Briefe direkt an deine Volksvertreter.</p>
       </div>
@@ -437,7 +436,7 @@
     // Build butterfly SVG markup
     function makeSVG(color, w, h, flapMs) {
       var c = color;
-      var body = '#1a1a2e';
+      var body = '#1a1a1a';
       return '<svg width="' + w + '" height="' + h + '" viewBox="0 0 34 30" '
         + 'xmlns="http://www.w3.org/2000/svg" '
         + 'style="animation: wingsFlap ' + flapMs + 'ms ease-in-out infinite alternate;'

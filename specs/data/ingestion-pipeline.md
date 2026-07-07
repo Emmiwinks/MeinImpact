@@ -9,19 +9,23 @@ MeinImpact.
 
 ## Decisions
 
-- **Pipeline runs once daily at 03:00 CET via APScheduler.** This is
-  sufficient for the content types used (legislative timelines, petition
-  milestones). Real-time ingestion is not required for MVP.
+- **Pipeline runs once daily at 03:00 CET via APScheduler.** Sufficient
+  for the content types used (legislative timelines, petition milestones).
 
 - **Pipeline is fully server-side.** No device interaction during ingestion.
   Devices download the resulting pool via the standard feed endpoint.
+
+- **No topic taxonomy.** Actions are not bucketed into predefined categories.
+  Hotness is determined by parliamentary process stage and recency, not by
+  keyword matching against a fixed topic list. This allows the pipeline to
+  surface any politically relevant action regardless of subject area.
 
 - **AI classification runs once per action, result is cached in DB.**
   Re-classification only occurs if the action is manually flagged or the
   classification schema changes.
 
 - **Pipeline is fault-tolerant per source.** A single source failure
-  does not abort the pipeline. See `data/sources-federal.md`.
+  does not abort the pipeline.
 
 - **Hard cost ceiling per run.** If AI spend for one pipeline run exceeds
   the configured ceiling, classification stops and remaining items are
@@ -32,125 +36,108 @@ MeinImpact.
 ## Pipeline Stages
 
 ```
-Stage 0: Topic Radar              ← NEW
-  DIP API + NewsData.io → ranked hot topics
+Stage 0: Hotness Evaluation
+  DIP API → items in active beratungsstand + recent activity → imminence score
 
-Stage 1: Action Search            ← REPLACED (was: multi-source fetch)
-  Per topic → find best action by priority
+Stage 1: Civil Society Petitions
+  Tavily → broad petition search on WeAct + openPetition
 
-Stage 2: Deduplicate              ← same
-Stage 3: Prefilter                ← same
-Stage 4: Tavily Enrich            ← SKIPPED in MVP (see Stage 4 note)
-Stage 5: Mistral Classify         ← same
-Stage 6: Persist                  ← same
-Stage 7: Deactivate expired       ← same
-Stage 8: MdB Statements           ← same
-Stage 9: Log Run                  ← same + topics_scanned, topics_above_threshold
+Stage 2: Deduplicate
+Stage 3: Prefilter
+Stage 4: Tavily Enrich            ← SKIPPED in MVP
+Stage 5: Mistral Classify
+Stage 6: Persist
+Stage 7: Deactivate expired
+Stage 8: MdB Statements
+Stage 9: Log Run
 ```
 
 ---
 
-## Stage 0: Topic Radar
+## Stage 0: Hotness Evaluation
 
-Before fetching actions, the pipeline identifies which topics are currently
-"burning" by combining two signals.
+Fetches Bundestag Vorgänge that are in an active deliberation stage and
+have had recent parliamentary activity. These are items where a decision
+is approaching and citizen action is still timely.
 
-**Signal A — Parliamentary activity (DIP API):**
-Count active Vorgang items per topic area in the last 14 days using the
-`deskriptor` field to map items to our topic taxonomy.
+**DIP query strategy:**
 
-**Signal B — News attention (NewsData.io):**
-Count how many political news articles mention each topic in the last 7 days
-using keyword matching per topic (e.g. `"Pflege" OR "Krankenhaus"` → `gesundheit`).
+Two passes against the DIP `/vorgang` endpoint, combined:
+
+**Pass A — Late-stage deliberation (vote imminent):**
+```
+f.beratungsstand = "2. Beratung"
+f.beratungsstand = "2. Beratung und Schlussabstimmung"
+f.beratungsstand = "3. Beratung"
+f.aktualisiert.start = {7 days ago}
+```
+
+**Pass B — Active committee deliberation:**
+```
+f.beratungsstand = "Ausschussberatung"
+f.aktualisiert.start = {3 days ago}
+```
+
+Each item receives an **imminence score** (0.0–1.0):
 
 ```python
-TOPIC_KEYWORDS: dict[str, list[str]] = {
-    "klimaschutz":   ["Klimaschutz", "CO2", "Erneuerbare", "Energiewende"],
-    "soziales":      ["Sozialleistungen", "Bürgergeld", "Rente", "Pflege"],
-    "demokratie":    ["Demokratie", "Verfassung", "Wahl", "Rechtsstaat"],
-    "bildung":       ["Bildung", "Schule", "BAföG", "Studium"],
-    "gesundheit":    ["Gesundheit", "Krankenhaus", "Pflege", "Medizin"],
-    "wirtschaft":    ["Wirtschaft", "Inflation", "Haushalt", "Unternehmen"],
-    "wohnen":        ["Wohnen", "Miete", "Wohnungsbau", "Mietpreise"],
-    "digital":       ["Digital", "Datenschutz", "KI", "Technologie"],
-    "verkehr":       ["Verkehr", "Bahn", "Straßen", "Mobilität"],
-    "aussenpolitik": ["Außenpolitik", "Ukraine", "NATO", "Diplomatie"],
+BERATUNGSSTAND_SCORE: dict[str, float] = {
+    "2. Beratung und Schlussabstimmung": 1.0,
+    "3. Beratung":                        1.0,
+    "2. Beratung":                        0.8,
+    "Ausschussberatung":                  0.5,
 }
 
-def calculate_topic_urgency(
-    parliamentary_count: int,
-    news_count: int,
-    max_parliamentary: int,
-    max_news: int,
-) -> float:
-    norm_parl = parliamentary_count / max(max_parliamentary, 1)
-    norm_news = news_count / max(max_news, 1)
-    return norm_parl * 0.6 + norm_news * 0.4
+def calculate_imminence(item: RawSourceItem, now: date) -> float:
+    stage_score = BERATUNGSSTAND_SCORE.get(item["status"], 0.3)
+    days_since_activity = (now - item["deadline"]).days if item["deadline"] else 7
+    recency_score = max(0.0, 1.0 - days_since_activity / 7.0)
+    return stage_score * 0.7 + recency_score * 0.3
 ```
 
-**Output:** Ranked list of `(topic, urgency_score)` tuples.
-Only topics scoring above a minimum threshold (`TOPIC_URGENCY_THRESHOLD = 0.1`)
-proceed to Stage 1.
+Open Bundestag Petitionen (`f.vorgangstyp=Petition`,
+`f.beratungsstand=Noch nicht beraten`) are always included regardless of
+imminence score — they are inherently actionable while open.
+
+**Output:** List of `RawSourceItem` dicts with `imminence_score` attached,
+sorted descending. No minimum threshold — all fetched items proceed to
+Stage 1 combination.
+
+**Cost:** 2–3 DIP API calls per run (one per beratungsstand pass + petitions).
+DIP is free with an API key.
 
 ---
 
-## Stage 1: Action Search per Topic
+## Stage 1: Civil Society Petitions
 
-For each hot topic from Stage 0, search for the single best available action
-using this priority order. Only one action per topic enters the pool per run.
-If a topic already has an active action in the pool, it is skipped.
-
-```
-Priority 1: Active Bundestag vote on this topic
-  Source: DIP API /vorgang with topic keyword + beratungsstand="Abstimmung"
-  Action type: representative_letter
-
-Priority 2: Bundestag petition close to quorum (>30,000 signatures)
-  Source: DIP API /vorgang?f.vorgangstyp=Petition
-  Action type: petition_signature
-
-Priority 3: Civil society petition with strong momentum
-  Source: Tavily search restricted to weact.campact.de OR openpetition.de
-  Fallback: Google Custom Search API (100 queries/day free tier)
-  Action type: petition_signature
-
-Priority 4: MdB has not publicly positioned on this topic
-  Determined from mdb_statements table (found=false for this topic)
-  Action type: public_question
-
-Priority 5: Fallback — letter to MdB always possible
-  No external source needed
-  Action type: representative_letter
-```
+Independently of Stage 0, search for currently active civil society
+petitions. These run in parallel with the DIP fetch and are merged before
+deduplication.
 
 ```python
-async def find_best_action_for_topic(
-    topic: str,
-    keywords: list[str],
-    existing_action_ids: set[str],
-) -> RawSourceItem | None:
-    # Try each priority in order, return first match
-    for finder in [
-        find_bundestag_vote,
-        find_bundestag_petition,
-        find_civil_society_petition,  # Tavily/Google search
-        find_mdb_anfrage_opportunity,
-    ]:
-        result = await finder(topic, keywords)
-        if result and result['source_url'] not in existing_action_ids:
-            return result
-    return None  # Fallback letter handled at persist time
+async def fetch_civil_petitions(tavily_api_key: str) -> list[RawSourceItem]:
+    """Broad search for active petitions on WeAct and openPetition."""
+    query = "Petition unterzeichnen aktuell 2026"
+    results = await tavily_client.search(
+        query,
+        include_domains=["weact.campact.de", "openpetition.de"],
+        max_results=10,
+        days=30,
+    )
+    return [_parse_tavily_petition(r) for r in results if r.get("url")]
 ```
 
-**Output:** List of `RawSourceItem` dicts, one per hot topic at most.
+No topic filtering. All returned petitions proceed to deduplication.
 
-See `data/sources-federal.md` for civil society petition search details.
+**Fallback:** Google Custom Search API if Tavily returns no results
+(`site:openpetition.de OR site:weact.campact.de Petition unterzeichnen`).
+Free tier: 100 queries/day.
 
 ---
 
 ## Stage 2: Deduplicate
 
-Remove items already present in the `actions` table.
+Remove items already present in the `civic_actions` table.
 
 ```python
 def deduplicate(
@@ -160,10 +147,8 @@ def deduplicate(
 ) -> list[RawSourceItem]:
     new_items = []
     for item in items:
-        # Exact URL match
         if item['source_url'] in existing_urls:
             continue
-        # Fuzzy title match (catches same item from different sources)
         if any(
             fuzz.ratio(item['title'], t) > 85
             for t in existing_titles
@@ -179,38 +164,32 @@ Library: `thefuzz` (lightweight string matching).
 
 ## Stage 3: Prefilter
 
-Rule-based filtering before any AI call. Reduces AI cost by eliminating
-items that would not make the feed regardless of classification.
+Rule-based filtering before any AI call.
 
 ```python
 PREFILTER_RULES = [
-    # Must have a minimum text length for meaningful classification
-    lambda item: len(item.get('description', '') + item['title']) > 100,
+    # Must have a minimum title length
+    lambda item: len(item['title']) >= 10,
 
     # Deadline must be in the future or absent (ongoing actions)
     lambda item: (
         item.get('deadline') is None or
         item['deadline'] > date.today()
-    ),
+    ) if item['type'] == 'petition' else True,
 
-    # WeAct petitions must have minimum momentum
+    # Petitions must have minimum momentum
     lambda item: not (
         item['type'] == 'petition' and
-        item.get('signature_count', 0) < 500
+        item.get('signature_count', None) is not None and
+        item['signature_count'] < 500
     ),
 
     # Must be in German (lang detection)
     lambda item: detect_language(item['title']) == 'de',
 ]
-
-def prefilter(items: list[RawSourceItem]) -> list[RawSourceItem]:
-    return [
-        item for item in items
-        if all(rule(item) for rule in PREFILTER_RULES)
-    ]
 ```
 
-**Expected reduction:** ~60–70% of raw items are filtered out here.
+**Expected reduction:** ~40–60% of raw items filtered here.
 Target: ≤ 30 items proceed to AI classification per daily run.
 
 ---
@@ -219,37 +198,8 @@ Target: ≤ 30 items proceed to AI classification per daily run.
 
 > **MVP STATUS: SKIPPED.**
 > Tavily enrichment is not run in the MVP. `tavily_context` is left empty and
-> Mistral classifies from title + DIP abstract alone. This is sufficient for
-> initial classification quality. Re-enable when there is a concrete use case
-> that needs news coverage context (e.g. momentum scoring from media mentions,
-> or richer pro/contra arguments). Requires `MEINIMPACT_TAVILY_API_KEY` to be
-> set and the `TavilyClient` call to be re-enabled in the orchestrator.
-
-For each item passing prefilter, fetch current web context.
-This gives Mistral fresh background for classification and context generation.
-
-```python
-async def enrich_with_tavily(
-    item: RawSourceItem,
-) -> RawSourceItem:
-    query = f"{item['title']} Bundestag Hintergründe Auswirkungen"
-    try:
-        result = await tavily_client.search(
-            query=query,
-            search_depth="basic",
-            max_results=3,
-        )
-        item['tavily_context'] = "\n\n".join([
-            r['content'] for r in result.get('results', [])
-        ])[:2000]  # Cap at 2000 chars to control Mistral input size
-    except TavilyError as e:
-        sentry.capture_exception(e)
-        item['tavily_context'] = ""  # Proceed without context
-    return item
-```
-
-**Cost:** ~1 Tavily credit per item. At 30 items/day: ~30 credits/day,
-well within rate limits.
+> Mistral classifies from title + DIP abstract alone. Re-enable when richer
+> classification context is needed. Requires `MEINIMPACT_TAVILY_API_KEY`.
 
 ---
 
@@ -264,9 +214,7 @@ You are a German civic action classifier. Analyse the following political
 action and return ONLY valid JSON with this exact structure:
 
 {
-  "topics": ["klimaschutz", "soziales", ...],
   "urgency": "high" | "mid" | "low",
-  "deadline_days": <int or null>,
   "werte_relevanz": {
     "wirtschaft": <float -1.0 to 1.0>,
     "diplomatie": <float -1.0 to 1.0>,
@@ -276,97 +224,82 @@ action and return ONLY valid JSON with this exact structure:
   "pro_argumente": ["...", "..."],
   "contra_argumente": ["...", "..."],
   "action_types": ["brief", "petition", "anfrage"],
-  -- Only these three types are valid for MVP
   "is_controversial": <bool>,
   "position_required": <bool>
 }
 
-Valid topics: klimaschutz, soziales, demokratie, bildung, gesundheit,
-wirtschaft, wohnen, digital, verkehr, aussenpolitik
-
 urgency rules:
-- high: deadline within 14 days OR Bundestag vote scheduled
-- mid: deadline within 60 days OR active public debate
+- high: deadline within 14 days OR Bundestag vote imminent (2./3. Beratung)
+- mid: deadline within 60 days OR active committee deliberation
 - low: ongoing, no imminent deadline
 
 werte_relevanz: 0.0 = axis not relevant, positive = positive pole,
-negative = negative pole. See value profile spec for pole definitions.
+negative = negative pole.
 
 is_controversial: true if reasonable people with different values would
-strongly disagree. Used to suppress letter generation when unclear.
-
+strongly disagree.
 position_required: true if a letter can only be written from a clear
-political position (cannot be neutral). If true AND user profile is
-neutral on relevant axes, letter generation is suppressed.
+political position.
 
 Action and context:
 Title: {title}
 Description: {description}
+Parliamentary status: {status}
 Web context: {tavily_context}
 """
-
-async def classify_action(item: RawSourceItem) -> ClassifiedAction | None:
-    try:
-        response = await mistral_client.chat.complete_async(
-            model="mistral-small-latest",
-            messages=[{
-                "role": "user",
-                "content": CLASSIFICATION_PROMPT.format(**item),
-            }],
-            response_format={"type": "json_object"},
-            max_tokens=500,
-        )
-        data = json.loads(response.choices[0].message.content)
-        # Validate required fields
-        if not data.get('topics') or not data.get('urgency'):
-            return None  # Skip malformed classifications
-        return ClassifiedAction(**item, **data)
-    except Exception as e:
-        sentry.capture_exception(e)
-        return None  # Skip on error, do not crash pipeline
 ```
 
-**Cost estimate:** mistral-small, ~800 tokens input + ~200 output per item.
-At 30 items/day: ~30,000 tokens/day ≈ €0.03/day.
+**Cost estimate:** mistral-small, ~600 tokens input + ~150 output per item.
+At 30 items/day: ~22,500 tokens/day ≈ €0.02/day.
 
 ---
 
 ## Stage 6: Persist
 
 ```python
-async def persist_actions(actions: list[ClassifiedAction]) -> int:
+async def persist_actions(actions: list[ClassifiedAction], news_counts: dict[str, int]) -> int:
     inserted = 0
     for action in actions:
         if action is None:
             continue
-        # Check budget ceiling before each insert
         if await budget_exceeded():
             logger.warning("Budget ceiling reached, stopping classification")
             break
         await db.execute("""
-            INSERT INTO actions (
-                id, title, type, topics, urgency, deadline,
+            INSERT INTO civic_actions (
+                id, title, action_type, summary, urgency, deadline,
                 source_url, external_id, pro_argumente,
                 contra_argumente, werte_relevanz, tavily_context,
                 action_types, is_controversial, position_required,
-                momentum_score, active, created_at
-            ) VALUES (
-                gen_random_uuid(), :title, :type, :topics, :urgency,
-                :deadline, :source_url, :external_id, :pro_argumente,
-                :contra_argumente, :werte_relevanz, :tavily_context,
-                :action_types, :is_controversial, :position_required,
-                :momentum_score, true, now()
-            )
+                momentum_score, active, updated_at
+            ) VALUES (...)
             ON CONFLICT (source_url) DO UPDATE SET
                 urgency = EXCLUDED.urgency,
                 momentum_score = EXCLUDED.momentum_score,
-                tavily_context = EXCLUDED.tavily_context
+                tavily_context = EXCLUDED.tavily_context,
+                updated_at = now()
         """, action.dict())
         inserted += 1
     return inserted
 ```
 
-**Upsert on `source_url`** allows re-runs to update urgency and context
+**Momentum score** is calculated at persist time from the item's
+`imminence_score` (from Stage 0) combined with petition velocity:
+
+```python
+def calculate_momentum(imminence_score: float, signature_velocity: float | None) -> float:
+    base = 0.3 + imminence_score * 0.4   # 0.3–0.7 from parliamentary stage
+
+    if signature_velocity is not None:
+        if signature_velocity > 1000:
+            base += 0.3
+        elif signature_velocity > 100:
+            base += 0.15
+
+    return min(base, 1.0)
+```
+
+**Upsert on `source_url`** allows re-runs to update urgency and momentum
 without creating duplicates.
 
 ---
@@ -376,7 +309,7 @@ without creating duplicates.
 ```python
 async def deactivate_expired():
     await db.execute("""
-        UPDATE actions
+        UPDATE civic_actions
         SET active = false
         WHERE deadline IS NOT NULL
         AND deadline < now() - INTERVAL '7 days'
@@ -401,46 +334,24 @@ async def log_run(
     errors: list[str],
     duration_seconds: float,
     ai_cost_eur: float,
-    topics_scanned: int,        # ← NEW: total topics evaluated in Stage 0
-    topics_above_threshold: int, # ← NEW: topics that passed urgency threshold
+    hot_items_count: int,      # items from Stage 0 DIP fetch
+    petition_count: int,       # items from Stage 1 Tavily fetch
 ):
-    await db.execute("""
-        INSERT INTO pipeline_runs (
-            id, fetched_count, deduplicated_count, prefiltered_count,
-            classified_count, inserted_count, errors, duration_seconds,
-            ai_cost_eur, ran_at
-        ) VALUES (...)
-    """, ...)
 ```
-
-Pipeline run logs are stored in `pipeline_runs` table for monitoring.
-See `technical/monitoring.md`.
-
-> **Schema note:** `topics_scanned` and `topics_above_threshold` are not yet
-> columns in `pipeline_runs`. Add via migration when Stage 0 is implemented.
 
 ---
 
 ## Momentum Score Calculation
 
-Each action gets a `momentum_score` (0.0–1.0) that reflects current
-public attention, combined with urgency:
+Each action gets a `momentum_score` (0.0–1.0):
 
 ```python
 def calculate_momentum(
-    item: RawSourceItem,
-    news_mention_count: int,  # How many NewsData.io articles reference it
+    imminence_score: float,         # From Stage 0 beratungsstand scoring
     signature_velocity: float | None,  # Signatures/day for petitions
 ) -> float:
-    base = 0.3
+    base = 0.3 + imminence_score * 0.4
 
-    # News mentions boost
-    if news_mention_count >= 5:
-        base += 0.3
-    elif news_mention_count >= 2:
-        base += 0.15
-
-    # Petition velocity boost
     if signature_velocity is not None:
         if signature_velocity > 1000:
             base += 0.3
@@ -455,7 +366,7 @@ def calculate_momentum(
 ## Budget Ceiling
 
 ```python
-DAILY_AI_BUDGET_EUR = 1.0  # Hard ceiling for ingestion pipeline
+DAILY_AI_BUDGET_EUR = 1.0
 
 async def budget_exceeded() -> bool:
     today_spend = await db.fetchval("""
@@ -467,9 +378,6 @@ async def budget_exceeded() -> bool:
     return today_spend >= DAILY_AI_BUDGET_EUR
 ```
 
-If ceiling is reached: stop classification, send Sentry alert, mark
-remaining items as `pending_classification` for next run.
-
 ---
 
 ## Full Pipeline Orchestration
@@ -480,17 +388,15 @@ async def run_ingestion_pipeline():
     start = time.time()
     errors = []
 
-    # Stage 0: Topic Radar
-    hot_topics = await run_topic_radar()  # list[(topic, urgency_score)]
-    topics_above_threshold = [t for t, s in hot_topics if s >= TOPIC_URGENCY_THRESHOLD]
+    # Stage 0: Hotness Evaluation (DIP)
+    dip_items = await fetch_hot_dip_items(settings, errors)
 
-    # Stage 1: Action Search per Topic
+    # Stage 1: Civil Society Petitions (Tavily)
+    petition_items = await fetch_civil_petitions(settings, errors)
+
+    raw_items = dip_items + petition_items
+
     existing = await db.fetch_existing_urls_and_titles()
-    raw_items = []
-    for topic in topics_above_threshold:
-        item = await find_best_action_for_topic(topic, TOPIC_KEYWORDS[topic], existing['urls'])
-        if item:
-            raw_items.append(item)
 
     # Stage 2
     new_items = deduplicate(raw_items, **existing)
@@ -526,8 +432,8 @@ async def run_ingestion_pipeline():
         errors=errors,
         duration_seconds=time.time() - start,
         ai_cost_eur=await get_today_ai_spend(),
-        topics_scanned=len(TOPIC_KEYWORDS),
-        topics_above_threshold=len(topics_above_threshold),
+        hot_items_count=len(dip_items),
+        petition_count=len(petition_items),
     )
 ```
 
@@ -535,93 +441,9 @@ async def run_ingestion_pipeline():
 
 ## MdB Statement Refresh
 
-Runs daily as part of the pipeline (Stage 8). Searches for public statements
-by tracked MdBs on topics related to active actions.
-
-```python
-async def refresh_mdb_statements():
-    # Get all active actions that have push subscribers
-    # (only track statements for actions users are following)
-    active_actions = await db.fetch("""
-        SELECT a.id, a.title, a.topics, ps.action_ids
-        FROM actions a
-        JOIN push_subscriptions ps ON a.id = ANY(ps.action_ids)
-        WHERE a.active = true
-        GROUP BY a.id
-    """)
-
-    for action in active_actions:
-        # Get the MdB for each subscriber's PLZ
-        # We don't store PLZ, so we track statements for the
-        # most common MdBs in subscribed regions.
-        # MVP simplification: track top 5 MdBs by subscription count.
-        top_mdbs = await get_top_mdbs_for_action(action.id)
-
-        for mdb in top_mdbs:
-            await refresh_single_mdb_statement(action, mdb)
-
-async def refresh_single_mdb_statement(action, mdb):
-    query = (
-        f"{mdb.name} {' '.join(action.topics[:2])} "
-        f"Bundestag Stellungnahme Pressemitteilung"
-    )
-    try:
-        results = await tavily_client.search(
-            query=query,
-            days=30,
-            max_results=3,
-        )
-
-        if not results.get('results'):
-            # Explicit not-found result
-            await db.execute("""
-                INSERT INTO mdb_statements
-                    (action_id, mdb_name, mdb_aw_id, found)
-                VALUES (:action_id, :mdb_name, :mdb_aw_id, false)
-                ON CONFLICT (action_id, mdb_name)
-                DO UPDATE SET found=false, searched_at=now()
-            """, {...})
-            return
-
-        # Summarise found statements
-        summary = await mistral_client.chat.complete_async(
-            model="mistral-small-latest",
-            messages=[{"role": "user", "content":
-                f"Summarise in one sentence (German) what {mdb.name} "
-                f"said about {action.title}: "
-                + "
-".join([r['content'] for r in results['results']])
-            }],
-            max_tokens=100,
-        )
-
-        await db.execute("""
-            INSERT INTO mdb_statements
-                (action_id, mdb_name, mdb_aw_id, found,
-                 statement_summary, source_url)
-            VALUES (...)
-            ON CONFLICT (action_id, mdb_name)
-            DO UPDATE SET
-                found=true,
-                statement_summary=EXCLUDED.statement_summary,
-                source_url=EXCLUDED.source_url,
-                searched_at=now()
-        """, {...})
-
-    except Exception as e:
-        sentry.capture_exception(e)
-        # Non-fatal: tracking failures don't affect main pipeline
-```
-
-**Cost estimate:** At 10 active tracked actions × 5 MdBs each:
-- 50 Tavily calls/day × €0.001 = €0.05/day
-- ~25 Mistral summarisations (found only) × ~150 tokens = €0.001/day
-- Total: ~€0.05/day for MdB tracking
-
-**MVP simplification:** Instead of tracking per-user MdBs (which would
-require storing PLZ server-side), we track the top MdBs by number of
-push subscribers per action. This gives tracking results for the most
-relevant MdBs without any personal data.
+Stage 8 — unchanged from previous spec. Runs daily as part of the pipeline.
+Searches for public statements by tracked MdBs on topics related to active
+actions. See `data/sources-federal.md` for implementation details.
 
 ---
 
@@ -635,9 +457,8 @@ relevant MdBs without any personal data.
 
 ## Open Questions
 
-- [ ] Confirm Mistral JSON mode (`response_format: json_object`) is
-      reliable enough without output validation schema. Add Pydantic
-      validation if malformed JSON rate > 5% in testing.
+- [ ] Confirm exact `beratungsstand` string values used by DIP for each
+      deliberation stage. Current values are best-guess; verify against
+      live API data before relying on them for imminence scoring.
 - [ ] Signature velocity for WeAct: requires storing previous signature
-      counts to calculate delta. Add `previous_signature_count` field
-      to actions table if needed.
+      counts. Add `previous_signature_count` field to civic_actions if needed.

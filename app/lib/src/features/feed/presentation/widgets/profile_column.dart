@@ -5,19 +5,6 @@ import 'app_colors.dart';
 import 'components/surface_card.dart';
 import 'components/text_badges.dart';
 
-const _kTopicLabels = {
-  'klimaschutz': 'Klimaschutz 🌱',
-  'soziales': 'Soziale Gerechtigkeit 🤝',
-  'demokratie': 'Demokratie 🗳️',
-  'bildung': 'Bildung 📚',
-  'gesundheit': 'Gesundheit 🏥',
-  'wirtschaft': 'Wirtschaft 💼',
-  'wohnen': 'Wohnen 🏠',
-  'digital': 'Digitalisierung 💻',
-  'verkehr': 'Verkehr 🚆',
-  'aussenpolitik': 'Außenpolitik 🌍',
-};
-
 class ProfileColumn extends StatelessWidget {
   const ProfileColumn({
     required this.profile,
@@ -69,30 +56,8 @@ class _ProfileCard extends StatelessWidget {
                   color: AppColors.mutedText,
                 ),
           ),
-          const SizedBox(height: 20),
-          SectionLabel(label: 'Deine Themen'),
-          const SizedBox(height: 10),
-          if (p == null || p.topics.isEmpty)
-            _EmptyHint(text: 'Noch keine Themen gewählt.')
-          else
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                for (final key in p.topics)
-                  _TopicChip(
-                    label: _kTopicLabels[key] ?? key,
-                    blocked: false,
-                  ),
-                for (final key in p.blacklist)
-                  _TopicChip(
-                    label: _kTopicLabels[key] ?? key,
-                    blocked: true,
-                  ),
-              ],
-            ),
           if (p != null && p.answeredCount > 0) ...[
-            const SizedBox(height: 18),
+            const SizedBox(height: 20),
             SectionLabel(label: 'Deine Werte'),
             const SizedBox(height: 10),
             _AxisBar(label: 'Wirtschaft', value: p.axisWirtschaft),
@@ -122,36 +87,6 @@ class _ProfileCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _TopicChip extends StatelessWidget {
-  const _TopicChip({required this.label, required this.blocked});
-
-  final String label;
-  final bool blocked;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: blocked ? AppColors.surfaceMuted : AppColors.greenWash,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: blocked ? AppColors.subtleBorder : AppColors.green,
-        ),
-      ),
-      child: Text(
-        blocked ? '$label ✕' : label,
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: blocked ? AppColors.mutedText : AppColors.greenDark,
-              fontWeight: FontWeight.w600,
-              decoration:
-                  blocked ? TextDecoration.lineThrough : TextDecoration.none,
-            ),
       ),
     );
   }
@@ -226,18 +161,3 @@ class _AxisBar extends StatelessWidget {
   }
 }
 
-class _EmptyHint extends StatelessWidget {
-  const _EmptyHint({required this.text});
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: Theme.of(context)
-          .textTheme
-          .bodySmall
-          ?.copyWith(color: AppColors.mutedText),
-    );
-  }
-}

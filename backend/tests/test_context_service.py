@@ -21,7 +21,6 @@ _SOLAR_ACTION = CivicAction(
     title="Petition: Solaranlagen auf allen Bundesgebäuden",
     action_type=ActionType.PETITION_SIGNATURE,
     summary="Eine Bundestag-Petition fordert Solarpflicht ab 2027.",
-    topics=("klimaschutz", "wirtschaft"),
     region="Germany",
     deadline=date(2026, 6, 28),
     effort_minutes=2,

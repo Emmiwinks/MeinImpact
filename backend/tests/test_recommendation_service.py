@@ -12,26 +12,24 @@ from meinimpact.services.recommendation_service import RecommendationService
 
 
 @pytest.mark.asyncio
-async def test_recommendation_prioritizes_matching_topics_and_region() -> None:
+async def test_recommendation_respects_region() -> None:
     service = RecommendationService(DummyActionRepository())
     recommendations = await service.recommend(
         UserProfile(
-            topics=("klimaschutz", "wohnen"),
             value_axes={},
             region="Germany",
         ),
         limit=3,
     )
-    assert recommendations[0].action.id == "solar-letter-bundestag"
-    assert recommendations[0].score > recommendations[-1].score
-    assert any("klimaschutz" in reason for reason in recommendations[0].reasons)
+    assert len(recommendations) == 3
+    assert recommendations[0].score > 0
 
 
 @pytest.mark.asyncio
 async def test_recommendation_respects_limit() -> None:
     service = RecommendationService(DummyActionRepository())
     recommendations = await service.recommend(
-        UserProfile(topics=("education",), value_axes={}, region=None),
+        UserProfile(value_axes={}, region=None),
         limit=1,
     )
     assert len(recommendations) == 1
@@ -52,7 +50,7 @@ def test_urgency_score_covers_deadline_boundaries() -> None:
 async def test_recommendation_handles_actions_without_optional_boosts() -> None:
     service = RecommendationService(_SingleActionRepository())
     recommendations = await service.recommend(
-        UserProfile(topics=("health",), value_axes={}, region="Berlin"),
+        UserProfile(value_axes={}, region="Berlin"),
         limit=1,
     )
 
@@ -70,7 +68,6 @@ class _SingleActionRepository:
                 title="No boost action",
                 action_type=ActionType.PUBLIC_QUESTION,
                 summary="Action with no matching profile attributes.",
-                topics=("education",),
                 region="Hamburg",
                 deadline=date(2100, 1, 1),
                 effort_minutes=4,

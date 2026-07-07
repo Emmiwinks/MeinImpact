@@ -74,7 +74,6 @@ class _DemographicScreenState extends State<DemographicScreen> {
     final plz = _plzController.text.trim();
     widget.onComplete(
       UserProfile(
-        topics: const [],
         plz: plz,
         mdbName: sel.mdbName,
         mdbParty: sel.mdbParty,

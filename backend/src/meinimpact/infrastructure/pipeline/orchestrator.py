@@ -1,17 +1,19 @@
 """Ingestion pipeline orchestrator - runs Stages 0-9 once per invocation.
 
-Stage 0: Topic Radar - DIP + NewsData.io -> ranked hot topics
-Stage 1: Action Search per Topic - find best action per hot topic
-Stages 2-9: Dedup, prefilter, enrich, classify, persist, deactivate, log.
+Stage 0: Hotness Evaluation - DIP beratungsstand-based fetch → imminent items
+Stage 1: Civil Society Petitions - Tavily broad petition search
+Stages 2-9: Dedup, prefilter, enrich (skipped), classify, persist, deactivate, log.
+
+No topic taxonomy. Hotness is determined by parliamentary process stage
+(beratungsstand) and recency, not keyword matching against predefined categories.
 
 Designed to be called daily by APScheduler (03:00 CET) or manually.
-Creates its own DB connection and closes it on exit.
 """
 
 import asyncio
 import logging
 import time
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from sqlalchemy import text, update
@@ -32,17 +34,10 @@ from meinimpact.infrastructure.pipeline.stages import (
 )
 from meinimpact.infrastructure.pipeline.types import ClassifiedAction
 from meinimpact.infrastructure.sources.dip_adapter import DipAdapter
-from meinimpact.infrastructure.sources.newsdata_client import (
-    TOPIC_KEYWORDS,
-    NewsDataClient,
-)
 from meinimpact.infrastructure.sources.protocol import RawSourceItem
 from meinimpact.infrastructure.sources.tavily_client import TavilyClient
 
 logger = logging.getLogger(__name__)
-
-_TOPIC_URGENCY_THRESHOLD = 0.1
-_LOOKBACK_DAYS_PARL = 14
 
 
 async def run_ingestion_pipeline(settings: Settings) -> None:
@@ -58,21 +53,15 @@ async def run_ingestion_pipeline(settings: Settings) -> None:
         async with db.engine.connect() as conn:
             existing = await _load_existing(conn)
 
-        # ── Stage 0: Topic Radar ──────────────────────────────────────────────
-        hot_topics = await _run_topic_radar(settings, existing["existing_urls"], errors)
-        topics_above = [t for t, _ in hot_topics]
-        logger.info(
-            "Stage 0: %d/%d topics above threshold: %s",
-            len(topics_above),
-            len(TOPIC_KEYWORDS),
-            topics_above,
-        )
+        # ── Stage 0: Hotness Evaluation (DIP beratungsstand) ─────────────────
+        dip_items = await _fetch_hot_dip_items(settings, errors)
+        logger.info("Stage 0: %d hot DIP items", len(dip_items))
 
-        # ── Stage 1: Action Search per Topic ─────────────────────────────────
-        raw_items = await _search_actions_for_topics(
-            hot_topics, existing["existing_urls"], settings, errors
-        )
-        logger.info("Stage 1: found %d candidate actions", len(raw_items))
+        # ── Stage 1: Civil Society Petitions (Tavily) ─────────────────────────
+        petition_items = await _fetch_civil_petitions(settings, errors)
+        logger.info("Stage 1: %d civil society petitions", len(petition_items))
+
+        raw_items = dip_items + petition_items
 
         # ── Stage 2: Deduplicate ──────────────────────────────────────────────
         new_items = deduplicate(raw_items, **existing)
@@ -98,7 +87,7 @@ async def run_ingestion_pipeline(settings: Settings) -> None:
         classified_count = sum(1 for c in classified if c is not None)
         logger.info("Stage 5: %d classified", classified_count)
 
-        # -- Stages 6-9: Persist, deactivate, log --------------------------------
+        # ── Stages 6-9: Persist, deactivate, log ─────────────────────────────
         inserted = 0
         async with db._session_factory() as session:
             inserted = await _persist(classified, session)
@@ -131,204 +120,82 @@ async def run_ingestion_pipeline(settings: Settings) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Stage 0: Topic Radar
+# Stage 0: Hotness Evaluation
 # ---------------------------------------------------------------------------
 
 
-async def _run_topic_radar(
-    settings: Settings,
-    existing_urls: set[str],
-    errors: list[str],
-) -> list[tuple[str, float]]:
-    """Returns topics sorted by urgency score, filtered to above-threshold only."""
-
-    parl_counts = await _count_parliamentary_activity(settings, errors)
-    news_counts = await _count_news_activity(settings, errors)
-
-    max_parl = max(parl_counts.values(), default=1)
-    max_news = max(news_counts.values(), default=1)
-
-    scored: list[tuple[str, float]] = []
-    for topic in TOPIC_KEYWORDS:
-        norm_parl = parl_counts.get(topic, 0) / max(max_parl, 1)
-        norm_news = news_counts.get(topic, 0) / max(max_news, 1)
-        score = norm_parl * 0.6 + norm_news * 0.4
-        logger.debug(
-            "Topic radar: %s parl=%d news=%d score=%.3f",
-            topic,
-            parl_counts.get(topic, 0),
-            news_counts.get(topic, 0),
-            score,
-        )
-        if score >= _TOPIC_URGENCY_THRESHOLD:
-            scored.append((topic, score))
-
-    scored.sort(key=lambda x: x[1], reverse=True)
-    return scored
-
-
-async def _count_parliamentary_activity(
+async def _fetch_hot_dip_items(
     settings: Settings,
     errors: list[str],
-) -> dict[str, int]:
-    """Counts recent DIP Vorgänge per topic using keyword matching on titles."""
+) -> list[RawSourceItem]:
+    """Fetches DIP Vorgänge in active beratungsstand stages."""
     if not settings.dip_api_key:
-        logger.warning("DIP API key not set — Stage 0 Signal A skipped")
-        return {}
-
-    since = datetime.now(UTC) - timedelta(days=_LOOKBACK_DAYS_PARL)
+        logger.warning("DIP API key not set — Stage 0 skipped")
+        return []
     try:
         adapter = DipAdapter(settings.dip_api_key)
-        items = await adapter.fetch_new_items(since)
+        return await adapter.fetch_hot_items()
     except Exception as exc:
         msg = f"Stage 0 DIP fetch failed: {exc}"
         logger.error(msg)
         errors.append(msg)
-        return {}
-
-    counts: dict[str, int] = {t: 0 for t in TOPIC_KEYWORDS}
-    for item in items:
-        text_blob = (item["title"] + " " + item.get("description", "")).lower()  # type: ignore[misc]
-        for topic, keywords in TOPIC_KEYWORDS.items():
-            if any(kw.lower() in text_blob for kw in keywords):
-                counts[topic] += 1
-    return counts
-
-
-async def _count_news_activity(
-    settings: Settings,
-    errors: list[str],
-) -> dict[str, int]:
-    """Counts recent NewsData.io articles per topic (Signal B)."""
-    if not settings.newsdata_api_key:
-        logger.info("MEINIMPACT_NEWSDATA_API_KEY not set — Stage 0 Signal B skipped")
-        return {}
-    try:
-        client = NewsDataClient(settings.newsdata_api_key)
-        return await client.count_articles_per_topic()
-    except Exception as exc:
-        msg = f"Stage 0 NewsData fetch failed: {exc}"
-        logger.error(msg)
-        errors.append(msg)
-        return {}
+        return []
 
 
 # ---------------------------------------------------------------------------
-# Stage 1: Action Search per Topic
+# Stage 1: Civil Society Petitions
 # ---------------------------------------------------------------------------
 
 
-async def _search_actions_for_topics(
-    hot_topics: list[tuple[str, float]],
-    existing_urls: set[str],
+_PETITION_DOMAINS = {"weact.campact.de", "openpetition.de"}
+# Tavily's include_domains is not guaranteed strict — validate in Python.
+# A valid petition URL must also contain one of these path segments (not a listing page).
+_PETITION_PATH_MARKERS = {"/petition/", "/p/"}
+
+
+def _is_valid_petition_url(url: str) -> bool:
+    from urllib.parse import urlparse
+    parsed = urlparse(url)
+    host = parsed.netloc.lower().removeprefix("www.")
+    if host not in _PETITION_DOMAINS:
+        return False
+    path = parsed.path
+    # openpetition.de/at/ is the Austrian content section — exclude it
+    if path.startswith("/at/"):
+        return False
+    # /petition/blog/ URLs are update pages, not the petition itself
+    if "/petition/blog" in path:
+        return False
+    return any(marker in path for marker in _PETITION_PATH_MARKERS)
+
+
+async def _fetch_civil_petitions(
     settings: Settings,
     errors: list[str],
 ) -> list[RawSourceItem]:
-    """Finds the best available action for each hot topic."""
-    results: list[RawSourceItem] = []
-    seen_urls: set[str] = set(existing_urls)
-
-    for topic, score in hot_topics:
-        keywords = TOPIC_KEYWORDS[topic]
-        item = await _find_best_action(
-            topic, keywords, score, seen_urls, settings, errors
-        )
-        if item:
-            results.append(item)
-            seen_urls.add(item["source_url"])
-
-    return results
-
-
-async def _find_best_action(
-    topic: str,
-    keywords: list[str],
-    urgency_score: float,
-    existing_urls: set[str],
-    settings: Settings,
-    errors: list[str],
-) -> RawSourceItem | None:
-    """Tries each priority in order and returns the first match not already in pool."""
-
-    # Priority 1 & 2: DIP (Bundestag votes and petitions)
-    if settings.dip_api_key:
-        item = await _find_dip_action(
-            topic, keywords, urgency_score, existing_urls, settings.dip_api_key, errors
-        )
-        if item:
-            return item
-
-    # Priority 3: Civil society petition via Tavily
-    if settings.tavily_api_key:
-        item = await _find_civil_petition(
-            topic, keywords, existing_urls, settings.tavily_api_key, errors
-        )
-        if item:
-            return item
-
-    logger.debug("No action found for topic %r", topic)
-    return None
-
-
-async def _find_dip_action(
-    topic: str,
-    keywords: list[str],
-    urgency_score: float,
-    existing_urls: set[str],
-    api_key: str,
-    errors: list[str],
-) -> RawSourceItem | None:
-    """Searches DIP for votes or petitions relevant to this topic."""
-    since = datetime.now(UTC) - timedelta(days=_LOOKBACK_DAYS_PARL)
+    """Broad Tavily search for active civil society petitions."""
+    if not settings.tavily_api_key:
+        logger.info("MEINIMPACT_TAVILY_API_KEY not set — Stage 1 skipped")
+        return []
     try:
-        adapter = DipAdapter(api_key)
-        items = await adapter.fetch_new_items(since)
-    except Exception as exc:
-        errors.append(f"DIP action search failed for {topic}: {exc}")
-        return None
-
-    kw_lower = [kw.lower() for kw in keywords]
-
-    def matches(item: RawSourceItem) -> bool:
-        blob = (item["title"] + " " + item.get("description", "")).lower()  # type: ignore[misc]
-        return any(kw in blob for kw in kw_lower)
-
-    def not_seen(item: RawSourceItem) -> bool:
-        return item["source_url"] not in existing_urls
-
-    relevant = [i for i in items if matches(i) and not_seen(i)]
-    if not relevant:
-        return None
-
-    # Prefer petitions (P2) over regular Vorgänge (P1 fallback)
-    petitions = [i for i in relevant if i["type"] == "petition"]
-    return petitions[0] if petitions else relevant[0]
-
-
-async def _find_civil_petition(
-    topic: str,
-    keywords: list[str],
-    existing_urls: set[str],
-    tavily_api_key: str,
-    errors: list[str],
-) -> RawSourceItem | None:
-    """Searches Tavily for civil society petitions on WeAct or openPetition."""
-    query = f"{' OR '.join(keywords[:3])} Petition unterzeichnen"
-    try:
-        tavily = TavilyClient(tavily_api_key)
+        tavily = TavilyClient(settings.tavily_api_key)
         results = await tavily.search(
-            query,
-            max_results=3,
-            days=30,
-            include_domains=["weact.campact.de", "openpetition.de"],
+            "Petition Politik Bundestag unterzeichnen 2026",
+            max_results=15,
+            days=14,
+            include_domains=list(_PETITION_DOMAINS),
         )
+        items: list[RawSourceItem] = []
         for r in results:
             url = str(r.get("url") or "")
-            if url and url not in existing_urls:
-                title = str(r.get("title") or "")
-                content = str(r.get("content") or "")
-                external_id = url.rstrip("/").split("/")[-1] or url[-40:]
-                return RawSourceItem(
+            if not url or not _is_valid_petition_url(url):
+                logger.debug("Stage 1: skipping non-petition URL %s", url)
+                continue
+            title = str(r.get("title") or "")
+            content = str(r.get("content") or "")
+            external_id = url.rstrip("/").split("/")[-1] or url[-40:]
+            items.append(
+                RawSourceItem(
                     external_id=external_id,
                     title=title,
                     type="petition",
@@ -338,10 +205,15 @@ async def _find_civil_petition(
                     description=content[:500],
                     initiated_by="Zivilgesellschaft",
                     source="tavily_petition_search",
+                    imminence_score=0.3,
                 )
+            )
+        return items
     except Exception as exc:
-        errors.append(f"Tavily petition search failed for {topic}: {exc}")
-    return None
+        msg = f"Stage 1 Tavily petition search failed: {exc}"
+        logger.error(msg)
+        errors.append(msg)
+        return []
 
 
 # ---------------------------------------------------------------------------
@@ -396,9 +268,9 @@ async def _classify_all(
 
 
 def _default_classified(item: RawSourceItem) -> ClassifiedAction:
+    imminence = item.get("imminence_score", 0.3)  # type: ignore[misc]
     return ClassifiedAction(
         **item,  # type: ignore[misc]
-        topics=[],
         urgency="low",
         werte_relevanz={},
         pro_argumente=[],
@@ -406,7 +278,7 @@ def _default_classified(item: RawSourceItem) -> ClassifiedAction:
         action_types=[],
         is_controversial=False,
         position_required=False,
-        momentum_score=calculate_momentum(0),
+        momentum_score=calculate_momentum(imminence),
     )
 
 
@@ -425,12 +297,14 @@ async def _persist(
             continue
         domain_type = map_domain_action_type(item)
         urgency = item.get("urgency", "low")
+        imminence = item.get("imminence_score", 0.3)  # type: ignore[misc]
+        momentum = calculate_momentum(imminence)
+
         record = {
             "id": str(uuid4()),
             "title": item["title"],
             "action_type": domain_type,
             "summary": item.get("description", item["title"])[:500],
-            "topics": item.get("topics", []),
             "region": None,
             "deadline": item.get("deadline"),
             "effort_minutes": effort_minutes_for(domain_type),
@@ -445,7 +319,7 @@ async def _persist(
             "is_controversial": item.get("is_controversial", False),
             "position_required": item.get("position_required", False),
             "tavily_context": item.get("tavily_context"),
-            "momentum_score": item.get("momentum_score", 0.3),
+            "momentum_score": momentum,
             "active": True,
             "updated_at": datetime.now(UTC),
         }

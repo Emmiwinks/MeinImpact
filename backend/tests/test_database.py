@@ -27,3 +27,30 @@ def test_persistent_tables_avoid_direct_identity_columns() -> None:
         assert "full_name" not in table.columns
         assert "street_address" not in table.columns
         assert "email_address" not in table.columns
+
+
+def test_civic_actions_orm_columns_match_current_schema() -> None:
+    """Guards against ORM/migration drift.
+
+    If a column is added or dropped in a migration but the SQLAlchemy model
+    isn't updated (or vice versa), this list goes stale and the test fails.
+    Update it intentionally when the schema changes.
+    """
+    cols = {c.name for c in Base.metadata.tables["civic_actions"].columns}
+    # Columns removed in migration 202606240007 must NOT appear in the ORM model.
+    assert "topics" not in cols
+    # Core columns that must always be present.
+    required = {
+        "id", "title", "action_type", "summary", "region",
+        "deadline", "effort_minutes", "impact_hint", "source_url",
+        "urgency", "werte_relevanz", "momentum_score", "active", "updated_at",
+    }
+    missing = required - cols
+    assert not missing, f"ORM model is missing expected columns: {missing}"
+
+
+def test_user_profiles_orm_columns_match_current_schema() -> None:
+    """Same drift guard for user_profiles. topics was removed in 202606240007."""
+    cols = {c.name for c in Base.metadata.tables["user_profiles"].columns}
+    assert "topics" not in cols
+    assert "werte" in cols

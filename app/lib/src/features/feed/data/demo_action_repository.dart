@@ -21,7 +21,6 @@ class DemoActionRepository implements ActionRepository {
           title: copy.solarTitle,
           actionType: 'representative_letter',
           summary: copy.solarSummary,
-          topics: [copy.topicClimate, copy.topicHousing, copy.topicEnergy],
           region: 'Germany',
           effortMinutes: 3,
           impactHint: copy.solarImpactHint,
@@ -29,7 +28,6 @@ class DemoActionRepository implements ActionRepository {
         ),
         score: 95,
         reasons: [
-          copy.solarReasonTopics,
           copy.solarReasonEffort,
         ],
       ),
@@ -39,7 +37,6 @@ class DemoActionRepository implements ActionRepository {
           title: copy.schoolTitle,
           actionType: 'petition_signature',
           summary: copy.schoolSummary,
-          topics: [copy.topicDemocracy],
           region: 'Germany',
           effortMinutes: 2,
           impactHint: copy.schoolImpactHint,

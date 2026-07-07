@@ -10,8 +10,12 @@ State (Länder) and municipal sources are out of scope for MVP.
 ## Decisions
 
 - **Only official or established sources are used.** No scraping of news
-  sites or unofficial aggregators for civic action data. News context
-  (Tavily, NewsData.io) is supplementary, not the primary action source.
+  sites or unofficial aggregators for civic action data.
+
+- **No topic taxonomy.** Sources are queried broadly for active and
+  imminent parliamentary items, not filtered by predefined topic keywords.
+  Hotness is determined by parliamentary stage (beratungsstand) and
+  recency, not by subject-area matching.
 
 - **All sources are public and free.** No paid API tiers are required for
   MVP. Rate limits are respected via scheduled batch fetching, not
@@ -44,18 +48,33 @@ Free registration at dip.bundestag.de. A public demo key is available.
 
 ```
 GET /vorgang
-  ?f.vorgangstyp=Antrag          ← repeated for each type (NOT comma-separated)
-  &f.vorgangstyp=Gesetzentwurf
-  &f.datum.start={yesterday}
+  ?f.beratungsstand=2.+Beratung+und+Schlussabstimmung
+  &f.beratungsstand=3.+Beratung
+  &f.beratungsstand=2.+Beratung
+  &f.aktualisiert.start={7_days_ago}
   &format=json
-  → Parliamentary processes (Gesetzentwürfe, Anträge)
+  → Late-stage Vorgänge approaching a vote
+
+GET /vorgang
+  ?f.beratungsstand=Ausschussberatung
+  &f.aktualisiert.start={3_days_ago}
+  &format=json
+  → Vorgänge in active committee deliberation
 
 GET /vorgang
   ?f.vorgangstyp=Petition
-  &f.beratungsstand=Noch+nicht+beraten   ← f.status does not exist; use f.beratungsstand
+  &f.beratungsstand=Noch+nicht+beraten
   &format=json
-  → Open Bundestag petitions
+  → Open Bundestag petitions (always included)
 ```
+
+Each fetched item receives an **imminence score** (0.0–1.0) based on its
+`beratungsstand` stage and recency of the last activity (`datum` field).
+See `data/ingestion-pipeline.md` Stage 0 for the scoring formula.
+
+> **Note on beratungsstand values:** The controlled vocabulary is not
+> published by the Bundestag. The values above are verified against live
+> API data and should be re-checked if DIP API behaviour changes.
 
 **Endpoints that do NOT exist (corrected from earlier assumptions):**
 - `GET /abstimmung` — this endpoint is not in the API. Votes are
@@ -227,39 +246,16 @@ Free tier: 100 queries/day (sufficient for MVP at ≤10 topics/day).
 
 ## Source 5: NewsData.io
 
-**Purpose:** Current German political news for Tavily context enrichment
-and urgency scoring.
-
-**Base URL:** `https://newsdata.io/api/1/latest`
-**Authentication:** API key (free tier)
-**Rate limit:** 200 credits/day; 10 articles/credit = 2,000 articles/day
-**Latency:** ~12 hours delay on free tier (acceptable for daily batch)
-
-**Query used:**
-
-```
-GET /latest?country=de&category=politics&language=de&apikey={key}
-```
-
-**Fields extracted:**
-
-```python
-{
-  "title": str,
-  "description": str,
-  "source_name": str,
-  "published_at": datetime,
-  "link": str,
-}
-```
-
-**Used for:**
-- Input to Tavily search queries (article titles trigger Tavily deep search)
-- Urgency boosting: if a DIP action appears in 3+ news articles this week,
-  its `momentum_score` increases
-
-**Not stored as actions.** News items are not inserted into the `actions`
-table. They are used as signals to enrich and score existing actions.
+> **MVP STATUS: NOT USED IN PIPELINE.**
+> NewsData.io was previously used as a topic-frequency signal for the
+> now-removed topic radar (Stage 0). With the new beratungsstand-based
+> hotness evaluation, parliamentary process stage is the primary signal
+> and no external news counting is required.
+>
+> NewsData.io may be re-introduced in a future version if a news-context
+> enrichment use case arises (e.g. boosting momentum score when an action
+> appears in current coverage). The API key config (`MEINIMPACT_NEWSDATA_API_KEY`)
+> is retained for this purpose.
 
 ---
 

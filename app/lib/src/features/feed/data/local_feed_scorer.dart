@@ -18,46 +18,31 @@ class LocalFeedScorer {
   }
 
   ActionRecommendation _scoreAction(CivicAction action, UserProfile profile) {
-    // Hard exclusions
-    final actionTopics = action.topics.toSet();
-    final hasMatchingTopic = profile.topics.any(actionTopics.contains);
-    final isBlacklisted = profile.blacklist.any(actionTopics.contains);
-    if (!hasMatchingTopic || isBlacklisted) {
-      return ActionRecommendation(action: action, score: 0, reasons: const []);
-    }
-
     final reasons = <String>[];
 
-    // 1. Topic match: fraction of action topics in user's whitelist
-    final matched = actionTopics.where(profile.topics.contains).length;
-    final topicMatch = matched / actionTopics.length.clamp(1, 10);
-    if (topicMatch > 0) {
-      reasons.add('Passt zu deinen Themen.');
-    }
-
-    // 2. Werte match (0.0–1.0) — neutral 0.5 when no axes overlap
+    // 1. Werte match (0.0–1.0) — neutral 0.5 when profile not filled in
     final werteMatch =
         profile.answeredCount >= 4 ? _computeWerteMatch(action, profile) : 0.5;
+    if (werteMatch > 0.65) reasons.add('Passt zu deinen Werten.');
 
-    // 3. Urgency
+    // 2. Urgency
     final urgencyScore = switch (action.urgency) {
       'high' => 1.0,
       'mid' => 0.6,
       _ => 0.3,
     };
-    if (urgencyScore >= 0.6) reasons.add('Deadline ist bald.');
+    if (urgencyScore >= 0.6) reasons.add('Zeitkritisch — bald entschieden.');
 
-    // 4. Deadline proximity bonus (0.0–0.4)
+    // 3. Deadline proximity bonus (0.0–0.4)
     final deadlineBonus = action.deadline == null
         ? 0.0
         : (1.0 - (action.deadline!.difference(DateTime.now()).inDays / 60.0))
             .clamp(0.0, 0.4);
 
-    // 5. Momentum (0.05 weight, no data yet → 0)
+    // 4. Momentum (from server-side imminence score; not yet passed through)
     const momentumBonus = 0.0;
 
-    final raw = topicMatch * 0.35 +
-        werteMatch * 0.25 +
+    final raw = werteMatch * 0.60 +
         urgencyScore * 0.25 +
         deadlineBonus * 0.10 +
         momentumBonus * 0.05;

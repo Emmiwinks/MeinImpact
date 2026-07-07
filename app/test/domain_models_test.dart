@@ -10,34 +10,29 @@ void main() {
         'title': 'Action title',
         'action_type': 'representative_letter',
         'summary': 'Action summary',
-        'topics': ['democracy', 'climate'],
         'region': 'Germany',
         'effort_minutes': 3,
         'impact_hint': 'Track later.',
         'source_url': 'https://example.org',
       },
       'score': 91,
-      'reasons': ['Matches democracy.'],
+      'reasons': ['Passt zu deinen Werten.'],
     });
 
     expect(recommendation.score, 91);
-    expect(recommendation.reasons, ['Matches democracy.']);
+    expect(recommendation.reasons, ['Passt zu deinen Werten.']);
     expect(recommendation.action.id, 'action-1');
     expect(recommendation.action.actionType, 'representative_letter');
-    expect(recommendation.action.topics, ['democracy', 'climate']);
     expect(recommendation.action.effortMinutes, 3);
   });
 
   test('serializes user profile for backend requests', () {
     const profile = UserProfile(
-      topics: ['klimaschutz'],
       werte: {'wirtschaft_gleichheit': 2},
       region: 'Germany',
     );
 
     expect(profile.toJson(), {
-      'topics': ['klimaschutz'],
-      'blacklist': <String>[],
       'werte': {'wirtschaft_gleichheit': 2},
       'region': 'Germany',
       'plz': null,
@@ -49,7 +44,6 @@ void main() {
 
   test('derives value axes from werte question scores', () {
     const profile = UserProfile(
-      topics: ['klimaschutz'],
       werte: {
         'wirtschaft_gleichheit': -2,
         'wirtschaft_staat': -1,

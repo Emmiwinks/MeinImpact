@@ -19,6 +19,7 @@ class RawSourceItem(TypedDict):
     # Optional fields added by specific adapters or pipeline stages:
     signature_count: NotRequired[int]  # WeAct only
     tavily_context: NotRequired[str]  # Added in Stage 4
+    imminence_score: NotRequired[float]  # 0.0–1.0, from DIP beratungsstand scoring
 
 
 class SourceAdapter(Protocol):

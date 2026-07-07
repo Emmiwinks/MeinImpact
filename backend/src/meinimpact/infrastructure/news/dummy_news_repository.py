@@ -15,7 +15,6 @@ _DUMMY_NEWS: tuple[NewsItem, ...] = (
         ),
         source="Bundestag calendar dummy source",
         published_at=datetime(2026, 5, 29, 8, 0, tzinfo=UTC),
-        topics=("climate", "housing", "energy"),
         url="https://www.bundestag.de/",
     ),
     NewsItem(
@@ -27,7 +26,6 @@ _DUMMY_NEWS: tuple[NewsItem, ...] = (
         ),
         source="Petition platform dummy source",
         published_at=datetime(2026, 5, 28, 12, 0, tzinfo=UTC),
-        topics=("education", "public spending"),
         url="https://epetitionen.bundestag.de/",
     ),
 )

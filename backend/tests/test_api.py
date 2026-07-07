@@ -90,7 +90,6 @@ def test_recommendations_route_returns_explanations() -> None:
         headers=_auth_headers(client),
         json={
             "profile": {
-                "topics": ["climate", "housing"],
                 "value_axes": {"civil_rights": 2},
                 "region": "Germany",
             },

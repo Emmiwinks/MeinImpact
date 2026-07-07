@@ -52,18 +52,22 @@ Flutter app
           Response: JSON array, ≤ 100 items, ≤ 150 KB
           [
             {
-              id, title, type, topics[], urgency, deadline,
-              source_url, pro_argumente[], contra_argumente[],
+              id, title, action_type, summary, urgency, deadline,
+              source_url, effort_minutes, impact_hint,
+              pro_argumente[], contra_argumente[],
+              werte_relevanz{}, action_types[],
+              is_controversial, position_required,
               momentum_score, created_at
             }
           ]
 
 Flutter app (local, no network)
-  ├─ Read profile from Hive
-  ├─ Score each action: topic_match × werte_match × urgency_score
+  ├─ Read profile from Hive (werte axes only — no topics)
+  ├─ Score each action: werte_match × 0.60 + urgency × 0.25
+  │                    + deadline_bonus × 0.10 + momentum × 0.05
+  ├─ Filter: score ≥ 0.2 threshold
   ├─ Sort descending
-  ├─ Insert surprise slot (position 3): highest urgency outside user topics
-  └─ Render top 5 in feed
+  └─ Render feed (no hardcoded limit)
 ```
 
 The backend returns the same pool to every device. Personalisation is
@@ -236,21 +240,28 @@ Flutter app
 
 ```
 Backend (APScheduler, runs at 03:00 CET)
-  ├─ Fetch Bundestag DIP API → new Drucksachen, Abstimmungen, Petitionen
-  ├─ Fetch WeAct RSS feed → new petitions
-  ├─ Fetch NewsData.io → ?country=de&category=politics, last 24h
-  ├─ Fetch EU consultations portal (scrape or RSS)
-  ├─ Deduplicate against existing action pool
-  ├─ Prefilter:
-  │    - Deadline within 60 days OR no deadline (ongoing)
-  │    - Minimum relevance threshold (keyword match against known topics)
-  ├─ For each new item:
-  │    a. Call Tavily: search "{title} Hintergründe Lobbyismus Auswirkungen"
-  │    b. Call Mistral classify_action: returns topics[], urgency,
-  │       pro_argumente[], contra_argumente[], werte_relevanz{}
-  │    c. INSERT INTO actions (...)
+  │
+  ├─ Stage 0: DIP API → Vorgänge filtered by active beratungsstand
+  │    (2./3. Beratung, Ausschussberatung) + recent aktualisiert date
+  │    Each item scored by imminence (stage × recency)
+  │
+  ├─ Stage 1: Tavily → broad petition search on WeAct + openPetition
+  │
+  ├─ Deduplicate (URL exact + fuzzy title match)
+  │
+  ├─ Prefilter (title length, German language, petition rules)
+  │
+  ├─ Stage 4: Tavily enrichment — SKIPPED in MVP
+  │
+  ├─ Stage 5: Mistral classify_action:
+  │    returns urgency, werte_relevanz{}, pro/contra_argumente[],
+  │    action_types[], is_controversial, position_required
+  │    (no topics — classification is topic-free)
+  │
+  ├─ INSERT INTO civic_actions (...) ON CONFLICT (source_url) DO UPDATE
+  │
   ├─ Deactivate actions past deadline + 7 days grace
-  └─ Log run result to api_spend
+  └─ Log run to pipeline_runs
 ```
 
 No user data involved at any point.
@@ -262,7 +273,7 @@ No user data involved at any point.
 | Data | Device | Backend | Mistral | Tavily | NewsData |
 |---|---|---|---|---|---|
 | Value scores | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Topics | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Werte axes | ✅ | ❌ | ❌ | ❌ | ❌ |
 | PLZ (full) | ✅ | MdB lookup only, not stored | ❌ | ❌ | ❌ |
 | PLZ prefix (2 digits) | ✅ | Context + letter flows, not stored | ✅ transient | ❌ | ❌ |
 | Lebenssituation | ✅ | Context + letter flows, not stored | ✅ transient | ❌ | ❌ |

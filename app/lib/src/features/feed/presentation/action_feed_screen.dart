@@ -26,9 +26,7 @@ class ActionFeedScreen extends StatelessWidget {
   final UserProfile? profile;
   final VoidCallback? onEditProfile;
 
-  static const _fallbackProfile = UserProfile(
-    topics: ['klimaschutz', 'demokratie'],
-  );
+  static const _fallbackProfile = UserProfile();
 
   @override
   Widget build(BuildContext context) {

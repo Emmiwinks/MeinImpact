@@ -17,7 +17,6 @@ def _make_record(action_id: str = "test-action") -> CivicActionRecord:
     record.title = "Testmaßnahme"
     record.action_type = ActionType.PETITION_SIGNATURE
     record.summary = "Eine Testzusammenfassung."
-    record.topics = ["climate", "energy"]
     record.region = "Germany"
     record.deadline = date(2026, 12, 31)
     record.effort_minutes = 3
@@ -44,7 +43,6 @@ def test_to_domain_maps_record_to_civic_action() -> None:
     assert isinstance(action, CivicAction)
     assert action.id == "test-action"
     assert action.action_type == ActionType.PETITION_SIGNATURE
-    assert action.topics == ("climate", "energy")
 
 
 async def test_list_open_actions_returns_all_records() -> None:

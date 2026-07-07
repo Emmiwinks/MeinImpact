@@ -4,7 +4,6 @@ class CivicAction {
     required this.title,
     required this.actionType,
     required this.summary,
-    required this.topics,
     required this.region,
     required this.effortMinutes,
     required this.impactHint,
@@ -22,7 +21,6 @@ class CivicAction {
       title: json['title'] as String,
       actionType: json['action_type'] as String,
       summary: json['summary'] as String,
-      topics: (json['topics'] as List<Object?>).cast<String>(),
       region: json['region'] as String?,
       effortMinutes: json['effort_minutes'] as int,
       impactHint: json['impact_hint'] as String,
@@ -39,7 +37,6 @@ class CivicAction {
   final String title;
   final String actionType;
   final String summary;
-  final List<String> topics;
   final String? region;
   final int effortMinutes;
   final String impactHint;

@@ -1,7 +1,5 @@
 class UserProfile {
   const UserProfile({
-    required this.topics,
-    this.blacklist = const [],
     this.werte = const {},
     this.region,
     this.plz,
@@ -13,8 +11,6 @@ class UserProfile {
   factory UserProfile.fromJson(Map<String, Object?> json) {
     final werteRaw = json['werte'] as Map<String, Object?>? ?? {};
     return UserProfile(
-      topics: (json['topics'] as List<Object?>? ?? []).cast<String>(),
-      blacklist: (json['blacklist'] as List<Object?>? ?? []).cast<String>(),
       werte: werteRaw.map((k, v) => MapEntry(k, v as int)),
       region: json['region'] as String?,
       plz: json['plz'] as String?,
@@ -23,10 +19,6 @@ class UserProfile {
       mdbWahlkreis: json['mdb_wahlkreis'] as String?,
     );
   }
-
-  /// Selected topic keys (whitelist).
-  final List<String> topics;
-  final List<String> blacklist;
 
   /// Raw 8values question scores (-2 to +2, 0 = neutral/unanswered).
   /// Keys: wirtschaft_gleichheit, wirtschaft_staat, diplomatie_nation,
@@ -69,8 +61,6 @@ class UserProfile {
 
   Map<String, Object?> toJson() {
     return {
-      'topics': topics,
-      'blacklist': blacklist,
       'werte': werte,
       'region': region,
       'plz': plz,

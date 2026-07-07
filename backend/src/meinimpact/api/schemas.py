@@ -72,14 +72,12 @@ class HealthResponse(BaseModel):
 class UserProfileRequest(BaseModel):
     """User profile fragment needed for recommendations."""
 
-    topics: list[str] = Field(min_length=1, max_length=20)
     value_axes: dict[str, int] = Field(default_factory=dict)
     region: str | None = Field(default=None, max_length=80)
 
     def to_domain(self) -> UserProfile:
         """Converts the request into a domain profile."""
         return UserProfile(
-            topics=tuple(self.topics),
             value_axes=dict(self.value_axes),
             region=self.region,
         )
@@ -95,7 +93,6 @@ class ActionResponse(BaseModel):
     title: str
     action_type: str
     summary: str
-    topics: list[str]
     region: str | None
     deadline: date | None
     effort_minutes: int
@@ -110,7 +107,6 @@ class ActionResponse(BaseModel):
             title=action.title,
             action_type=action.action_type.value,
             summary=action.summary,
-            topics=list(action.topics),
             region=action.region,
             deadline=action.deadline,
             effort_minutes=action.effort_minutes,
@@ -126,7 +122,6 @@ class ActionPoolItemResponse(BaseModel):
     title: str
     action_type: str
     summary: str
-    topics: list[str]
     region: str | None
     deadline: date | None
     effort_minutes: int
@@ -150,7 +145,6 @@ class ActionPoolItemResponse(BaseModel):
             title=action.title,
             action_type=action.action_type.value,
             summary=action.summary,
-            topics=list(action.topics),
             region=action.region,
             deadline=action.deadline,
             effort_minutes=action.effort_minutes,
@@ -358,7 +352,6 @@ class NewsItemResponse(BaseModel):
     summary: str
     source: str
     published_at: datetime
-    topics: list[str]
     url: str
 
     @classmethod
@@ -370,7 +363,6 @@ class NewsItemResponse(BaseModel):
             summary=news_item.summary,
             source=news_item.source,
             published_at=news_item.published_at,
-            topics=list(news_item.topics),
             url=news_item.url,
         )
 

@@ -8,7 +8,7 @@ Based on the real DIP OpenAPI spec v1.5. Key facts verified against it:
 - API key always required.
 """
 
-from datetime import date, datetime
+from datetime import date
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -94,23 +94,59 @@ def _make_client(side_effect: list[MagicMock]) -> AsyncMock:
 
 
 # ---------------------------------------------------------------------------
-# fetch_new_items — happy path
+# URL encoding — spaces must be %20, not +
 # ---------------------------------------------------------------------------
 
 
-async def test_fetch_new_items_returns_vorgaenge_and_petitionen() -> None:
+async def test_fetch_hot_items_request_url_uses_percent_encoding() -> None:
+    """DIP API rejects + encoding in filter values; spaces must appear as %20.
+
+    This test captures the actual URL string passed to client.get() and
+    asserts that beratungsstand values use %20, not +. It would have caught
+    the encoding bug discovered when first running the pipeline live.
+    """
+    adapter = DipAdapter(api_key="test-key")
+    captured: list[str] = []
+
+    async def _capturing_get(url: str, **_: object) -> MagicMock:
+        captured.append(url)
+        return _make_response({"numFound": 0, "cursor": _CURSOR_A, "documents": []})
+
+    client = MagicMock()
+    client.__aenter__ = AsyncMock(return_value=client)
+    client.__aexit__ = AsyncMock(return_value=False)
+    client.get = _capturing_get
+
+    with patch(
+        "meinimpact.infrastructure.sources.dip_adapter.httpx.AsyncClient",
+        return_value=client,
+    ):
+        await adapter.fetch_hot_items()
+
+    beratungsstand_urls = [u for u in captured if "beratungsstand" in u]
+    assert beratungsstand_urls, "Expected at least one request with f.beratungsstand"
+    for url in beratungsstand_urls:
+        assert "%20" in url, f"Space must be %%20, not +, in: {url}"
+        assert "Beratung+und" not in url, f"Found + encoding in: {url}"
+
+
+# ---------------------------------------------------------------------------
+# fetch_hot_items — happy path
+# ---------------------------------------------------------------------------
+
+
+async def test_fetch_hot_items_returns_vorgaenge_and_petitionen() -> None:
     adapter = DipAdapter(api_key="test-key")
     responses = [
-        # Vorgänge (Anträge + Gesetzentwürfe): single page, cursor unchanged
+        # Pass A (late stage): single page, cursor stable after 2 requests
         _make_response(
-            {
-                "numFound": 2,
-                "cursor": _CURSOR_A,
-                "documents": [_GESETZENTWURF_DOC, _ANTRAG_DOC],
-            }
+            {"numFound": 2, "cursor": _CURSOR_A, "documents": [_GESETZENTWURF_DOC, _ANTRAG_DOC]}
         ),
         _make_response({"numFound": 2, "cursor": _CURSOR_A, "documents": []}),
-        # Petitionen: single page, cursor unchanged
+        # Pass B (committee): empty, cursor stable
+        _make_response({"numFound": 0, "cursor": _CURSOR_A, "documents": []}),
+        _make_response({"numFound": 0, "cursor": _CURSOR_A, "documents": []}),
+        # Pass C (petitionen): one item, cursor stable
         _make_response(
             {"numFound": 1, "cursor": _CURSOR_B, "documents": [_PETITION_DOC]}
         ),
@@ -120,7 +156,7 @@ async def test_fetch_new_items_returns_vorgaenge_and_petitionen() -> None:
         "meinimpact.infrastructure.sources.dip_adapter.httpx.AsyncClient",
         return_value=_make_client(responses),
     ):
-        items = await adapter.fetch_new_items(datetime(2024, 1, 14))
+        items = await adapter.fetch_hot_items()
 
     assert len(items) == 3
     types = {item["type"] for item in items}
@@ -129,11 +165,16 @@ async def test_fetch_new_items_returns_vorgaenge_and_petitionen() -> None:
     assert "petition" in types
 
 
-async def test_fetch_new_items_returns_empty_when_no_docs() -> None:
+async def test_fetch_hot_items_returns_empty_when_no_docs() -> None:
     adapter = DipAdapter(api_key="test-key")
     responses = [
+        # Pass A: empty
         _make_response({"numFound": 0, "cursor": _CURSOR_A, "documents": []}),
         _make_response({"numFound": 0, "cursor": _CURSOR_A, "documents": []}),
+        # Pass B: empty
+        _make_response({"numFound": 0, "cursor": _CURSOR_A, "documents": []}),
+        _make_response({"numFound": 0, "cursor": _CURSOR_A, "documents": []}),
+        # Pass C: empty
         _make_response({"numFound": 0, "cursor": _CURSOR_B, "documents": []}),
         _make_response({"numFound": 0, "cursor": _CURSOR_B, "documents": []}),
     ]
@@ -141,7 +182,7 @@ async def test_fetch_new_items_returns_empty_when_no_docs() -> None:
         "meinimpact.infrastructure.sources.dip_adapter.httpx.AsyncClient",
         return_value=_make_client(responses),
     ):
-        items = await adapter.fetch_new_items(datetime(2024, 1, 14))
+        items = await adapter.fetch_hot_items()
 
     assert items == []
 
@@ -154,27 +195,27 @@ async def test_fetch_new_items_returns_empty_when_no_docs() -> None:
 async def test_fetch_paginated_follows_cursor_until_unchanged() -> None:
     """Pagination makes follow-up requests as long as cursor keeps changing."""
     adapter = DipAdapter(api_key="test-key")
-    # Vorgänge: two pages (cursor changes once), then stops
-    # Petitionen: single page
     responses = [
+        # Pass A (late stage): two pages (cursor changes once then stops)
         _make_response(
             {"numFound": 2, "cursor": _CURSOR_A, "documents": [_GESETZENTWURF_DOC]}
         ),
-        # Second request with cursor=_CURSOR_A → new cursor _CURSOR_B
         _make_response(
             {"numFound": 2, "cursor": _CURSOR_B, "documents": [_ANTRAG_DOC]}
         ),
-        # Third request with cursor=_CURSOR_B → same cursor → stop
         _make_response({"numFound": 2, "cursor": _CURSOR_B, "documents": []}),
-        # Petitionen: immediately stable cursor
+        # Pass B (committee): empty, stable cursor
         _make_response({"numFound": 0, "cursor": _CURSOR_A, "documents": []}),
         _make_response({"numFound": 0, "cursor": _CURSOR_A, "documents": []}),
+        # Pass C (petitionen): empty, stable cursor
+        _make_response({"numFound": 0, "cursor": _CURSOR_B, "documents": []}),
+        _make_response({"numFound": 0, "cursor": _CURSOR_B, "documents": []}),
     ]
     with patch(
         "meinimpact.infrastructure.sources.dip_adapter.httpx.AsyncClient",
         return_value=_make_client(responses),
     ):
-        items = await adapter.fetch_new_items(datetime(2024, 1, 14))
+        items = await adapter.fetch_hot_items()
 
     assert len(items) == 2
     assert items[0]["external_id"] == "270049"
@@ -213,7 +254,7 @@ async def test_fetch_item_detail_raises_on_http_error() -> None:
         await adapter.fetch_item_detail("999")
 
 
-async def test_fetch_new_items_raises_on_http_error() -> None:
+async def test_fetch_hot_items_raises_on_http_error() -> None:
     """Pipeline catches adapter exceptions; adapter propagates them."""
     adapter = DipAdapter(api_key="test-key")
     client = _make_client([_make_response({}, status=401)])
@@ -224,7 +265,7 @@ async def test_fetch_new_items_raises_on_http_error() -> None:
         ),
         pytest.raises(httpx.HTTPStatusError),
     ):
-        await adapter.fetch_new_items(datetime(2024, 1, 14))
+        await adapter.fetch_hot_items()
 
 
 # ---------------------------------------------------------------------------
@@ -371,3 +412,45 @@ def test_extract_initiative_missing_key() -> None:
 
 def test_extract_initiative_filters_empty_entries() -> None:
     assert _extract_initiative({"initiative": ["SPD", "", "Grüne"]}) == "SPD, Grüne"
+
+
+# ---------------------------------------------------------------------------
+# Live integration test — excluded from default CI run (-m 'not live')
+# Run manually: pytest -m live tests/test_dip_adapter.py
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.live
+async def test_fetch_hot_items_live_response_shape() -> None:
+    """Hits the real DIP API and validates the response contract.
+
+    Run with: docker compose exec api python -m pytest -m live tests/test_dip_adapter.py
+
+    Catches:
+    - API endpoint changes (URL, auth, param names)
+    - Field renames in the Vorgang schema
+    - beratungsstand value changes that would silently return 0 results
+    - URL encoding issues (the + vs %20 class of bug)
+    """
+    from meinimpact.core.config import Settings
+
+    settings = Settings()
+    if not settings.dip_api_key:
+        pytest.skip("MEINIMPACT_DIP_API_KEY not set")
+
+    adapter = DipAdapter(api_key=settings.dip_api_key)
+    items = await adapter.fetch_hot_items()
+
+    assert isinstance(items, list), "fetch_hot_items must return a list"
+    assert len(items) > 0, (
+        "Expected at least one hot item — if Bundestag is in recess this may "
+        "legitimately be empty; verify manually."
+    )
+
+    for item in items:
+        assert item["external_id"], "external_id must be non-empty"
+        assert item["title"], "title must be non-empty"
+        assert item["source"] == "dip"
+        assert item["source_url"].startswith("https://dip.bundestag.de/vorgang/")
+        assert 0.0 <= item["imminence_score"] <= 1.0
+        assert item["type"] in {"gesetzentwurf", "antrag", "petition"}

@@ -32,14 +32,6 @@ class RecommendationService:
         """Scores one action and records human-readable reasons."""
         score = 10
         reasons = ["Base score for currently available civic actions."]
-        topic_overlap = profile.normalized_topics.intersection(
-            topic.lower() for topic in action.topics
-        )
-        if topic_overlap:
-            score += 40 + (5 * len(topic_overlap))
-            reasons.append(
-                "Matches selected topics: " + ", ".join(sorted(topic_overlap)) + "."
-            )
         if profile.region and action.region == profile.region:
             score += 20
             reasons.append(f"Matches the user's region: {profile.region}.")

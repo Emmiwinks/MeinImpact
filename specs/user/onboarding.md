@@ -12,8 +12,10 @@ steps, consent collection, and the transition to the main feed.
   is set to true in Hive. The app never shows onboarding again unless local
   data is deleted.
 
-- **Three screens are mandatory and blocking.** Consent, topic selection, and
-  value profile must be completed before the feed is shown.
+- **Two screens are mandatory and blocking.** Consent and value profile
+  must be completed before the feed is shown. There is no topic selection
+  — the feed covers all actionable civic items and is personalised purely
+  by political value alignment.
 
 - **Demographic profile is optional and presented after the mandatory steps.**
   Skipping it degrades personalisation quality but does not block access.
@@ -32,11 +34,10 @@ steps, consent collection, and the transition to the main feed.
 ```
 1. Welcome screen              (informational, no input)
 2. Age + consent screen        (blocking, all items required)
-3. Topic selection             (blocking, min. 2 topics required)
-4. Value profile               (blocking, min. 4 of 8 questions answered)
-5. Demographic profile         (optional, skippable)
-6. Notification opt-in         (optional, skippable)
-7. Feed                        (onboarding complete)
+3. Value profile               (blocking, min. 4 of 8 questions answered)
+4. Demographic profile         (optional, skippable)
+5. Notification opt-in         (optional, skippable)
+6. Feed                        (onboarding complete)
 ```
 
 ---
@@ -79,44 +80,7 @@ Link to terms of service.
 
 ---
 
-## Screen 3: Topic Selection
-
-**Content:**
-Headline: "What matters to you? Choose at least 2."
-Grid of topic tiles (2 columns). Each tile: emoji + label.
-
-Topics (MVP scope — federal level only):
-
-| Key | Label | Emoji |
-|---|---|---|
-| klimaschutz | Klimaschutz | 🌱 |
-| soziales | Soziale Gerechtigkeit | 🤝 |
-| demokratie | Demokratie & Rechtsstaat | 🗳️ |
-| bildung | Bildung | 📚 |
-| gesundheit | Gesundheit | 🏥 |
-| wirtschaft | Wirtschaft & Arbeit | 💼 |
-| wohnen | Wohnen | 🏠 |
-| digital | Digitalisierung | 💻 |
-| verkehr | Verkehr & Infrastruktur | 🚆 |
-| aussenpolitik | Außenpolitik | 🌍 |
-
-Selected tiles highlight in brand green. Deselecting is allowed.
-
-Below the grid: optional blacklist toggle per topic:
-Small "Never show" toggle visible on long-press of a tile. Adds topic to
-`profile.blacklist[]`. Blacklisted topics are excluded from feed even if
-they have high urgency.
-
-**Data collected:**
-- `profile.topics[]` (selected keys)
-- `profile.blacklist[]` (long-pressed keys, may be empty)
-
-**Validation:** Minimum 2 topics selected (not blacklisted). CTA disabled otherwise.
-**Skip:** Not possible.
-
----
-
-## Screen 4: Value Profile (8values)
+## Screen 3: Value Profile (8values)
 
 **Content:**
 Headline: "Where do you stand?"
@@ -205,7 +169,7 @@ centre (value = 0) up to a maximum of 4.
 
 ---
 
-## Screen 5: Demographic Profile (Optional)
+## Screen 4: Demographic Profile (Optional)
 
 **Content:**
 Headline: "Tell us a bit more (optional)"
@@ -248,7 +212,7 @@ Skip button visible at top right throughout this screen.
 
 ---
 
-## Screen 6: Notification Opt-In (Optional)
+## Screen 5: Notification Opt-In (Optional)
 
 **Content:**
 Headline: "Stay informed"

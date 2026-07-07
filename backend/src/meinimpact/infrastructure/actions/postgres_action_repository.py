@@ -38,7 +38,6 @@ def _to_domain(record: CivicActionRecord) -> CivicAction:
         title=record.title,
         action_type=ActionType(record.action_type),
         summary=record.summary,
-        topics=tuple(record.topics),
         region=record.region,
         deadline=record.deadline,
         effort_minutes=record.effort_minutes,
