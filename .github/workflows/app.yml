@@ -119,11 +119,13 @@ jobs:
       - name: Build web release
         run: flutter build web --release --pwa-strategy=none --dart-define=MEINIMPACT_API_BASE_URL=https://api.meinimpact.de
 
-      - name: Upload web artifact
-        uses: actions/upload-artifact@v4
+      - name: Deploy to Cloudflare Pages
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: cloudflare/wrangler-action@v3
         with:
-          name: web-release
-          path: app/build/web
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy app/build/web --project-name=meinimpact --branch=main
 
   linux:
     name: Build Linux app
@@ -201,25 +203,6 @@ jobs:
         with:
           name: windows-debug
           path: app/build/windows
-
-  deploy_web:
-    name: Deploy web to Cloudflare Pages
-    runs-on: ubuntu-latest
-    needs: web
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    steps:
-      - name: Download web artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: web-release
-          path: build/web
-
-      - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy build/web --project-name=meinimpact --branch=main
 
   apple:
     name: Build Apple apps
