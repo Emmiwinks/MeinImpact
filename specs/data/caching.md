@@ -114,7 +114,10 @@ Future<List<Action>> getPool() async {
 }
 ```
 
-**Cache size:** ≤ 150 KB JSON (100 actions × ~1.5 KB each).
+**Cache size:** ≤ 150 KB JSON (100 actions × ~1.5 KB each). The
+`engagement_state`, `state_reason`, and `pipeline_source` fields add
+negligible size (a one-letter code, a short German sentence, and a
+short enum string per action).
 
 ### Session cache (current action + draft)
 

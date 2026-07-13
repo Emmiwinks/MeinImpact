@@ -54,4 +54,5 @@ def _statement_to_domain(record: MdbStatementRecord) -> MdbStatement:
         statement_summary=record.statement_summary,
         source_url=record.source_url,
         searched_at=record.searched_at,
+        source=record.source,
     )

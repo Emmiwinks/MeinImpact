@@ -83,6 +83,35 @@ class DipAdapter:
         logger.info("DIP fetch: %d hot items total", len(items))
         return items
 
+    async def fetch_new_items(self, since: datetime) -> list[RawSourceItem]:
+        """Satisfies the `SourceAdapter` Protocol for Pipeline 1
+        (parliamentary): late-stage + committee-deliberation Vorgänge only.
+        Excludes open petitions — see `fetch_open_petitions()` for Pipeline
+        2's Bundestag-petition-portal source.
+
+        `since` is currently unused; each pass uses its own fixed lookback
+        window (see `_LATE_STAGE_LOOKBACK_DAYS` / `_COMMITTEE_LOOKBACK_DAYS`),
+        matching `fetch_hot_items()`'s existing behaviour.
+        """
+        items: list[RawSourceItem] = []
+        seen_urls: set[str] = set()
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            for item in await self._fetch_late_stage(client):
+                if item["source_url"] not in seen_urls:
+                    items.append(item)
+                    seen_urls.add(item["source_url"])
+            for item in await self._fetch_committee_stage(client):
+                if item["source_url"] not in seen_urls:
+                    items.append(item)
+                    seen_urls.add(item["source_url"])
+        return items
+
+    async def fetch_open_petitions(self) -> list[RawSourceItem]:
+        """Pipeline 2 source: open Bundestag petitions from the petition
+        portal (`f.vorgangstyp=Petition`)."""
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            return await self._fetch_petitionen(client)
+
     async def fetch_item_detail(self, external_id: str) -> RawSourceItem:
         """Fetches a single Vorgang by its DIP numeric ID string."""
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -261,3 +290,19 @@ def _extract_initiative(doc: dict[str, object]) -> str:
     if isinstance(raw, list):
         return ", ".join(str(i) for i in raw if i)
     return str(raw)
+
+
+class DipPetitionAdapter:
+    """Thin `SourceAdapter` wrapper exposing only `DipAdapter`'s Bundestag
+    petition-portal fetch, for Pipeline 2 (petition, bottom-up). Pipeline 1
+    uses `DipAdapter.fetch_new_items()` directly instead, which excludes
+    petitions."""
+
+    def __init__(self, dip_adapter: DipAdapter) -> None:
+        self._dip = dip_adapter
+
+    async def fetch_new_items(self, since: datetime) -> list[RawSourceItem]:  # noqa: ARG002
+        return await self._dip.fetch_open_petitions()
+
+    async def fetch_item_detail(self, external_id: str) -> RawSourceItem:
+        return await self._dip.fetch_item_detail(external_id)

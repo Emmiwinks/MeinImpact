@@ -39,11 +39,15 @@ def test_civic_actions_orm_columns_match_current_schema() -> None:
     cols = {c.name for c in Base.metadata.tables["civic_actions"].columns}
     # Columns removed in migration 202606240007 must NOT appear in the ORM model.
     assert "topics" not in cols
+    # momentum_score was removed in migration 202607100008 (engagement-state cutover).
+    assert "momentum_score" not in cols
     # Core columns that must always be present.
     required = {
         "id", "title", "action_type", "summary", "region",
         "deadline", "effort_minutes", "impact_hint", "source_url",
-        "urgency", "werte_relevanz", "momentum_score", "active", "updated_at",
+        "urgency", "werte_relevanz", "active", "updated_at",
+        "engagement_state", "state_reason", "pipeline_source",
+        "previous_signature_count",
     }
     missing = required - cols
     assert not missing, f"ORM model is missing expected columns: {missing}"

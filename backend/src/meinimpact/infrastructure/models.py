@@ -92,9 +92,15 @@ class CivicActionRecord(Base):
         Boolean, nullable=False, server_default="false"
     )
     tavily_context: Mapped[str | None] = mapped_column(Text, nullable=True)
-    momentum_score: Mapped[float] = mapped_column(
-        Float, nullable=False, server_default="0.3"
+    # Engagement-state columns (migration 0008) — replace momentum_score
+    engagement_state: Mapped[str] = mapped_column(
+        String(length=1), nullable=False, server_default="C"
     )
+    state_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    pipeline_source: Mapped[str] = mapped_column(
+        String(length=20), nullable=False, server_default="parliamentary"
+    )
+    previous_signature_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -264,6 +270,7 @@ class MdbStatementRecord(Base):
     mdb_name: Mapped[str] = mapped_column(Text, nullable=False)
     mdb_aw_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     found: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    source: Mapped[str | None] = mapped_column(Text, nullable=True)
     statement_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     searched_at: Mapped[datetime] = mapped_column(
@@ -327,10 +334,14 @@ class PipelineRunRecord(Base):
         primary_key=True,
         default=uuid4,
     )
-    fetched_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    deduplicated_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    prefiltered_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    classified_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    parliamentary_actions_found: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )
+    petition_actions_found: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    state_a_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    state_b_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    state_c_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    state_d_discarded: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     inserted_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     errors: Mapped[list[str]] = mapped_column(
         ARRAY(Text()), nullable=False, server_default="{}"

@@ -28,4 +28,3 @@ class ClassifiedAction(TypedDict):
     action_types: list[str]  # "brief" | "petition" | "anfrage"
     is_controversial: bool
     position_required: bool
-    momentum_score: float

@@ -14,8 +14,13 @@ State (Länder) and municipal sources are out of scope for MVP.
 
 - **No topic taxonomy.** Sources are queried broadly for active and
   imminent parliamentary items, not filtered by predefined topic keywords.
-  Hotness is determined by parliamentary stage (beratungsstand) and
-  recency, not by subject-area matching.
+  Relevance is determined by engagement state (A/B/C/D — see
+  `data/ingestion-pipeline.md`), not by subject-area matching.
+
+- **Sources are organised into two parallel categories, not one priority
+  tree.** Parliamentary sources feed Pipeline 1 (top-down); petition
+  sources feed Pipeline 2 (bottom-up). Both categories feed the same
+  pool. See "Source Categories" below.
 
 - **All sources are public and free.** No paid API tiers are required for
   MVP. Rate limits are respected via scheduled batch fetching, not
@@ -28,6 +33,29 @@ State (Länder) and municipal sources are out of scope for MVP.
 - **Each source is encapsulated in its own repository adapter.** Switching
   or adding a source requires only a new adapter class, not changes to
   domain services.
+
+---
+
+## Source Categories
+
+Sources are grouped by which pipeline they feed. See
+`data/ingestion-pipeline.md` for the full pipeline structure.
+
+**Parliamentary sources (Pipeline 1, top-down):**
+- Source 1: Bundestag DIP API — Vorgänge (primary action source; state B is
+  also determined directly from DIP fields — beratungsstand, Stellungnahme
+  count — not from an MdB check, see `data/ingestion-pipeline.md`)
+- Tavily quality-media search — state C determination
+
+MdB position sources (3a: Abgeordnetenwatch, 3b: DIP Plenarprotokolle, 3c:
+Bundestag.de MdB RSS — see Source 6 below) do **not** feed the ingestion
+pipeline. They serve tracking's MdB-statement refresh and the app's
+client-side state-B personalisation only.
+
+**Petition sources (Pipeline 2, bottom-up):**
+- Source 1: Bundestag DIP API — open Bundestag petitions
+- Source 4: Tavily / Google Custom Search — WeAct, openpetition
+- Tavily quality-media search — state C determination
 
 ---
 
@@ -68,9 +96,14 @@ GET /vorgang
   → Open Bundestag petitions (always included)
 ```
 
-Each fetched item receives an **imminence score** (0.0–1.0) based on its
-`beratungsstand` stage and recency of the last activity (`datum` field).
-See `data/ingestion-pipeline.md` Stage 0 for the scoring formula.
+Each fetched Vorgang is run through engagement state determination
+(state A/B/C/D) based entirely on DIP-derived signals: `beratungsstand`
+stage, scheduled vote dates, committee activity, and — for state B —
+committee-referral status and Stellungnahme count (no per-user MdB check
+involved; see `data/ingestion-pipeline.md` "State B triggers" for why).
+See `data/ingestion-pipeline.md` "State Determination: Parliamentary
+Actions" for the full logic. Items resolving to state D are discarded
+before classification.
 
 > **Note on beratungsstand values:** The controlled vocabulary is not
 > published by the Bundestag. The values above are verified against live
@@ -246,66 +279,86 @@ Free tier: 100 queries/day (sufficient for MVP at ≤10 topics/day).
 
 ## Source 5: NewsData.io
 
-> **MVP STATUS: NOT USED IN PIPELINE.**
+> **MVP STATUS: NOT USED. REPLACED BY TAVILY.**
 > NewsData.io was previously used as a topic-frequency signal for the
-> now-removed topic radar (Stage 0). With the new beratungsstand-based
-> hotness evaluation, parliamentary process stage is the primary signal
-> and no external news counting is required.
+> now-removed weighted hotness score. State C determination (public debate
+> presence) is now done entirely via Tavily, searching quality-media
+> domains using the DIP Vorgang title or petition title verbatim as the
+> query — no keyword dictionary, no RSS parsing. See
+> `data/ingestion-pipeline.md` "State C via Tavily".
 >
-> NewsData.io may be re-introduced in a future version if a news-context
-> enrichment use case arises (e.g. boosting momentum score when an action
-> appears in current coverage). The API key config (`MEINIMPACT_NEWSDATA_API_KEY`)
-> is retained for this purpose.
+> The API key config (`MEINIMPACT_NEWSDATA_API_KEY`) is retained in case
+> a future news-context enrichment use case arises, but is not read by
+> the pipeline.
 
 ---
 
-## Source 6: MdB Social Media & Public Statements
+## Source 6: MdB Public Statements
 
-**Purpose:** Track public positions of Bundestagsabgeordnete on topics
-related to active actions. Used exclusively for tracking, not for
-ingesting new actions into the pool.
+**Purpose:** Determine whether a specific MdB has already taken a public
+position on a topic. **Not used for state B determination** — state B is
+an action-level DIP signal, not a per-MdB check (see
+`data/ingestion-pipeline.md` "State B triggers"). Used for two things
+instead: tracking's MdB-statement refresh (post-completion, surfaced in
+the tracking detail screen — `features/tracking.md` Stage 6) and the
+app's client-side state-B reason personalisation (`features/feed.md`,
+using the cached Abgeordnetenwatch answer history from the MdB lookup,
+refreshed every 30 days — Source 6a alone is sufficient for this, the
+other two sources are tracking-only). Three sources are checked in
+parallel for tracking; this replaces the earlier Twitter/X and
+Nitter-based approach, which required an unreliable third-party RSS
+bridge.
 
-**Sources:**
-- Twitter/X public profiles of MdBs (via Nitter RSS or Twitter API v2)
-- Official press releases on bundestag.de MdB profile pages
-- Abgeordnetenwatch public statements
+**Source 6a: Abgeordnetenwatch API** — see Source 3 above
+(`GET /answers?politician={aw_id}&updated_since={90_days_ago}`).
 
-**Base approach:** For each active action with a tracked MdB, run a
-daily search for recent statements by that MdB on the action topic.
-
-```python
-# Tavily search per MdB per active action
-query = f"{mdb_name} {action_topic_keywords} Statement Bundestag"
-results = await tavily_client.search(query, days=7, max_results=3)
+**Source 6b: DIP Plenarprotokolle**
 ```
+GET /aktivitaet
+  ?f.person.id={mdb_dip_id}
+  &f.aktivitaetsart=Rede
+  &f.datum.start={90_days_ago}
+  &format=json
+```
+Requires the MdB's DIP person ID, resolved once and cached alongside the
+Abgeordnetenwatch ID.
 
-**Fields extracted:**
+**Source 6c: Bundestag.de MdB RSS**
+```
+https://www.bundestag.de/ajax/filterlist/de/abgeordnete/{nachname}-{vorname}/rss
+```
+Parses `title` and `pubDate` only; matched against the action's topic
+keywords, articles from the last 60 days only.
+
+**Fields extracted (persisted to `mdb_statements`):**
 
 ```python
 {
   "mdb_name": str,
-  "statement_summary": str,   # AI-summarised from search results
+  "found": bool,               # False if no statement found in any source
+  "source": str | None,        # 'abgeordnetenwatch' | 'dip_reden' | 'bundestag_rss' | None
+  "statement_summary": str | None,  # AI-summarised, NULL if found=false
   "source_url": str | None,
-  "found": bool,              # False if no statement found
-  "search_date": date,
+  "searched_at": datetime,
 }
 ```
 
 **Explicit "nothing found" handling:**
-If no statement is found for an MdB on a topic within the last 30 days,
-the tracking event is recorded with . The app shows:
+If all three sources return no match, the tracking detail screen shows:
 *"[MdB Name] hat sich öffentlich noch nicht zu diesem Thema geäußert."*
-This is shown proactively, not only on user request.
+Shown proactively, not only on user request. This has no bearing on the
+action's pool-level `engagement_state` — that was already decided at
+ingestion time, independent of any specific MdB.
 
-**Cost:** ~1 Tavily credit per MdB per active action per day.
-At 10 active actions × 1 tracked MdB each: ~10 credits/day.
-This is within the free tier (200 credits/day total).
+**Cost:** Abgeordnetenwatch and DIP calls are free. Bundestag.de RSS is
+free. No Tavily credits are spent on MdB position checks.
 
 **Known limitations:**
-- Not all MdBs are active on social media
-- Tavily may miss statements on niche platforms
-- Bundestag.de MdB pages are not always up to date
-- No access to private or deleted posts
+- Abgeordnetenwatch answer coverage varies by MdB activity level
+- DIP Reden matching depends on descriptor overlap, which may miss
+  topically-relevant speeches that DIP tagged differently
+- Bundestag.de MdB RSS naming convention (`nachname-vorname`) is not
+  guaranteed for all MdBs; needs a fallback lookup for edge cases
 
 ---
 
@@ -331,17 +384,20 @@ for AI classification. See `data/ingestion-pipeline.md`.
 
 ---
 
-## Source Priority and Conflict Resolution
+## Merge Conflict Resolution
 
-If the same civic action appears in multiple sources (e.g. a Bundestag
-petition also covered by WeAct):
+Both pipelines can independently surface the same real-world action
+(e.g. a Bundestag petition also picked up by the petition pipeline's
+DIP query, or a petition also covered by WeAct). Resolution happens at
+the merge stage in `data/ingestion-pipeline.md`, not per-source:
 
-1. DIP API is the canonical source for Bundestag items
-2. WeAct is canonical for civil society petitions
-3. EU portal is canonical for EU consultations
-4. Deduplication by `source_url` and fuzzy title match (>85% similarity)
-5. On conflict: keep the canonical source, add secondary `source_url`
-   as an additional link
+1. Deduplicate by exact `source_url` match first
+2. Then deduplicate by topic fingerprint: same DIP descriptor OR fuzzy
+   title match >85% similarity
+3. On conflict: keep the action with the higher `engagement_state`
+   (A > B > C)
+4. If states are equal: keep by type priority — Bundestag petition >
+   WeAct/openpetition petition > Brief > Anfrage
 
 ---
 
@@ -370,9 +426,8 @@ Actions expire naturally via their `deadline` field.
 
 - [ ] WeAct signature count: confirm whether RSS includes counts or
       whether HTML scraping is required. If scraping: add to adapter.
-- [ ] MdB Twitter/X access: evaluate whether Nitter RSS is reliable
-      enough or whether Twitter API v2 bearer token is needed.
-      Twitter API v2 free tier: 1,500,000 tweets/month read access.
+- [ ] Bundestag.de MdB RSS naming: confirm the `{nachname}-{vorname}`
+      URL pattern holds for all current MdBs, or build a lookup table.
 - [ ] DIP petition beratungsstand: confirm the exact `beratungsstand`
       values used for open/active public petitions. Current assumption
       is "Noch nicht beraten" — verify against live API data.

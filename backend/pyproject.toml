@@ -18,6 +18,7 @@ dependencies = [
     "pydantic-settings>=2.6.0",
     "PyJWT>=2.10.0",
     "sqlalchemy[asyncio]>=2.0.36",
+    "structlog>=24.4.0",
     "thefuzz>=0.22",
     "uvicorn[standard]>=0.32.0",
 ]

@@ -34,48 +34,48 @@ pool.
 
 ## Scoring Algorithm
 
-Each action receives a final score computed locally:
+Each action carries an `engagement_state` (`A` | `B` | `C`) assigned by
+the ingestion pipeline — see `data/ingestion-pipeline.md`. This state,
+not a weighted hotness score, is the primary sort key. Actions are
+sorted in three tiers, and only within a tier does werte alignment and
+deadline proximity break ties:
 
 ```dart
-double scoreAction(Action action, UserProfile profile) {
-  // 1. Hard exclusions
-  if (completedThisWeek.contains(action.id)) return -1;
-  if (dismissedThisWeek.contains(action.id)) return -1;
+(int, double, int) sortKey(Action action, UserProfile profile) {
+  // Hard exclusions handled separately — see assembleFeed below
 
-  // 2. Werte match (0.0–1.0) — see user/value-profile.md
-  final werteMatch = computeWerteMatch(action, profile.werte);
-
-  // 3. Urgency score (0.0–1.0)
-  final urgencyScore = switch (action.urgency) {
-    'high' => 1.0,
-    'mid'  => 0.6,
-    _      => 0.3,
+  // 1. Primary: engagement state tier (A > B > C)
+  final stateRank = switch (action.engagementState) {
+    'A' => 3,
+    'B' => 2,
+    _   => 1,
   };
 
-  // 4. Deadline proximity bonus (0.0–0.4)
-  final deadlineBonus = action.deadline == null ? 0.0 :
-      (1.0 - (action.deadline!.difference(DateTime.now()).inDays / 60.0))
-      .clamp(0.0, 0.4);
+  // 2. Secondary: werte match (0.0–1.0) — see user/value-profile.md
+  final werteMatch = computeWerteMatch(action, profile.werte);
 
-  // 5. Momentum (from pipeline: beratungsstand imminence + petition velocity)
-  final momentumBonus = action.momentumScore * 0.1;
+  // 3. Tertiary: deadline proximity, only meaningful for state A
+  final deadlineRank = action.engagementState == 'A' && action.deadline != null
+      ? -action.deadline!.difference(DateTime.now()).inDays  // sooner = higher
+      : 0;
 
-  // Final score
-  return werteMatch * 0.60 +
-         urgencyScore * 0.25 +
-         deadlineBonus * 0.10 +
-         momentumBonus * 0.05;
+  return (stateRank, werteMatch, deadlineRank);
 }
 ```
 
-**Score weight rationale:**
-- Werte match (60%): primary signal — how well the action aligns with the
-  user's political values. With no topic filtering, this is the main
-  personalisation dimension.
-- Urgency (25%): time-sensitive actions are prioritised regardless of values.
-- Deadline proximity (10%): fine-grained urgency within the same urgency tier.
-- Momentum (5%): slight boost for actions with high parliamentary imminence
-  or fast petition velocity.
+**Sort rationale:**
+- Engagement state (primary): whether there is a decision window (A), a
+  positioning window (B), or a debate window (C) determines how
+  actionable and time-sensitive an action genuinely is — this is a
+  stronger relevance signal than any weighted composite score.
+- Werte match (secondary): within the same state tier, actions that
+  align with the user's political values surface first.
+- Deadline proximity (tertiary, state A only): among multiple state-A
+  actions, the one whose window closes soonest is prioritised.
+
+**Relevance threshold** (below) is still computed from werte match alone
+— it answers "is this action relevant to you at all", independent of
+how urgent it is.
 
 ---
 
@@ -83,11 +83,14 @@ double scoreAction(Action action, UserProfile profile) {
 
 ```dart
 List<FeedItem> assembleFeed(List<Action> pool, UserProfile profile) {
-  // Score all actions, show all above threshold
-  return pool
-    .map((a) => (action: a, score: scoreAction(a, profile)))
-    .where((item) => item.score >= 0.2)  // Relevance threshold
-    .sortedByDescending((item) => item.score)
+  final eligible = pool.where((a) =>
+      !completedThisWeek.contains(a.id) &&
+      !dismissedThisWeek.contains(a.id));
+
+  return eligible
+    .map((a) => (action: a, werteMatch: computeWerteMatch(a, profile.werte)))
+    .where((item) => item.werteMatch >= 0.2)  // Relevance threshold
+    .sortedBy((item) => sortKey(item.action, profile))  // descending
     .toList();
   // No hardcoded limit — the pool size (≤ 100) and threshold
   // naturally constrain the feed to a manageable number.
@@ -102,27 +105,51 @@ Each feed card shows:
 
 ```
 ┌─────────────────────────────────────────────┐
-│ [Tag: Brief / Petition / Anfrage]   [Dringlichkeit-Dot] │
+│ [Tag: Brief / Petition / Anfrage]                       │
 │                                                          │
 │ Titel der Aktion (max. 2 Zeilen)                        │
 │                                                          │
-│ ● Zeitindikator      ● ~X Min                           │
+│ ⏳ {state_reason}                                        │
+│                                                          │
+│ ● ~X Min                                                │
 │                                                          │
 │ ●●●●○  Relevanz für dich                                │
 └─────────────────────────────────────────────┘
 ```
 
-**Dringlichkeit indicator:**
-- 🔴 Red dot: urgency=high (deadline within 14 days or vote scheduled)
-- 🟡 Yellow dot: urgency=mid
-- 🟢 Green dot: urgency=low
+**Urgency label:** The `state_reason` text (server-generated, German,
+set by the ingestion pipeline per `engagement_state`) is displayed
+directly on the card as the urgency label. It replaces the previous
+red/yellow/green urgency dot — a state-specific sentence is more honest
+and more actionable than a traffic-light colour. Examples:
+- State A: "Abstimmung in 8 Tagen"
+- State B: "Positionen noch offen — eine gute Zeit um deinen MdB zu fragen"
+- State C: "Wird gerade breit diskutiert"
 
-**Relevanz dots:** 5-dot display derived from final score:
-- score ≥ 0.8: 5 dots
-- score ≥ 0.6: 4 dots
-- score ≥ 0.4: 3 dots
-- score ≥ 0.2: 2 dots
-- score < 0.2: 1 dot
+A small icon accompanies the state tier for quick scanning (state A:
+⏳, state B: 💬, state C: 📣), but the text itself — not the icon colour —
+carries the meaning, per the accessibility rule that colour is never the
+only indicator.
+
+**Client-side state-B personalisation:** `state_reason` for a state-B
+action is action-level and identical for every user (see
+`data/ingestion-pipeline.md` "State B triggers" — it's a DIP signal, not
+a per-MdB check). Before rendering a state-B card, the app checks the
+cached Abgeordnetenwatch answer history for the user's own MdB
+(`profile.mdb` in Hive, refreshed every 30 days per
+`data/sources-federal.md` Source 3). If that MdB has already answered a
+question on this topic, the displayed label is overridden locally to
+*"[MdB Name] hat sich bereits geäußert — schreib trotzdem"*. This is a
+display-only override: the underlying `engagement_state` and its
+contribution to sort order are unchanged, and no other user's view of
+the same action is affected.
+
+**Relevanz dots:** 5-dot display derived from werte match:
+- match ≥ 0.8: 5 dots
+- match ≥ 0.6: 4 dots
+- match ≥ 0.4: 3 dots
+- match ≥ 0.2: 2 dots
+- match < 0.2: 1 dot
 
 **Letter-suppressed card:** If `position_required=true` and user has no
 clear position: normal card, but action detail shows pro/contra only,
@@ -182,9 +209,11 @@ vorbei — die Aktionen werden täglich aktualisiert."*
 
 ## Accessibility
 
-- Each card: full Semantics label including title, type, urgency, and time
+- Each card: full Semantics label including title, type, `state_reason`,
+  and time
 - Swipe-to-dismiss: also available via long-press menu for switch access
-- Colour is not the only indicator: urgency dot has text equivalent
+- Colour is not the only indicator: the state icon always has the
+  `state_reason` text alongside it
 - Relevance dots: labelled as "Relevanz: X von 5" for screenreader
 
 ---

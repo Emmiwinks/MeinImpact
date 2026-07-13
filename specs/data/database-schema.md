@@ -61,8 +61,17 @@ CREATE TABLE civic_actions (
     tavily_context      TEXT,
         -- Cached web context, used for letter generation
         -- NOT sent to device in pool download
-    momentum_score      FLOAT NOT NULL DEFAULT 0.3,
-        -- 0.0–1.0, derived from beratungsstand imminence + petition velocity
+    engagement_state    TEXT NOT NULL DEFAULT 'C',
+        -- 'A' | 'B' | 'C' — state 'D' actions are never inserted
+        -- See data/ingestion-pipeline.md "Engagement States"
+    state_reason        TEXT,
+        -- Human-readable reason shown to the user, in German
+        -- e.g. "Abstimmung am 15. April" or "Läuft im Ausschuss"
+    pipeline_source      TEXT NOT NULL DEFAULT 'parliamentary',
+        -- 'parliamentary' | 'petition' — which pipeline produced this action
+    previous_signature_count INTEGER,
+        -- Signature count from the previous pipeline run, used to
+        -- compute petition momentum for state A. NULL for non-petitions.
     active              BOOLEAN NOT NULL DEFAULT true,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -72,6 +81,7 @@ CREATE INDEX idx_actions_active ON civic_actions (active);
 CREATE INDEX idx_actions_urgency ON civic_actions (urgency) WHERE active = true;
 CREATE INDEX idx_actions_deadline ON civic_actions (deadline) WHERE active = true;
 CREATE INDEX idx_actions_created ON civic_actions (created_at DESC);
+CREATE INDEX idx_actions_engagement_state ON civic_actions (engagement_state) WHERE active = true;
 ```
 
 **Retention:** Actions are deactivated (not deleted) 7 days after deadline.
@@ -239,6 +249,10 @@ CREATE TABLE mdb_statements (
         -- Abgeordnetenwatch politician ID
     found           BOOLEAN NOT NULL,
         -- false = no statement found in last 30 days
+    source          TEXT,
+        -- 'abgeordnetenwatch' | 'dip_reden' | 'bundestag_rss' | null
+        -- Which of the three MdB position sources found the match.
+        -- null if found=false.
     statement_summary TEXT,
         -- AI-summarised statement, NULL if found=false
     source_url      TEXT,
@@ -262,16 +276,18 @@ Ingestion pipeline execution log. Operational only.
 
 ```sql
 CREATE TABLE pipeline_runs (
-    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    fetched_count       INTEGER NOT NULL DEFAULT 0,
-    deduplicated_count  INTEGER NOT NULL DEFAULT 0,
-    prefiltered_count   INTEGER NOT NULL DEFAULT 0,
-    classified_count    INTEGER NOT NULL DEFAULT 0,
-    inserted_count      INTEGER NOT NULL DEFAULT 0,
-    errors              TEXT[] NOT NULL DEFAULT '{}',
-    duration_seconds    FLOAT,
-    ai_cost_eur         NUMERIC(10, 6),
-    ran_at              TIMESTAMPTZ NOT NULL DEFAULT now()
+    id                          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    parliamentary_actions_found INTEGER NOT NULL DEFAULT 0,
+    petition_actions_found      INTEGER NOT NULL DEFAULT 0,
+    state_a_count               INTEGER NOT NULL DEFAULT 0,
+    state_b_count               INTEGER NOT NULL DEFAULT 0,
+    state_c_count                INTEGER NOT NULL DEFAULT 0,
+    state_d_discarded           INTEGER NOT NULL DEFAULT 0,
+    inserted_count              INTEGER NOT NULL DEFAULT 0,
+    errors                      TEXT[] NOT NULL DEFAULT '{}',
+    duration_seconds            FLOAT,
+    ai_cost_eur                 NUMERIC(10, 6),
+    ran_at                      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_pipeline_ran_at ON pipeline_runs (ran_at DESC);
@@ -293,15 +309,20 @@ SELECT
     source_url, effort_minutes, impact_hint,
     pro_argumente, contra_argumente,
     werte_relevanz, action_types, is_controversial,
-    position_required, momentum_score, created_at
+    position_required, engagement_state, state_reason,
+    pipeline_source, created_at
 FROM civic_actions
 WHERE active = true
 ORDER BY
-    CASE urgency WHEN 'high' THEN 1 WHEN 'mid' THEN 2 ELSE 3 END,
-    momentum_score DESC,
+    CASE engagement_state WHEN 'A' THEN 1 WHEN 'B' THEN 2 ELSE 3 END,
     deadline ASC NULLS LAST
 LIMIT 100;
 ```
+
+Final feed ranking (werte match, deadline proximity within state A) is
+computed on-device from these fields — see `features/feed.md`. The
+server-side ordering above is a reasonable default for clients that
+skip client-side scoring, not the authoritative feed order.
 
 ---
 
@@ -328,5 +349,3 @@ LIMIT 100;
 
 - [ ] Confirm Supabase project is in Frankfurt EU region (GDPR requirement)
       for MVP. Estimated DB size at 100 actions + 6 months history: ~50 MB.
-- [ ] Add `previous_signature_count` to actions if WeAct velocity
-      tracking is needed. See `data/ingestion-pipeline.md`.

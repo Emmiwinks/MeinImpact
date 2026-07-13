@@ -12,10 +12,12 @@ before it reaches production.
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from meinimpact.infrastructure.pipeline.orchestrator import _persist
+from meinimpact.infrastructure.pipeline.state_rules.protocol import StateTrace
+from meinimpact.infrastructure.pipeline.step import ItemState
 from meinimpact.infrastructure.pipeline.types import ClassifiedAction
 
 
-def _item(**overrides: object) -> ClassifiedAction:
+def _classified(**overrides: object) -> ClassifiedAction:
     base: ClassifiedAction = {
         "external_id": "test-persist-schema-check",
         "title": "Test Gesetzentwurf für Schema-Integrationstests",
@@ -26,7 +28,6 @@ def _item(**overrides: object) -> ClassifiedAction:
         "description": "Ein Antrag ausschließlich für automatisierte Tests.",
         "initiated_by": "Testfraktion",
         "source": "dip",
-        "imminence_score": 0.5,
         "urgency": "mid",
         "werte_relevanz": {"wirtschaft": 0.3, "wandel": 0.5},
         "pro_argumente": ["Argument A"],
@@ -34,10 +35,28 @@ def _item(**overrides: object) -> ClassifiedAction:
         "action_types": ["representative_letter"],
         "is_controversial": False,
         "position_required": False,
-        "momentum_score": 0.5,
     }
     base.update(overrides)  # type: ignore[typeddict-item]
     return base
+
+
+def _item(
+    *, state: str = "A", pipeline_source: str = "parliamentary", **overrides: object
+) -> ItemState:
+    classified = _classified(**overrides)
+    trace = StateTrace(
+        engagement_state=state,  # type: ignore[arg-type]
+        state_reason="Abstimmung am 14. Juli",
+        matched_rule="test",
+        rules_checked=["test"],
+        evidence={},
+    )
+    return ItemState(
+        raw=classified,  # type: ignore[arg-type]
+        classified=classified,
+        state_trace=trace,
+        pipeline_source=pipeline_source,
+    )
 
 
 async def test_persist_inserts_row_without_schema_errors(
@@ -46,14 +65,15 @@ async def test_persist_inserts_row_without_schema_errors(
     """Catches schema/migration drift.
 
     Fails if the DB schema doesn't match the ORM model — e.g. if a migration
-    was written but not yet applied (topics NOT NULL without migration = failure).
+    was written but not yet applied.
     """
     inserted = await _persist([_item()], db_session)
     assert inserted == 1
 
 
-async def test_persist_skips_none_items(db_session: AsyncSession) -> None:
-    inserted = await _persist([None, None], db_session)
+async def test_persist_skips_items_without_classification(db_session: AsyncSession) -> None:
+    unclassified = ItemState(raw=_classified(), classified=None)
+    inserted = await _persist([unclassified], db_session)
     assert inserted == 0
 
 
@@ -68,3 +88,9 @@ async def test_persist_stores_werte_relevanz(db_session: AsyncSession) -> None:
     werte = {"wirtschaft": 0.8, "diplomatie": 0.1, "freiheit": 0.5, "wandel": 0.9}
     await _persist([_item(werte_relevanz=werte)], db_session)
     # If werte_relevanz column is missing or wrong type, the insert raises here.
+
+
+async def test_persist_stores_engagement_state_and_reason(db_session: AsyncSession) -> None:
+    url = "https://dip.bundestag.de/vorgang/engagement-state-test"
+    await _persist([_item(source_url=url, state="B")], db_session)
+    # If engagement_state/state_reason columns are missing, the insert raises here.

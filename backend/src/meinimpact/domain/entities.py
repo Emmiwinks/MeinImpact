@@ -40,9 +40,13 @@ class CivicAction:
     action_types: tuple[str, ...] = field(default_factory=tuple)
     is_controversial: bool = False
     position_required: bool = False
-    momentum_score: float = 0.3
     active: bool = True
     tavily_context: str | None = None
+    # Engagement-state fields — replace momentum_score
+    engagement_state: str = "C"
+    state_reason: str | None = None
+    pipeline_source: str = "parliamentary"
+    previous_signature_count: int | None = None
 
 
 @dataclass(frozen=True)
@@ -68,6 +72,7 @@ class MdbStatement:
     statement_summary: str | None
     source_url: str | None
     searched_at: datetime
+    source: str | None = None
 
 
 @dataclass(frozen=True)

@@ -134,7 +134,9 @@ class ActionPoolItemResponse(BaseModel):
     action_types: list[str] = Field(default_factory=list)
     is_controversial: bool = False
     position_required: bool = False
-    momentum_score: float = 0.3
+    engagement_state: str = "C"
+    state_reason: str | None = None
+    pipeline_source: str = "parliamentary"
     created_at: datetime | None = None
 
     @classmethod
@@ -157,7 +159,9 @@ class ActionPoolItemResponse(BaseModel):
             action_types=list(action.action_types),
             is_controversial=action.is_controversial,
             position_required=action.position_required,
-            momentum_score=action.momentum_score,
+            engagement_state=action.engagement_state,
+            state_reason=action.state_reason,
+            pipeline_source=action.pipeline_source,
         )
 
 
@@ -269,6 +273,7 @@ class MdbStatementResponse(BaseModel):
 
     mdb_name: str
     found: bool
+    source: str | None = None
     statement_summary: str | None
     source_url: str | None
     searched_at: datetime
@@ -278,6 +283,7 @@ class MdbStatementResponse(BaseModel):
         return cls(
             mdb_name=stmt.mdb_name,
             found=stmt.found,
+            source=stmt.source,
             statement_summary=stmt.statement_summary,
             source_url=stmt.source_url,
             searched_at=stmt.searched_at,

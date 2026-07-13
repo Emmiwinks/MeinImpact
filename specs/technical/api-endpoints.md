@@ -112,7 +112,9 @@ Response 200:
       "action_types": ["brief", "petition"],
       "is_controversial": false,
       "position_required": false,
-      "momentum_score": 0.7,
+      "engagement_state": "A",
+      "state_reason": "Abstimmung am 14. Juni",
+      "pipeline_source": "parliamentary",
       "created_at": "2026-06-03T03:10:00Z"
     }
   ]

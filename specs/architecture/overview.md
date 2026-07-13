@@ -131,12 +131,12 @@ Device (Flutter app)
 │
 Backend (Fly.io)
 │
-│  Daily cronjob:
-│    Fetch sources (DIP API, WeAct RSS, NewsData.io, EU consultations)
-│    Prefilter (deadline rules, relevance thresholds)
-│    Classify with Mistral (topics, value axes, urgency, pro/contra)
-│    Fetch Tavily context for top 30 actions
-│    Write to PostgreSQL action pool
+│  Daily cronjob (two parallel pipelines, see data/ingestion-pipeline.md):
+│    Parliamentary (DIP API) + Petition (DIP, WeAct/openpetition via Tavily)
+│    Determine engagement_state per item (A/B/C/D); discard state D
+│    Merge + deduplicate (exact URL, then topic fingerprint)
+│    Classify with Mistral (value axes, urgency, pro/contra — no topics)
+│    Write to PostgreSQL action pool with engagement_state + state_reason
 │
 │  On tracking event:
 │    Look up push_tokens subscribed to action_id
@@ -152,9 +152,10 @@ written architecture decision record.
 
 ```sql
 -- Public action pool (no user data)
-actions (id, title, topics[], werte_relevanz jsonb, urgency,
-         deadline, source_url, pro_argumente[], contra_argumente[],
-         tavily_context, active, created_at)
+actions (id, title, werte_relevanz jsonb, urgency, engagement_state,
+         state_reason, pipeline_source, deadline, source_url,
+         pro_argumente[], contra_argumente[], tavily_context,
+         active, created_at)
 
 -- Beta access tokens (MVP only, no identity)
 beta_tokens (token uuid, used boolean, created_at)

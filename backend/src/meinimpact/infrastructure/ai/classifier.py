@@ -129,5 +129,4 @@ class MistralClassifier:
             action_types=list(classification.get("action_types") or []),  # type: ignore[arg-type]
             is_controversial=bool(classification.get("is_controversial", False)),
             position_required=bool(classification.get("position_required", False)),
-            momentum_score=0.3,
         )

@@ -184,7 +184,9 @@ def test_pool_response_includes_spec_fields() -> None:
     assert "action_types" in item
     assert "is_controversial" in item
     assert "position_required" in item
-    assert "momentum_score" in item
+    assert "engagement_state" in item
+    assert "state_reason" in item
+    assert "pipeline_source" in item
 
 
 # ── Action complete ───────────────────────────────────────────────────────────

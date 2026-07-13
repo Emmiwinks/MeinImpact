@@ -57,17 +57,16 @@ Flutter app
               pro_argumente[], contra_argumente[],
               werte_relevanz{}, action_types[],
               is_controversial, position_required,
-              momentum_score, created_at
+              engagement_state, state_reason, pipeline_source, created_at
             }
           ]
 
 Flutter app (local, no network)
   ├─ Read profile from Hive (werte axes only — no topics)
-  ├─ Score each action: werte_match × 0.60 + urgency × 0.25
-  │                    + deadline_bonus × 0.10 + momentum × 0.05
-  ├─ Filter: score ≥ 0.2 threshold
-  ├─ Sort descending
-  └─ Render feed (no hardcoded limit)
+  ├─ Compute werte_match per action, filter: werte_match ≥ 0.2 threshold
+  ├─ Sort by (engagement_state tier, werte_match, deadline proximity
+  │           within state A) — see features/feed.md
+  └─ Render feed (no hardcoded limit), state_reason shown as urgency label
 ```
 
 The backend returns the same pool to every device. Personalisation is
@@ -241,27 +240,32 @@ Flutter app
 ```
 Backend (APScheduler, runs at 03:00 CET)
   │
-  ├─ Stage 0: DIP API → Vorgänge filtered by active beratungsstand
-  │    (2./3. Beratung, Ausschussberatung) + recent aktualisiert date
-  │    Each item scored by imminence (stage × recency)
+  ├─ Pipeline 1 (parliamentary, top-down):
+  │    DIP API → active Vorgänge (last 30 days)
+  │    → determine engagement_state (A: vote/committee imminent or
+  │      petition near quorum; B: MdB has not positioned; C: media
+  │      debate via Tavily; D: discard, not classified)
   │
-  ├─ Stage 1: Tavily → broad petition search on WeAct + openPetition
+  ├─ Pipeline 2 (petition, bottom-up) — runs in parallel:
+  │    DIP (Bundestag petitions) + Tavily (WeAct, openpetition)
+  │    → determine engagement_state (A: near goal/quorum or high
+  │      momentum; C: active + media debate via Tavily; D: discard)
   │
-  ├─ Deduplicate (URL exact + fuzzy title match)
+  ├─ Merge: combine both pipelines' outputs
+  │    → deduplicate (URL exact + topic fingerprint: DIP descriptor
+  │      or >85% title similarity, keep higher engagement_state)
   │
-  ├─ Prefilter (title length, German language, petition rules)
-  │
-  ├─ Stage 4: Tavily enrichment — SKIPPED in MVP
-  │
-  ├─ Stage 5: Mistral classify_action:
+  ├─ Mistral classify_action (state A/B/C items only):
   │    returns urgency, werte_relevanz{}, pro/contra_argumente[],
   │    action_types[], is_controversial, position_required
   │    (no topics — classification is topic-free)
   │
-  ├─ INSERT INTO civic_actions (...) ON CONFLICT (source_url) DO UPDATE
+  ├─ INSERT INTO civic_actions (..., engagement_state, state_reason,
+  │    pipeline_source, previous_signature_count) ON CONFLICT (source_url) DO UPDATE
   │
   ├─ Deactivate actions past deadline + 7 days grace
-  └─ Log run to pipeline_runs
+  ├─ Refresh MdB statements (Abgeordnetenwatch, DIP Reden, Bundestag RSS)
+  └─ Log run to pipeline_runs (per-state counts, per-pipeline counts)
 ```
 
 No user data involved at any point.

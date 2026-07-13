@@ -16,9 +16,19 @@ MeinImpact.
   Devices download the resulting pool via the standard feed endpoint.
 
 - **No topic taxonomy.** Actions are not bucketed into predefined categories.
-  Hotness is determined by parliamentary process stage and recency, not by
-  keyword matching against a fixed topic list. This allows the pipeline to
-  surface any politically relevant action regardless of subject area.
+  Relevance is determined by engagement state (see below), not by keyword
+  matching against a fixed topic list. This allows the pipeline to surface
+  any politically relevant action regardless of subject area.
+
+- **Relevance is a state, not a score.** Every action is assigned an
+  `engagement_state` (A/B/C/D) instead of a weighted numeric hotness score.
+  States are explainable to users in one sentence and map directly to a
+  concrete reason to act now. See "Engagement States" below.
+
+- **Two parallel pipelines feed one shared pool.** Parliamentary-driven
+  actions (top-down, from DIP) and petition-driven actions (bottom-up,
+  from citizen petition platforms) are fetched, evaluated, and classified
+  independently, then merged and deduplicated before persisting.
 
 - **AI classification runs once per action, result is cached in DB.**
   Re-classification only occurs if the action is manually flagged or the
@@ -33,180 +43,328 @@ MeinImpact.
 
 ---
 
-## Pipeline Stages
+## Engagement States
 
-```
-Stage 0: Hotness Evaluation
-  DIP API → items in active beratungsstand + recent activity → imminence score
+Every action in the pool gets an `engagement_state` field (`A` | `B` | `C`).
+State `D` means "no good hook for citizen engagement right now" — `D`
+actions are discarded before classification and never enter the pool.
+This is an honest signal, not a system failure.
 
-Stage 1: Civil Society Petitions
-  Tavily → broad petition search on WeAct + openPetition
+The state determines:
+1. Whether the action enters the pool at all (`D` = excluded)
+2. Its priority in the feed (`A` > `B` > `C`)
+3. The `state_reason` shown to the user for why they should act now
 
-Stage 2: Deduplicate
-Stage 3: Prefilter
-Stage 4: Tavily Enrich            ← SKIPPED in MVP
-Stage 5: Mistral Classify
-Stage 6: Persist
-Stage 7: Deactivate expired
-Stage 8: MdB Statements
-Stage 9: Log Run
+**State A — Decision window open.**
+A formal parliamentary process is active and time-bound: a vote is
+scheduled, a committee is actively deliberating, or a petition deadline
+or quorum is close. Highest priority. The user is told exactly when the
+window closes.
+
+**State B — Positioning window open.**
+No formal process is running, but positions on the topic are structurally
+still forming — a Vorgang referred to committee with no vote result yet,
+cross-party positioning still incomplete, or an early legislative reading
+with no vote scheduled (see "State Determination: Parliamentary Actions"
+below for the exact DIP-derived signals). Letters and questions sent now
+can shape positions before they harden — often more effective than acting
+immediately before a vote. This is an action-level property, not a
+per-user one: the app additionally personalises the displayed reason
+client-side using the user's own MdB (see "State B triggers" below).
+Does not apply to citizen petitions (no single MdB to target).
+
+**State C — Debate window open.**
+The topic is publicly present in media and public discourse but has not
+yet entered a formal parliamentary process. Engagement helps push the
+topic onto the parliamentary agenda.
+
+**State D — No window.**
+Potentially relevant, but no good engagement hook exists right now.
+Not classified, not added to the pool.
+
+---
+
+## Two Parallel Pipelines, One Shared Pool
+
+### Pipeline 1: Parliamentary-driven (top-down)
+
+Source: DIP API.
+
+For each active Vorgang (Gesetzentwurf, Antrag, Anfrage, Petition)
+returned by DIP in the last 30 days:
+
+1. Determine engagement state (see "State Determination" below)
+2. If state D: skip, do not classify
+3. If state A, B, or C: run Mistral classification, hand off to merge stage
+
+Primary action types produced: `brief`, `anfrage`, `bundestag_petition`.
+
+### Pipeline 2: Petition-driven (bottom-up)
+
+Sources: Bundestag petition portal (DIP), WeAct (Tavily search),
+openpetition (Tavily search or Google Custom Search API fallback).
+
+For each petition found:
+
+1. Determine engagement state using petition-specific logic (see below)
+2. If state D: skip
+3. If state A or C: run Mistral classification, hand off to merge stage
+
+State B does not apply to citizen petitions — there is no single MdB
+whose positioning can be targeted. Petitions go directly from A to C.
+
+Primary action types produced: `petition`.
+
+### Merging and Deduplication
+
+After both pipelines run, their `ClassifiedAction` outputs are combined
+and deduplicated in two steps:
+
+**Step 1 — Exact URL match** (existing logic, unchanged): drop any item
+whose `source_url` already exists in `civic_actions`.
+
+**Step 2 — Topic fingerprint match** (new): two actions are duplicates if
+they share the same DIP descriptor OR their titles are >85% similar
+(`thefuzz` ratio). When a duplicate pair is found:
+- Keep the one with the higher `engagement_state` (A > B > C)
+- If states are equal, keep by type priority:
+  Bundestag petition > WeAct/openpetition petition > Brief > Anfrage
+
+```python
+STATE_RANK = {"A": 3, "B": 2, "C": 1}
+TYPE_PRIORITY = ["bundestag_petition", "petition", "brief", "anfrage"]
+
+def resolve_duplicate(a: ClassifiedAction, b: ClassifiedAction) -> ClassifiedAction:
+    if STATE_RANK[a.engagement_state] != STATE_RANK[b.engagement_state]:
+        return max(a, b, key=lambda x: STATE_RANK[x.engagement_state])
+    return min(a, b, key=lambda x: TYPE_PRIORITY.index(x.action_type))
 ```
 
 ---
 
-## Stage 0: Hotness Evaluation
+## State Determination: Parliamentary Actions (Pipeline 1)
 
-Fetches Bundestag Vorgänge that are in an active deliberation stage and
-have had recent parliamentary activity. These are items where a decision
-is approaching and citizen action is still timely.
+Checked in order; stop at the first match.
 
-**DIP query strategy:**
+### State A triggers
 
-Two passes against the DIP `/vorgang` endpoint, combined:
-
-**Pass A — Late-stage deliberation (vote imminent):**
 ```
-f.beratungsstand = "2. Beratung"
-f.beratungsstand = "2. Beratung und Schlussabstimmung"
-f.beratungsstand = "3. Beratung"
-f.aktualisiert.start = {7 days ago}
-```
+1. DIP Vorgang has a scheduled Abstimmungstermin within 30 days
+   → state_reason: "Abstimmung am {date}"
 
-**Pass B — Active committee deliberation:**
-```
-f.beratungsstand = "Ausschussberatung"
-f.aktualisiert.start = {3 days ago}
+2. DIP Vorgang status contains "Ausschussberatung" and the committee is
+   actively meeting (recent Ausschuss-Sitzungen in DIP /aktivitaet)
+   → state_reason: "Wird aktuell im Ausschuss beraten"
+
+3. It is a Bundestag petition with signature count > 40,000
+   (quorum is 50,000 — close enough for urgency)
+   → state_reason: "Petition kurz vor dem Quorum: {count} von 50.000"
 ```
 
-Each item receives an **imminence score** (0.0–1.0):
+### State B triggers (only if not A)
 
-```python
-BERATUNGSSTAND_SCORE: dict[str, float] = {
-    "2. Beratung und Schlussabstimmung": 1.0,
-    "3. Beratung":                        1.0,
-    "2. Beratung":                        0.8,
-    "Ausschussberatung":                  0.5,
-}
+State B is an **action-level** property — "are positions on this topic
+structurally still forming" — not a per-user property. The pool is shared
+across every device (see `features/feed.md` "no server-side
+personalisation"), so there is no single MdB to check at ingestion time.
+The earlier version of this spec checked "the user's MdB (resolved from
+PLZ)" against 3 position sources — that doesn't work for a shared pool and
+has been replaced with the following DIP-derived signals, checked directly
+against the Vorgang:
 
-def calculate_imminence(item: RawSourceItem, now: date) -> float:
-    stage_score = BERATUNGSSTAND_SCORE.get(item["status"], 0.3)
-    days_since_activity = (now - item["deadline"]).days if item["deadline"] else 7
-    recency_score = max(0.0, 1.0 - days_since_activity / 7.0)
-    return stage_score * 0.7 + recency_score * 0.3
+```
+State B triggers if ANY of the following:
+
+1. Vorgangstyp is Gesetzentwurf or Antrag AND beratungsstand is
+   "Überwiesen" (referred to committee) AND no Abstimmungsergebnis
+   exists yet
+   → positions are still forming in committee
+
+2. Fewer than 2 Fraktionen have documented Stellungnahmen on this
+   Vorgang
+   → cross-party positioning is incomplete
+
+3. Vorgang is in "1. Beratung" or "2. Beratung" with no scheduled
+   namentliche Abstimmung
+   → the legislative process is structurally still open
+
+→ state_reason: "Positionen noch offen — eine gute Zeit um deinen
+  MdB zu fragen"
 ```
 
-Open Bundestag Petitionen (`f.vorgangstyp=Petition`,
-`f.beratungsstand=Noch nicht beraten`) are always included regardless of
-imminence score — they are inherently actionable while open.
+**Client-side MdB personalisation (device, not pipeline):** when the app
+displays a state-B action, it checks the cached Abgeordnetenwatch answer
+history for the user's own MdB (`profile.mdb` in Hive, refreshed every 30
+days — see `data/sources-federal.md` Source 3). If that specific MdB has
+already answered a question on this topic, the displayed `state_reason`
+changes locally to *"[MdB Name] hat sich bereits geäußert — schreib
+trotzdem"* (optionally displayed at lower visual priority, as if state C).
+The action itself stays state B in the pool for every other user — this is
+purely a display-layer personalisation, not a pool-level re-classification.
+See `features/feed.md` for the display-side spec.
 
-**Output:** List of `RawSourceItem` dicts with `imminence_score` attached,
-sorted descending. No minimum threshold — all fetched items proceed to
-Stage 1 combination.
+The 3-source MdB position check (Abgeordnetenwatch, DIP Reden, Bundestag
+RSS — see "MdB Position Sources" below) is **not** used for state B
+determination. It continues to serve the tracking feature's MdB-statement
+refresh (`features/tracking.md` Stage 6), which is a per-tracked-action,
+per-user-relevant-MdB check running after a user has already acted — a
+fundamentally different question from "should this enter the pool at all".
 
-**Cost:** 2–3 DIP API calls per run (one per beratungsstand pass + petitions).
-DIP is free with an API key.
+### State C triggers (only if not A and not B)
+
+Use Tavily to check for recent quality-media coverage of the Vorgang's
+official title (see "State C via Tavily" below).
+
+```
+If at least 2 articles from at least 2 different quality-media domains
+in the last 14 days:
+  → state C
+  → state_reason: "Das Thema wird aktuell öffentlich diskutiert"
+
+Otherwise:
+  → state D → discard, do not classify
+```
 
 ---
 
-## Stage 1: Civil Society Petitions
+## State Determination: Petition Actions (Pipeline 2)
 
-Independently of Stage 0, search for currently active civil society
-petitions. These run in parallel with the DIP fetch and are merged before
-deduplication.
+### State A triggers
 
-```python
-async def fetch_civil_petitions(tavily_api_key: str) -> list[RawSourceItem]:
-    """Broad search for active petitions on WeAct and openPetition."""
-    query = "Petition unterzeichnen aktuell 2026"
-    results = await tavily_client.search(
-        query,
-        include_domains=["weact.campact.de", "openpetition.de"],
-        max_results=10,
-        days=30,
-    )
-    return [_parse_tavily_petition(r) for r in results if r.get("url")]
+```
+1. Signature count > 80% of stated goal AND deadline within 30 days
+   → state_reason: "Kurz vor dem Ziel: {count} von {goal} — noch {days} Tage"
+
+2. Signature count > 40,000 (Bundestag petition, 50k quorum)
+   → state_reason: "Petition kurz vor dem Quorum"
+
+3. Momentum: > 1,000 new signatures in the last 7 days
+   (requires previous_signature_count from the last run)
+   → state_reason: "Über 1.000 neue Unterschriften diese Woche"
 ```
 
-No topic filtering. All returned petitions proceed to deduplication.
+### State C triggers (only if not A)
 
-**Fallback:** Google Custom Search API if Tavily returns no results
-(`site:openpetition.de OR site:weact.campact.de Petition unterzeichnen`).
-Free tier: 100 queries/day.
+```
+1. Petition is active (deadline in the future or no deadline)
+2. At least 500 signatures
+3. Tavily finds the petition's topic covered in quality media within
+   the last 14 days (see "State C via Tavily" below)
+
+If all conditions met:
+  → state C
+  → state_reason: "Läuft — und das Thema ist gerade in der Diskussion"
+
+Otherwise:
+  → state D → discard
+```
 
 ---
 
-## Stage 2: Deduplicate
+## MdB Position Sources (Tracking + Client-Side Personalisation)
 
-Remove items already present in the `civic_actions` table.
+**Not used for state B determination** (see above — state B is an
+action-level DIP signal, not a per-MdB check). These 3 sources serve two
+other purposes: the tracking feature's MdB-statement refresh
+(`features/tracking.md` Stage 6, server-side, per tracked action) and the
+device-side state-B reason personalisation (`features/feed.md`, using the
+already-cached Abgeordnetenwatch answer history from the MdB lookup —
+Source 1 below — refreshed every 30 days).
 
-```python
-def deduplicate(
-    items: list[RawSourceItem],
-    existing_urls: set[str],
-    existing_titles: list[str],
-) -> list[RawSourceItem]:
-    new_items = []
-    for item in items:
-        if item['source_url'] in existing_urls:
-            continue
-        if any(
-            fuzz.ratio(item['title'], t) > 85
-            for t in existing_titles
-        ):
-            continue
-        new_items.append(item)
-    return new_items
+Checked in parallel for tracking. Results are stored in `mdb_statements`
+with a `source` field indicating which source found the match.
+
+**Source 1: Abgeordnetenwatch API (public, no key required)**
+```
+Base URL: https://www.abgeordnetenwatch.de/api/v2
+
+# Resolve MdB from PLZ (already implemented, cached in Hive on device)
+GET /politicians?zip={plz}&parliament_period=132
+
+# Get public answers by this MdB
+GET /answers?politician={aw_politician_id}&updated_since={90_days_ago}
+
+# Match: does any answer's topic or text contain the action's descriptors?
 ```
 
-Library: `thefuzz` (lightweight string matching).
+**Source 2: DIP Plenarprotokolle (public API, key required)**
+```
+GET /aktivitaet
+  ?f.person.id={mdb_dip_id}
+  &f.aktivitaetsart=Rede
+  &f.datum.start={90_days_ago}
+  &format=json
+
+# Match: filter by DIP descriptor overlap with this action's descriptors
+```
+
+**Source 3: Bundestag.de MdB RSS (public, no key)**
+```
+URL pattern: https://www.bundestag.de/ajax/filterlist/de/abgeordnete/
+             {nachname}-{vorname}/rss
+
+# Parse title and pubDate only — no full text needed
+# Match: keyword match against the action's topic keywords
+# Only articles from the last 60 days
+```
+
+Persisted to `mdb_statements`:
+- `found = true`, `source = 'abgeordnetenwatch' | 'dip_reden' | 'bundestag_rss'`
+- `found = false`, `source = null` if all three return no match
+- `searched_at = now()`
 
 ---
 
-## Stage 3: Prefilter
+## State C via Tavily (No RSS, No Keyword Dictionary)
 
-Rule-based filtering before any AI call.
+State C detection does not use a maintained keyword dictionary or RSS
+feed parsing. Instead it uses text that already exists in the source
+data — the DIP Vorgang title, or the petition title — directly as the
+Tavily search query. This requires no mapping, is always current, and
+handles new topics automatically as they emerge.
 
 ```python
-PREFILTER_RULES = [
-    # Must have a minimum title length
-    lambda item: len(item['title']) >= 10,
-
-    # Deadline must be in the future or absent (ongoing actions)
-    lambda item: (
-        item.get('deadline') is None or
-        item['deadline'] > date.today()
-    ) if item['type'] == 'petition' else True,
-
-    # Petitions must have minimum momentum
-    lambda item: not (
-        item['type'] == 'petition' and
-        item.get('signature_count', None) is not None and
-        item['signature_count'] < 500
-    ),
-
-    # Must be in German (lang detection)
-    lambda item: detect_language(item['title']) == 'de',
+QUALITY_MEDIA_DOMAINS = [
+    "tagesschau.de",
+    "zeit.de",
+    "spiegel.de",
+    "faz.net",
+    "sueddeutsche.de",
+    "mdr.de",
 ]
+
+async def check_state_c(query_text: str) -> bool:
+    """query_text is the DIP Vorgang title (Vorgang.titel) for
+    parliamentary actions, or the petition title for petition actions —
+    used verbatim, no keyword mapping."""
+    results = await tavily_client.search(
+        query=query_text,
+        include_domains=QUALITY_MEDIA_DOMAINS,
+        days=14,
+        max_results=5,
+    )
+    articles = results.get("results", [])
+    domains_found = {extract_domain(r["url"]) for r in articles}
+    return len(articles) >= 2 and len(domains_found) >= 2
 ```
 
-**Expected reduction:** ~40–60% of raw items filtered here.
-Target: ≤ 30 items proceed to AI classification per daily run.
+`QUALITY_MEDIA_DOMAINS` is the only constant to maintain and can be
+extended at any time without touching pipeline logic. No RSS feed
+parsing is needed anywhere in the pipeline — Tavily handles media
+coverage detection entirely.
 
 ---
 
-## Stage 4: Tavily Context Enrichment
+## Mistral Classification
 
-> **MVP STATUS: SKIPPED.**
-> Tavily enrichment is not run in the MVP. `tavily_context` is left empty and
-> Mistral classifies from title + DIP abstract alone. Re-enable when richer
-> classification context is needed. Requires `MEINIMPACT_TAVILY_API_KEY`.
-
----
-
-## Stage 5: Mistral Classification
-
-Each item is classified using Mistral. The result determines whether
-the item enters the pool and how it will be scored and presented.
+Unchanged from the previous spec. Each item that survives state
+determination (state A, B, or C) is classified using Mistral. The
+classification prompt (topics, pro/contra, `is_controversial`,
+`position_required`, `werte_relevanz`, `urgency`) is not affected by
+the engagement state model — `urgency` remains a Mistral-derived field
+used elsewhere (e.g. classification quality), but `engagement_state` is
+the primary relevance and priority signal for the feed. See
+`features/feed.md`.
 
 ```python
 CLASSIFICATION_PROMPT = """
@@ -254,10 +412,10 @@ At 30 items/day: ~22,500 tokens/day ≈ €0.02/day.
 
 ---
 
-## Stage 6: Persist
+## Persist
 
 ```python
-async def persist_actions(actions: list[ClassifiedAction], news_counts: dict[str, int]) -> int:
+async def persist_actions(actions: list[ClassifiedAction]) -> int:
     inserted = 0
     for action in actions:
         if action is None:
@@ -271,11 +429,14 @@ async def persist_actions(actions: list[ClassifiedAction], news_counts: dict[str
                 source_url, external_id, pro_argumente,
                 contra_argumente, werte_relevanz, tavily_context,
                 action_types, is_controversial, position_required,
-                momentum_score, active, updated_at
+                engagement_state, state_reason, pipeline_source,
+                previous_signature_count, active, updated_at
             ) VALUES (...)
             ON CONFLICT (source_url) DO UPDATE SET
                 urgency = EXCLUDED.urgency,
-                momentum_score = EXCLUDED.momentum_score,
+                engagement_state = EXCLUDED.engagement_state,
+                state_reason = EXCLUDED.state_reason,
+                previous_signature_count = civic_actions.previous_signature_count,
                 tavily_context = EXCLUDED.tavily_context,
                 updated_at = now()
         """, action.dict())
@@ -283,28 +444,14 @@ async def persist_actions(actions: list[ClassifiedAction], news_counts: dict[str
     return inserted
 ```
 
-**Momentum score** is calculated at persist time from the item's
-`imminence_score` (from Stage 0) combined with petition velocity:
-
-```python
-def calculate_momentum(imminence_score: float, signature_velocity: float | None) -> float:
-    base = 0.3 + imminence_score * 0.4   # 0.3–0.7 from parliamentary stage
-
-    if signature_velocity is not None:
-        if signature_velocity > 1000:
-            base += 0.3
-        elif signature_velocity > 100:
-            base += 0.15
-
-    return min(base, 1.0)
-```
-
-**Upsert on `source_url`** allows re-runs to update urgency and momentum
-without creating duplicates.
+**Upsert on `source_url`** allows re-runs to update `engagement_state`
+and `state_reason` without creating duplicates. On update, the previous
+row's signature count is preserved into `previous_signature_count` before
+the new count overwrites it, so the next run can compute momentum.
 
 ---
 
-## Stage 7: Deactivate Expired
+## Deactivate Expired
 
 ```python
 async def deactivate_expired():
@@ -318,48 +465,6 @@ async def deactivate_expired():
 ```
 
 7-day grace period allows tracking completion events after deadline.
-
----
-
-## Stage 9: Log Run
-
-```python
-async def log_run(
-    run_id: str,
-    fetched: int,
-    deduplicated: int,
-    prefiltered: int,
-    classified: int,
-    inserted: int,
-    errors: list[str],
-    duration_seconds: float,
-    ai_cost_eur: float,
-    hot_items_count: int,      # items from Stage 0 DIP fetch
-    petition_count: int,       # items from Stage 1 Tavily fetch
-):
-```
-
----
-
-## Momentum Score Calculation
-
-Each action gets a `momentum_score` (0.0–1.0):
-
-```python
-def calculate_momentum(
-    imminence_score: float,         # From Stage 0 beratungsstand scoring
-    signature_velocity: float | None,  # Signatures/day for petitions
-) -> float:
-    base = 0.3 + imminence_score * 0.4
-
-    if signature_velocity is not None:
-        if signature_velocity > 1000:
-            base += 0.3
-        elif signature_velocity > 100:
-            base += 0.15
-
-    return min(base, 1.0)
-```
 
 ---
 
@@ -388,62 +493,84 @@ async def run_ingestion_pipeline():
     start = time.time()
     errors = []
 
-    # Stage 0: Hotness Evaluation (DIP)
-    dip_items = await fetch_hot_dip_items(settings, errors)
+    # Stage 0a: Parliamentary pipeline (DIP)
+    parliamentary_actions = await run_parliamentary_pipeline(errors)
 
-    # Stage 1: Civil Society Petitions (Tavily)
-    petition_items = await fetch_civil_petitions(settings, errors)
+    # Stage 0b: Petition pipeline (runs in parallel with 0a)
+    petition_actions = await run_petition_pipeline(errors)
 
-    raw_items = dip_items + petition_items
-
+    # Stage 1: Merge + Deduplicate
     existing = await db.fetch_existing_urls_and_titles()
+    merged = deduplicate_exact_url(
+        parliamentary_actions + petition_actions, existing["urls"]
+    )
+    deduped = deduplicate_topic_fingerprint(merged, existing["titles"])
 
-    # Stage 2
-    new_items = deduplicate(raw_items, **existing)
+    # Stage 2: Tavily context enrichment (unchanged, still SKIPPED in MVP)
+    enriched = deduped
 
-    # Stage 3
-    filtered_items = prefilter(new_items)
+    # Stage 3: Persist
+    inserted = await persist_actions(enriched)
 
-    # Stage 4: SKIPPED in MVP
-    enriched = filtered_items
-
-    # Stage 5
-    classified = await asyncio.gather(*[
-        classify_action(item) for item in enriched
-    ])
-
-    # Stage 6
-    inserted = await persist_actions(classified)
-
-    # Stage 7
+    # Stage 4: Deactivate expired
     await deactivate_expired()
 
-    # Stage 8: MdB statement tracking
+    # Stage 5: RSS fetch and news_items refresh (unchanged)
+    await refresh_news_items()
+
+    # Stage 6: MdB statement refresh (unchanged, now records `source`)
     await refresh_mdb_statements()
 
-    # Stage 9
+    # Stage 7: Log run
     await log_run(
         run_id=run_id,
-        fetched=len(raw_items),
-        deduplicated=len(new_items),
-        prefiltered=len(filtered_items),
-        classified=sum(1 for c in classified if c is not None),
+        parliamentary_actions_found=len(parliamentary_actions),
+        petition_actions_found=len(petition_actions),
+        state_a_count=sum(1 for a in enriched if a.engagement_state == "A"),
+        state_b_count=sum(1 for a in enriched if a.engagement_state == "B"),
+        state_c_count=sum(1 for a in enriched if a.engagement_state == "C"),
+        state_d_discarded=count_discarded_state_d(),
         inserted=inserted,
         errors=errors,
         duration_seconds=time.time() - start,
         ai_cost_eur=await get_today_ai_spend(),
-        hot_items_count=len(dip_items),
-        petition_count=len(petition_items),
     )
+
+
+async def run_parliamentary_pipeline(errors: list[str]) -> list[ClassifiedAction]:
+    vorgaenge = await fetch_active_dip_vorgaenge(errors)  # last 30 days
+    classified = []
+    for vorgang in vorgaenge:
+        state, reason = await determine_parliamentary_state(vorgang)
+        if state == "D":
+            continue
+        classified.append(await classify_action(vorgang, state, reason,
+                                                  pipeline_source="parliamentary"))
+    return [c for c in classified if c is not None]
+
+
+async def run_petition_pipeline(errors: list[str]) -> list[ClassifiedAction]:
+    petitions = await fetch_bundestag_petitions(errors)
+    petitions += await fetch_civil_society_petitions(errors)  # WeAct, openpetition
+    classified = []
+    for petition in petitions:
+        state, reason = await determine_petition_state(petition)
+        if state == "D":
+            continue
+        classified.append(await classify_action(petition, state, reason,
+                                                  pipeline_source="petition"))
+    return [c for c in classified if c is not None]
 ```
 
 ---
 
 ## MdB Statement Refresh
 
-Stage 8 — unchanged from previous spec. Runs daily as part of the pipeline.
-Searches for public statements by tracked MdBs on topics related to active
-actions. See `data/sources-federal.md` for implementation details.
+Runs daily as part of the pipeline (Stage 6). Searches for public
+statements by tracked MdBs on topics related to active actions, using
+the 3 MdB position sources described above ("MdB Position Sources —
+Tracking + Client-Side Personalisation"). See `data/sources-federal.md`
+for implementation details.
 
 ---
 
@@ -451,7 +578,8 @@ actions. See `data/sources-federal.md` for implementation details.
 
 - Reads: `architecture/overview.md`, `architecture/data-flow.md`,
   `data/sources-federal.md`, `data/database-schema.md`
-- Referenced by: `features/feed.md`, `technical/monitoring.md`
+- Referenced by: `features/feed.md`, `features/tracking.md`,
+  `technical/monitoring.md`
 
 ---
 
@@ -459,6 +587,8 @@ actions. See `data/sources-federal.md` for implementation details.
 
 - [ ] Confirm exact `beratungsstand` string values used by DIP for each
       deliberation stage. Current values are best-guess; verify against
-      live API data before relying on them for imminence scoring.
-- [ ] Signature velocity for WeAct: requires storing previous signature
-      counts. Add `previous_signature_count` field to civic_actions if needed.
+      live API data before relying on them for state A determination.
+- [ ] Confirm DIP `/aktivitaet` reliably surfaces committee (Ausschuss)
+      sitting dates for the "actively meeting" state A trigger.
+</content>
+</invoke>

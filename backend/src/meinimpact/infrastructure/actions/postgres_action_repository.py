@@ -50,7 +50,10 @@ def _to_domain(record: CivicActionRecord) -> CivicAction:
         action_types=tuple(record.action_types or []),
         is_controversial=record.is_controversial,
         position_required=record.position_required,
-        momentum_score=record.momentum_score,
         active=record.active,
         tavily_context=record.tavily_context,
+        engagement_state=record.engagement_state,
+        state_reason=record.state_reason,
+        pipeline_source=record.pipeline_source,
+        previous_signature_count=record.previous_signature_count,
     )

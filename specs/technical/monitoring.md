@@ -113,7 +113,12 @@ A simple query to check pipeline status:
 -- Last pipeline run details
 SELECT
     ran_at,
-    fetched_count,
+    parliamentary_actions_found,
+    petition_actions_found,
+    state_a_count,
+    state_b_count,
+    state_c_count,
+    state_d_discarded,
     inserted_count,
     ai_cost_eur,
     duration_seconds,
@@ -122,15 +127,15 @@ FROM pipeline_runs
 ORDER BY ran_at DESC
 LIMIT 7;
 
--- Active action pool summary
+-- Active action pool summary by engagement state
 SELECT
-    urgency,
+    engagement_state,
     COUNT(*) as count,
     MIN(deadline) as next_deadline
 FROM actions
 WHERE active = true
-GROUP BY urgency
-ORDER BY CASE urgency WHEN 'high' THEN 1 WHEN 'mid' THEN 2 ELSE 3 END;
+GROUP BY engagement_state
+ORDER BY CASE engagement_state WHEN 'A' THEN 1 WHEN 'B' THEN 2 ELSE 3 END;
 ```
 
 ---

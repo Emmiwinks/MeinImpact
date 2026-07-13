@@ -29,7 +29,10 @@ def _make_record(action_id: str = "test-action") -> CivicActionRecord:
     record.action_types = ["petition"]
     record.is_controversial = False
     record.position_required = False
-    record.momentum_score = 0.4
+    record.engagement_state = "A"
+    record.state_reason = "Abstimmung am 14. Juli"
+    record.pipeline_source = "parliamentary"
+    record.previous_signature_count = None
     record.active = True
     record.tavily_context = None
     record.updated_at = datetime(2026, 6, 8, 0, 0, tzinfo=UTC)

@@ -1,18 +1,20 @@
-"""Ingestion pipeline orchestrator - runs Stages 0-9 once per invocation.
+"""Ingestion pipeline orchestrator — composition root for the two parallel
+pipelines described in specs/data/ingestion-pipeline.md.
 
-Stage 0: Hotness Evaluation - DIP beratungsstand-based fetch → imminent items
-Stage 1: Civil Society Petitions - Tavily broad petition search
-Stages 2-9: Dedup, prefilter, enrich (skipped), classify, persist, deactivate, log.
+Runs Pipeline 1 (parliamentary, top-down) and Pipeline 2 (petition,
+bottom-up) concurrently via `asyncio.gather`, merges and deduplicates their
+outputs, persists the survivors, deactivates expired actions, and logs the
+run. All fetch/state-determination/classification logic lives in the two
+pipeline modules and their steps — this file only composes them.
 
-No topic taxonomy. Hotness is determined by parliamentary process stage
-(beratungsstand) and recency, not keyword matching against predefined categories.
-
-Designed to be called daily by APScheduler (03:00 CET) or manually.
+Designed to be called daily by APScheduler (03:00 CET, see `main.py`) or
+manually.
 """
 
 import asyncio
 import logging
 import time
+from collections import Counter
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -21,21 +23,19 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from meinimpact.core.config import Settings
-from meinimpact.infrastructure.ai.classifier import MistralClassifier
 from meinimpact.infrastructure.database import Database
 from meinimpact.infrastructure.models import CivicActionRecord, PipelineRunRecord
+from meinimpact.infrastructure.pipeline.merge import merge_and_deduplicate
+from meinimpact.infrastructure.pipeline.parliamentary_pipeline import (
+    run_parliamentary_pipeline,
+)
+from meinimpact.infrastructure.pipeline.petition_pipeline import run_petition_pipeline
 from meinimpact.infrastructure.pipeline.stages import (
-    calculate_momentum,
-    deduplicate,
     effort_minutes_for,
     impact_hint_for,
     map_domain_action_type,
-    prefilter,
 )
-from meinimpact.infrastructure.pipeline.types import ClassifiedAction
-from meinimpact.infrastructure.sources.dip_adapter import DipAdapter
-from meinimpact.infrastructure.sources.protocol import RawSourceItem
-from meinimpact.infrastructure.sources.tavily_client import TavilyClient
+from meinimpact.infrastructure.pipeline.step import ItemState, PipelineDeps
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +45,7 @@ async def run_ingestion_pipeline(settings: Settings) -> None:
     run_id = uuid4()
     start = time.monotonic()
     errors: list[str] = []
+    deps = PipelineDeps(settings=settings, run_id=run_id, errors=errors)
 
     logger.info("Pipeline run %s starting", run_id)
 
@@ -53,52 +54,49 @@ async def run_ingestion_pipeline(settings: Settings) -> None:
         async with db.engine.connect() as conn:
             existing = await _load_existing(conn)
 
-        # ── Stage 0: Hotness Evaluation (DIP beratungsstand) ─────────────────
-        dip_items = await _fetch_hot_dip_items(settings, errors)
-        logger.info("Stage 0: %d hot DIP items", len(dip_items))
+        discarded_ids: list[str] = []
 
-        # ── Stage 1: Civil Society Petitions (Tavily) ─────────────────────────
-        petition_items = await _fetch_civil_petitions(settings, errors)
-        logger.info("Stage 1: %d civil society petitions", len(petition_items))
+        async def _record_discard(item: ItemState) -> None:
+            discarded_ids.append(item.raw.get("external_id", ""))
 
-        raw_items = dip_items + petition_items
+        previous_signature_counts = await _load_previous_signature_counts(db)
 
-        # ── Stage 2: Deduplicate ──────────────────────────────────────────────
-        new_items = deduplicate(raw_items, **existing)
+        def _previous_signature_lookup(item) -> int | None:  # type: ignore[no-untyped-def]
+            return previous_signature_counts.get(item.get("source_url", ""))
+
+        # Stage 0a/0b: both pipelines run concurrently — they use different
+        # sources and share no mutable state until merge.
+        parliamentary_items, petition_items = await _run_both_pipelines(
+            deps, _record_discard, _previous_signature_lookup
+        )
         logger.info(
-            "Stage 2: %d new after dedup (dropped %d)",
-            len(new_items),
-            len(raw_items) - len(new_items),
+            "Pipelines complete: %d parliamentary, %d petition, %d discarded (state D)",
+            len(parliamentary_items),
+            len(petition_items),
+            len(discarded_ids),
         )
 
-        # ── Stage 3: Prefilter ────────────────────────────────────────────────
-        filtered = prefilter(new_items)
-        logger.info(
-            "Stage 3: %d pass prefilter (dropped %d)",
-            len(filtered),
-            len(new_items) - len(filtered),
+        # Stage 1: Merge + Deduplicate
+        merged = merge_and_deduplicate(
+            parliamentary_items,
+            petition_items,
+            existing["existing_urls"],
+            existing["existing_titles"],
         )
+        state_counts = _count_states(merged)
 
-        # ── Stage 4: Tavily enrichment — SKIPPED in MVP ───────────────────────
-        logger.info("Stage 4: skipped (MVP)")
-
-        # ── Stage 5: Classify ─────────────────────────────────────────────────
-        classified = await _classify_all(filtered, settings, errors)
-        classified_count = sum(1 for c in classified if c is not None)
-        logger.info("Stage 5: %d classified", classified_count)
-
-        # ── Stages 6-9: Persist, deactivate, log ─────────────────────────────
+        # Stage 3/4/6/7: Persist, deactivate, log
         inserted = 0
         async with db._session_factory() as session:
-            inserted = await _persist(classified, session)
+            inserted = await _persist(merged, session)
             await _deactivate_expired(session)
             await _log_run(
                 session,
                 run_id=run_id,
-                fetched=len(raw_items),
-                deduplicated=len(new_items),
-                prefiltered=len(filtered),
-                classified=classified_count,
+                parliamentary_actions_found=len(parliamentary_items),
+                petition_actions_found=len(petition_items),
+                state_counts=state_counts,
+                state_d_discarded=len(discarded_ids),
                 inserted=inserted,
                 errors=errors,
                 duration=time.monotonic() - start,
@@ -119,105 +117,46 @@ async def run_ingestion_pipeline(settings: Settings) -> None:
         await db.close()
 
 
-# ---------------------------------------------------------------------------
-# Stage 0: Hotness Evaluation
-# ---------------------------------------------------------------------------
+async def _run_both_pipelines(
+    deps: PipelineDeps,
+    discard_sink,  # type: ignore[no-untyped-def]
+    previous_signature_lookup,  # type: ignore[no-untyped-def]
+) -> tuple[list[ItemState], list[ItemState]]:
+    """Runs both pipelines concurrently. A failure in one does not prevent
+    the other's results from persisting — each pipeline's own steps already
+    collect their errors into `deps.errors` rather than raising."""
+    parliamentary_result, petition_result = await asyncio.gather(
+        run_parliamentary_pipeline(deps, discard_sink),
+        run_petition_pipeline(deps, discard_sink, previous_signature_lookup),
+        return_exceptions=True,
+    )
+    parliamentary_items = _unwrap_pipeline_result(
+        parliamentary_result, "parliamentary", deps.errors
+    )
+    petition_items = _unwrap_pipeline_result(petition_result, "petition", deps.errors)
+    return parliamentary_items, petition_items
 
 
-async def _fetch_hot_dip_items(
-    settings: Settings,
-    errors: list[str],
-) -> list[RawSourceItem]:
-    """Fetches DIP Vorgänge in active beratungsstand stages."""
-    if not settings.dip_api_key:
-        logger.warning("DIP API key not set — Stage 0 skipped")
+def _unwrap_pipeline_result(
+    result: list[ItemState] | BaseException, name: str, errors: list[str]
+) -> list[ItemState]:
+    if isinstance(result, BaseException):
+        errors.append(f"{name} pipeline failed: {result}")
+        logger.error("%s pipeline failed: %s", name, result)
         return []
-    try:
-        adapter = DipAdapter(settings.dip_api_key)
-        return await adapter.fetch_hot_items()
-    except Exception as exc:
-        msg = f"Stage 0 DIP fetch failed: {exc}"
-        logger.error(msg)
-        errors.append(msg)
-        return []
+    return result
+
+
+def _count_states(items: list[ItemState]) -> Counter[str]:
+    counts: Counter[str] = Counter()
+    for item in items:
+        if item.state_trace is not None:
+            counts[item.state_trace.engagement_state] += 1
+    return counts
 
 
 # ---------------------------------------------------------------------------
-# Stage 1: Civil Society Petitions
-# ---------------------------------------------------------------------------
-
-
-_PETITION_DOMAINS = {"weact.campact.de", "openpetition.de"}
-# Tavily's include_domains is not guaranteed strict — validate in Python.
-# A valid petition URL must also contain one of these path segments (not a listing page).
-_PETITION_PATH_MARKERS = {"/petition/", "/p/"}
-
-
-def _is_valid_petition_url(url: str) -> bool:
-    from urllib.parse import urlparse
-    parsed = urlparse(url)
-    host = parsed.netloc.lower().removeprefix("www.")
-    if host not in _PETITION_DOMAINS:
-        return False
-    path = parsed.path
-    # openpetition.de/at/ is the Austrian content section — exclude it
-    if path.startswith("/at/"):
-        return False
-    # /petition/blog/ URLs are update pages, not the petition itself
-    if "/petition/blog" in path:
-        return False
-    return any(marker in path for marker in _PETITION_PATH_MARKERS)
-
-
-async def _fetch_civil_petitions(
-    settings: Settings,
-    errors: list[str],
-) -> list[RawSourceItem]:
-    """Broad Tavily search for active civil society petitions."""
-    if not settings.tavily_api_key:
-        logger.info("MEINIMPACT_TAVILY_API_KEY not set — Stage 1 skipped")
-        return []
-    try:
-        tavily = TavilyClient(settings.tavily_api_key)
-        results = await tavily.search(
-            "Petition Politik Bundestag unterzeichnen 2026",
-            max_results=15,
-            days=14,
-            include_domains=list(_PETITION_DOMAINS),
-        )
-        items: list[RawSourceItem] = []
-        for r in results:
-            url = str(r.get("url") or "")
-            if not url or not _is_valid_petition_url(url):
-                logger.debug("Stage 1: skipping non-petition URL %s", url)
-                continue
-            title = str(r.get("title") or "")
-            content = str(r.get("content") or "")
-            external_id = url.rstrip("/").split("/")[-1] or url[-40:]
-            items.append(
-                RawSourceItem(
-                    external_id=external_id,
-                    title=title,
-                    type="petition",
-                    status="offen",
-                    deadline=None,
-                    source_url=url,
-                    description=content[:500],
-                    initiated_by="Zivilgesellschaft",
-                    source="tavily_petition_search",
-                    imminence_score=0.3,
-                )
-            )
-        return items
-    except Exception as exc:
-        msg = f"Stage 1 Tavily petition search failed: {exc}"
-        logger.error(msg)
-        errors.append(msg)
-        return []
-
-
-# ---------------------------------------------------------------------------
-# Stage 2 helper — load existing URLs and titles from DB
+# Existing-pool lookups
 # ---------------------------------------------------------------------------
 
 
@@ -232,94 +171,59 @@ async def _load_existing(conn: object) -> dict[str, object]:
     }
 
 
-# ---------------------------------------------------------------------------
-# Stage 5: Classification
-# ---------------------------------------------------------------------------
-
-
-async def _classify_all(
-    items: list[RawSourceItem],
-    settings: Settings,
-    errors: list[str],
-) -> list[ClassifiedAction | None]:
-    if not settings.mistral_api_key:
-        logger.warning(
-            "MEINIMPACT_MISTRAL_API_KEY not set — inserting without classification"
+async def _load_previous_signature_counts(db: Database) -> dict[str, int]:
+    """Loads `previous_signature_count` per `source_url`, so the petition
+    pipeline's momentum rule can compare against last run's count."""
+    async with db.engine.connect() as conn:
+        result = await conn.execute(
+            text(
+                "SELECT source_url, previous_signature_count FROM civic_actions "
+                "WHERE previous_signature_count IS NOT NULL"
+            )
         )
-        return [_default_classified(item) for item in items]
-
-    classifier = MistralClassifier(
-        api_key=settings.mistral_api_key,
-        base_url=settings.mistral_base_url,
-        model=settings.mistral_model,
-    )
-    results = await asyncio.gather(
-        *[classifier.classify(item) for item in items],
-        return_exceptions=True,
-    )
-    classified: list[ClassifiedAction | None] = []
-    for result in results:
-        if isinstance(result, Exception):
-            errors.append(f"Classification error: {result}")
-            classified.append(None)
-        else:
-            classified.append(result)  # type: ignore[arg-type]
-    return classified
-
-
-def _default_classified(item: RawSourceItem) -> ClassifiedAction:
-    imminence = item.get("imminence_score", 0.3)  # type: ignore[misc]
-    return ClassifiedAction(
-        **item,  # type: ignore[misc]
-        urgency="low",
-        werte_relevanz={},
-        pro_argumente=[],
-        contra_argumente=[],
-        action_types=[],
-        is_controversial=False,
-        position_required=False,
-        momentum_score=calculate_momentum(imminence),
-    )
+        return {row[0]: row[1] for row in result.fetchall()}
 
 
 # ---------------------------------------------------------------------------
-# Stage 6: Persist
+# Persist
 # ---------------------------------------------------------------------------
 
 
-async def _persist(
-    items: list[ClassifiedAction | None],
-    session: AsyncSession,
-) -> int:
+async def _persist(items: list[ItemState], session: AsyncSession) -> int:
     inserted = 0
     for item in items:
-        if item is None:
+        classified = item.classified
+        if classified is None:
             continue
-        domain_type = map_domain_action_type(item)
-        urgency = item.get("urgency", "low")
-        imminence = item.get("imminence_score", 0.3)  # type: ignore[misc]
-        momentum = calculate_momentum(imminence)
+        trace = item.state_trace
+        engagement_state = trace.engagement_state if trace is not None else "C"
+        state_reason = trace.state_reason if trace is not None else None
+        domain_type = map_domain_action_type(classified)
+        urgency = classified.get("urgency", "low")
 
         record = {
             "id": str(uuid4()),
-            "title": item["title"],
+            "title": classified["title"],
             "action_type": domain_type,
-            "summary": item.get("description", item["title"])[:500],
+            "summary": classified.get("description", classified["title"])[:500],
             "region": None,
-            "deadline": item.get("deadline"),
+            "deadline": classified.get("deadline"),
             "effort_minutes": effort_minutes_for(domain_type),
             "impact_hint": impact_hint_for(str(urgency)),
-            "source_url": item["source_url"],
+            "source_url": classified["source_url"],
             "urgency": str(urgency),
-            "werte_relevanz": item.get("werte_relevanz", {}),
-            "external_id": item.get("external_id"),
-            "pro_argumente": item.get("pro_argumente", []),
-            "contra_argumente": item.get("contra_argumente", []),
-            "action_types": item.get("action_types", []),
-            "is_controversial": item.get("is_controversial", False),
-            "position_required": item.get("position_required", False),
-            "tavily_context": item.get("tavily_context"),
-            "momentum_score": momentum,
+            "werte_relevanz": classified.get("werte_relevanz", {}),
+            "external_id": classified.get("external_id"),
+            "pro_argumente": classified.get("pro_argumente", []),
+            "contra_argumente": classified.get("contra_argumente", []),
+            "action_types": classified.get("action_types", []),
+            "is_controversial": classified.get("is_controversial", False),
+            "position_required": classified.get("position_required", False),
+            "tavily_context": classified.get("tavily_context"),
+            "engagement_state": engagement_state,
+            "state_reason": state_reason,
+            "pipeline_source": item.pipeline_source or "parliamentary",
+            "previous_signature_count": item.raw.get("signature_count"),
             "active": True,
             "updated_at": datetime.now(UTC),
         }
@@ -328,7 +232,9 @@ async def _persist(
             index_elements=["source_url"],
             set_={
                 "urgency": stmt.excluded.urgency,
-                "momentum_score": stmt.excluded.momentum_score,
+                "engagement_state": stmt.excluded.engagement_state,
+                "state_reason": stmt.excluded.state_reason,
+                "previous_signature_count": stmt.excluded.previous_signature_count,
                 "tavily_context": stmt.excluded.tavily_context,
                 "updated_at": stmt.excluded.updated_at,
             },
@@ -339,7 +245,7 @@ async def _persist(
 
 
 # ---------------------------------------------------------------------------
-# Stage 7: Deactivate expired
+# Deactivate expired
 # ---------------------------------------------------------------------------
 
 
@@ -356,7 +262,7 @@ async def _deactivate_expired(session: AsyncSession) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Stage 9: Log run
+# Log run
 # ---------------------------------------------------------------------------
 
 
@@ -364,20 +270,22 @@ async def _log_run(
     session: AsyncSession,
     *,
     run_id: object,
-    fetched: int,
-    deduplicated: int,
-    prefiltered: int,
-    classified: int,
+    parliamentary_actions_found: int,
+    petition_actions_found: int,
+    state_counts: Counter[str],
+    state_d_discarded: int,
     inserted: int,
     errors: list[str],
     duration: float,
 ) -> None:
     record = PipelineRunRecord(
         id=run_id,  # type: ignore[arg-type]
-        fetched_count=fetched,
-        deduplicated_count=deduplicated,
-        prefiltered_count=prefiltered,
-        classified_count=classified,
+        parliamentary_actions_found=parliamentary_actions_found,
+        petition_actions_found=petition_actions_found,
+        state_a_count=state_counts.get("A", 0),
+        state_b_count=state_counts.get("B", 0),
+        state_c_count=state_counts.get("C", 0),
+        state_d_discarded=state_d_discarded,
         inserted_count=inserted,
         errors=errors,
         duration_seconds=duration,

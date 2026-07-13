@@ -125,8 +125,17 @@ async def test_fetch_hot_items_request_url_uses_percent_encoding() -> None:
 
     beratungsstand_urls = [u for u in captured if "beratungsstand" in u]
     assert beratungsstand_urls, "Expected at least one request with f.beratungsstand"
+
+    # Some beratungsstand values are single words (e.g. "Ausschussberatung") and
+    # legitimately produce no %20 at all — only assert %20 where a value actually
+    # contains a space to encode. The regression this test guards against is +
+    # encoding / raw unencoded spaces, which we check across every URL.
+    multi_word_urls = [u for u in beratungsstand_urls if "%20" in u]
+    assert multi_word_urls, "Expected at least one multi-word beratungsstand filter"
+
     for url in beratungsstand_urls:
-        assert "%20" in url, f"Space must be %%20, not +, in: {url}"
+        assert "+" not in url, f"Found + encoding in: {url}"
+        assert " " not in url, f"Found unencoded space in: {url}"
         assert "Beratung+und" not in url, f"Found + encoding in: {url}"
 
 

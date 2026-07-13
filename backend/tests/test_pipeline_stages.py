@@ -1,16 +1,18 @@
-"""Unit tests for pipeline stage pure functions."""
+"""Unit tests for pipeline stage pure functions.
 
-from datetime import date, timedelta
+`deduplicate()`, `prefilter()`, and `calculate_momentum()` were removed in
+the cutover to the state-based pipeline — their replacements are tested in
+`test_merge.py` (fingerprint dedup) and `test_step_prefilter.py`
+(passes_basic_checks via PrefilterStep).
+"""
 
-import pytest
+from datetime import date
 
 from meinimpact.infrastructure.pipeline.stages import (
-    calculate_momentum,
-    deduplicate,
     effort_minutes_for,
     impact_hint_for,
     map_domain_action_type,
-    prefilter,
+    passes_basic_checks,
 )
 from meinimpact.infrastructure.sources.protocol import RawSourceItem
 
@@ -47,153 +49,23 @@ def _make_item(
 
 
 # ---------------------------------------------------------------------------
-# deduplicate
+# passes_basic_checks
 # ---------------------------------------------------------------------------
 
 
-def test_deduplicate_removes_exact_url_match():
-    item = _make_item(source_url="https://example.com/1")
-    result = deduplicate(
-        [item], existing_urls={"https://example.com/1"}, existing_titles=[]
-    )
-    assert result == []
+def test_passes_basic_checks_passes_valid_item():
+    assert passes_basic_checks(_make_item()) is True
 
 
-def test_deduplicate_passes_new_url():
-    item = _make_item(source_url="https://example.com/2")
-    result = deduplicate(
-        [item], existing_urls={"https://example.com/1"}, existing_titles=[]
-    )
-    assert len(result) == 1
+def test_passes_basic_checks_drops_short_title():
+    assert passes_basic_checks(_make_item(title="Kurz")) is False
 
 
-def test_deduplicate_fuzzy_title_match():
-    existing_title = "Entwurf eines Gesetzes zur Änderung des Klimaschutzgesetzes"
-    # Slightly different phrasing — fuzz.ratio should be >85
-    near_duplicate = _make_item(
-        title="Entwurf eines Gesetzes zur Änderung des Klimaschutzgesetzes 2024",
-        source_url="https://example.com/3",
-    )
-    result = deduplicate(
-        [near_duplicate], existing_urls=set(), existing_titles=[existing_title]
-    )
-    assert result == []
-
-
-def test_deduplicate_distinct_title_passes():
-    item = _make_item(
-        title="Digitalpakt Schule Verlängerung", source_url="https://example.com/4"
-    )
-    result = deduplicate(
-        [item],
-        existing_urls=set(),
-        existing_titles=["Entwurf eines Gesetzes zur Änderung des Klimaschutzgesetzes"],
-    )
-    assert len(result) == 1
-
-
-def test_deduplicate_deduplicates_within_batch():
-    item_a = _make_item(source_url="https://example.com/5")
-    item_b = _make_item(source_url="https://example.com/6")  # same title, different URL
-    result = deduplicate([item_a, item_b], existing_urls=set(), existing_titles=[])
-    assert len(result) == 1
-
-
-# ---------------------------------------------------------------------------
-# prefilter
-# ---------------------------------------------------------------------------
-
-
-def test_prefilter_passes_valid_item():
-    item = _make_item()
-    result = prefilter([item])
-    assert len(result) == 1
-
-
-def test_prefilter_drops_short_title():
-    item = _make_item(title="Kurz")  # 4 chars < 10
-    result = prefilter([item])
-    assert result == []
-
-
-def test_prefilter_drops_petition_with_past_deadline():
-    item = _make_item(
-        type="petition", deadline=date.today() - timedelta(days=1), signature_count=600
-    )
-    result = prefilter([item])
-    assert result == []
-
-
-def test_prefilter_passes_antrag_with_past_deadline():
-    # Bundestag items use deadline as activity date, not expiry — should not be dropped
-    item = _make_item(type="antrag", deadline=date.today() - timedelta(days=1))
-    result = prefilter([item])
-    assert len(result) == 1
-
-
-def test_prefilter_passes_petition_with_future_deadline():
-    item = _make_item(
-        type="petition", deadline=date.today() + timedelta(days=10), signature_count=600
-    )
-    result = prefilter([item])
-    assert len(result) == 1
-
-
-def test_prefilter_drops_petition_below_threshold():
-    item = _make_item(type="petition", signature_count=100)
-    result = prefilter([item])
-    assert result == []
-
-
-def test_prefilter_passes_petition_above_threshold():
-    item = _make_item(type="petition", signature_count=600)
-    result = prefilter([item])
-    assert len(result) == 1
-
-
-def test_prefilter_passes_petition_without_signature_count():
-    # Sammelübersicht items from Petitionsausschuss have no individual count
-    item = _make_item(type="petition")  # no signature_count key
-    result = prefilter([item])
-    assert len(result) == 1
-
-
-def test_prefilter_drops_non_german_title():
+def test_passes_basic_checks_drops_non_german_title():
     item = _make_item(
         title="This is a long English text about some policy that should be dropped"
     )
-    result = prefilter([item])
-    assert result == []
-
-
-# ---------------------------------------------------------------------------
-# calculate_momentum
-# ---------------------------------------------------------------------------
-
-
-def test_momentum_baseline():
-    assert calculate_momentum(0) == pytest.approx(0.3)
-
-
-def test_momentum_low_news():
-    assert calculate_momentum(3) == pytest.approx(0.45)
-
-
-def test_momentum_high_news():
-    assert calculate_momentum(10) == pytest.approx(0.6)
-
-
-def test_momentum_high_velocity():
-    assert calculate_momentum(0, signature_velocity=2000) == pytest.approx(0.6)
-
-
-def test_momentum_capped_at_1():
-    # base 0.3 + news boost 0.3 + velocity boost 0.3 = 0.9; cap is 1.0
-    assert calculate_momentum(10, signature_velocity=2000) == pytest.approx(0.9)
-
-
-def test_momentum_no_velocity():
-    assert calculate_momentum(5, signature_velocity=None) == pytest.approx(0.6)
+    assert passes_basic_checks(item) is False
 
 
 # ---------------------------------------------------------------------------

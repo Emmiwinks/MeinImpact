@@ -117,7 +117,7 @@ Every interactive element must have a Semantics label:
 ```dart
 // Action card
 Semantics(
-  label: '${action.title}. ${action.urgencyLabel}. '
+  label: '${action.title}. ${action.stateReason}. '
          '${action.actionTypeLabel}. Ungefähr ${action.timeEstimate}.',
   button: true,
   child: ActionCard(action: action),
@@ -208,7 +208,7 @@ Semantics(
 
 ### Feed card
 - Full card is one focusable element (not individual sub-elements)
-- Label includes: title, type, urgency, time estimate
+- Label includes: title, type, `state_reason`, time estimate
 - Swipe-to-dismiss available via long-press menu for switch access
 
 ### Value profile sliders

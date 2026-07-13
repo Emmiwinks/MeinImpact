@@ -154,11 +154,14 @@ async def track_weact_petitions():
         count = await weact_scraper.get_signature_count(petition.source_url)
         status = await weact_scraper.get_status_banner(petition.source_url)
 
-        # Update momentum in actions table
+        # Carry the current count forward as previous_signature_count so
+        # the next ingestion pipeline run can compute momentum for state A
+        # re-evaluation. See data/ingestion-pipeline.md "State Determination:
+        # Petition Actions".
         await db.execute("""
-            UPDATE actions SET momentum_score = :score
+            UPDATE actions SET previous_signature_count = :count
             WHERE id = :id
-        """, {'score': calculate_momentum_from_count(count), 'id': petition.id})
+        """, {'count': count, 'id': petition.id})
 
         # Check for success banner
         if status == 'erfolgreich':
@@ -225,6 +228,10 @@ Accessed from confirmation screen or notification tap.
 ┌─────────────────────────────────────────────┐
 │ ← Zurück              [Aktion-Titel]        │
 ├─────────────────────────────────────────────┤
+│ DAMALIGE LAGE                               │
+│ Abstimmung am 18. April                     │
+│ (state_reason zum Zeitpunkt deiner Aktion)  │
+├─────────────────────────────────────────────┤
 │ DEIN BEITRAG                                │
 │ Brief gesendet am 15. April                 │
 │ an Sarah Müller (CDU)                       │
@@ -249,6 +256,15 @@ Accessed from confirmation screen or notification tap.
 │ diese Woche aktiv wurden.                   │
 └─────────────────────────────────────────────┘
 ```
+
+**"Damalige Lage" section:** Shows the action's `state_reason` as it was
+at the moment the user completed the action — e.g. "Abstimmung am 18.
+April" or "Dein MdB hat sich noch nicht öffentlich geäußert". This is a
+snapshot copied into the local Hive completion record at completion
+time (not re-fetched live), since `engagement_state`/`state_reason` on
+the server continue to update as the pipeline re-runs. It gives the
+user context for why they acted, distinct from "WAS PASSIERT IST" which
+shows what happened afterward.
 
 **Honest causality framing:**
 - Never: "Dein Brief hat bewirkt dass..."
