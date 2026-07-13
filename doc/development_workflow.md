@@ -75,14 +75,4 @@ Use GitHub issues for detailed implementation work. Every issue should include:
 When step-by-step commits are requested, use small commit groups and push each
 commit before starting the next group.
 
-Recommended commit order for this scaffold:
-
-- Repository guidance and product documentation.
-- Backend scaffold and backend tests.
-- Flutter app scaffold and app tests.
-- CI/CD workflows and coverage tooling.
-- GitHub issue creation and issue-plan documentation updates.
-
 Each commit message must be English, concise, and describe one coherent change.
-
-The initial bootstrap commit history is recorded in `doc/commit_log.md`.

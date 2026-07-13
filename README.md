@@ -22,7 +22,10 @@ Core principles:
 
 Start here:
 
-- `doc/product_concept.md` for the product concept.
-- `doc/architecture.md` for the technical architecture.
+- `specs/README.md` for the product concept, architecture, data, and feature
+  specifications. This is the source of truth for what MeinImpact does and how
+  it is built.
+- `doc/development_workflow.md` for local backend and app setup.
+- `doc/ci_cd_plan.md` for the CI/CD pipeline.
 - `doc/security.md` for API, mobile, and AI security requirements.
 - `Agent.md` for coding and collaboration rules for future agents.
