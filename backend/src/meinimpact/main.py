@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from meinimpact.api.routes import (
     actions,
+    admin,
     auth,
     beta,
     feedback,
@@ -91,6 +92,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(push.router)
     app.include_router(feedback.router)
     app.include_router(beta.router)
+    app.include_router(admin.router)
+    app.dependency_overrides[get_settings] = lambda: resolved_settings
     return app
 
 

@@ -1,12 +1,12 @@
 """Tests for the Google Custom Search fallback adapter."""
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from meinimpact.infrastructure.sources.google_cse_adapter import GoogleCseAdapter
 from tests.support.httpx_mock import make_json_response, make_mock_client
 
 
-async def test_returns_items_on_success():
+async def test_returns_items_on_success() -> None:
     client = make_mock_client(
         get_side_effect=[make_json_response({"items": [{"link": "https://openpetition.de/1"}]})]
     )
@@ -19,7 +19,7 @@ async def test_returns_items_on_success():
     assert results == [{"link": "https://openpetition.de/1"}]
 
 
-async def test_returns_empty_list_when_no_items_key():
+async def test_returns_empty_list_when_no_items_key() -> None:
     client = make_mock_client(get_side_effect=[make_json_response({})])
     with patch(
         "meinimpact.infrastructure.sources.google_cse_adapter.httpx.AsyncClient",
@@ -30,7 +30,7 @@ async def test_returns_empty_list_when_no_items_key():
     assert results == []
 
 
-async def test_returns_empty_list_on_quota_error():
+async def test_returns_empty_list_on_quota_error() -> None:
     client = make_mock_client(get_side_effect=[Exception("403 quota exceeded")])
     with patch(
         "meinimpact.infrastructure.sources.google_cse_adapter.httpx.AsyncClient",
@@ -41,10 +41,10 @@ async def test_returns_empty_list_on_quota_error():
     assert results == []
 
 
-async def test_request_params_use_key_cx_and_query():
+async def test_request_params_use_key_cx_and_query() -> None:
     captured: list[dict[str, object]] = []
 
-    async def _capturing_get(url: str, params: dict[str, object] | None = None, **_: object):
+    async def _capturing_get(url: str, params: dict[str, object] | None = None, **_: object) -> MagicMock:
         captured.append({"url": url, "params": params})
         return make_json_response({"items": []})
 

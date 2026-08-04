@@ -9,12 +9,15 @@ fails with NotNullViolationError — exactly the production error we want to cat
 before it reaches production.
 """
 
+from typing import cast
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from meinimpact.infrastructure.pipeline.orchestrator import _persist
 from meinimpact.infrastructure.pipeline.state_rules.protocol import StateTrace
 from meinimpact.infrastructure.pipeline.step import ItemState
 from meinimpact.infrastructure.pipeline.types import ClassifiedAction
+from meinimpact.infrastructure.sources.protocol import RawSourceItem
 
 
 def _classified(**overrides: object) -> ClassifiedAction:
@@ -52,7 +55,7 @@ def _item(
         evidence={},
     )
     return ItemState(
-        raw=classified,  # type: ignore[arg-type]
+        raw=classified,
         classified=classified,
         state_trace=trace,
         pipeline_source=pipeline_source,
@@ -72,7 +75,7 @@ async def test_persist_inserts_row_without_schema_errors(
 
 
 async def test_persist_skips_items_without_classification(db_session: AsyncSession) -> None:
-    unclassified = ItemState(raw=_classified(), classified=None)
+    unclassified = ItemState(raw=cast(RawSourceItem, _classified()), classified=None)
     inserted = await _persist([unclassified], db_session)
     assert inserted == 0
 

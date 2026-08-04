@@ -26,7 +26,7 @@ def _item(title: str) -> ItemState:
     )
 
 
-async def test_passes_valid_german_title():
+async def test_passes_valid_german_title() -> None:
     step = PrefilterStep()
     result = await step.process(
         [_item("Entwurf eines Gesetzes zur Änderung des Klimaschutzgesetzes")], _deps()
@@ -34,13 +34,13 @@ async def test_passes_valid_german_title():
     assert len(result) == 1
 
 
-async def test_drops_short_title():
+async def test_drops_short_title() -> None:
     step = PrefilterStep()
     result = await step.process([_item("Kurz")], _deps())
     assert result == []
 
 
-async def test_drops_non_german_title():
+async def test_drops_non_german_title() -> None:
     step = PrefilterStep()
     result = await step.process(
         [_item("This is a long English text about some policy that should be dropped")], _deps()
@@ -48,7 +48,7 @@ async def test_drops_non_german_title():
     assert result == []
 
 
-async def test_mixed_batch_keeps_only_passing_items():
+async def test_mixed_batch_keeps_only_passing_items() -> None:
     step = PrefilterStep()
     items = [
         _item("Entwurf eines Gesetzes zur Änderung des Klimaschutzgesetzes"),

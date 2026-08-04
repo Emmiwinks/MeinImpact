@@ -1,5 +1,6 @@
 """Unit tests for the pipeline executor — fake steps, no real I/O."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from uuid import uuid4
 
@@ -35,16 +36,16 @@ class _RecordingStep:
 
     name: str
     call_log: list[str]
-    transform: object = None  # callable(list[ItemState]) -> list[ItemState]
+    transform: Callable[[list[ItemState]], list[ItemState]] | None = None
 
     async def process(self, items: list[ItemState], deps: PipelineDeps) -> list[ItemState]:
         self.call_log.append(self.name)
         if self.transform is not None:
-            return self.transform(items)  # type: ignore[misc]
+            return self.transform(items)
         return items
 
 
-async def test_runs_steps_in_order():
+async def test_runs_steps_in_order() -> None:
     call_log: list[str] = []
     steps = [
         _RecordingStep("first", call_log),
@@ -55,7 +56,7 @@ async def test_runs_steps_in_order():
     assert call_log == ["first", "second", "third"]
 
 
-async def test_passes_output_of_one_step_as_input_to_next():
+async def test_passes_output_of_one_step_as_input_to_next() -> None:
     steps = [
         _RecordingStep("fetch", [], transform=lambda items: [_make_item("1"), _make_item("2")]),
         _RecordingStep("filter", [], transform=lambda items: items[:1]),
@@ -65,18 +66,19 @@ async def test_passes_output_of_one_step_as_input_to_next():
     assert result[0].raw["external_id"] == "1"
 
 
-async def test_starts_with_empty_item_list():
+async def test_starts_with_empty_item_list() -> None:
     seen_inputs: list[int] = []
-    steps = [
-        _RecordingStep(
-            "first", [], transform=lambda items: (seen_inputs.append(len(items)), items)[1]
-        )
-    ]
+
+    def record_and_pass_through(items: list[ItemState]) -> list[ItemState]:
+        seen_inputs.append(len(items))
+        return items
+
+    steps = [_RecordingStep("first", [], transform=record_and_pass_through)]
     await run_pipeline(steps, _make_deps())
     assert seen_inputs == [0]
 
 
-async def test_logs_one_step_completed_event_per_step_with_counts():
+async def test_logs_one_step_completed_event_per_step_with_counts() -> None:
     steps = [
         _RecordingStep("fetch", [], transform=lambda items: [_make_item("1"), _make_item("2")]),
         _RecordingStep("filter", [], transform=lambda items: items[:1]),
@@ -92,6 +94,6 @@ async def test_logs_one_step_completed_event_per_step_with_counts():
     assert step_events[1]["items_out"] == 1
 
 
-async def test_empty_step_list_returns_empty_items():
+async def test_empty_step_list_returns_empty_items() -> None:
     result = await run_pipeline([], _make_deps())
     assert result == []

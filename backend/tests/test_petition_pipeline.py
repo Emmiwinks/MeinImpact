@@ -14,7 +14,7 @@ from meinimpact.infrastructure.pipeline.steps.trace_discards import TraceDiscard
 
 
 def _settings(**overrides: object) -> SimpleNamespace:
-    defaults = {
+    defaults: dict[str, object] = {
         "dip_api_key": "dip-key",
         "tavily_api_key": "tavily-key",
         "mistral_api_key": "mistral-key",
@@ -27,7 +27,7 @@ def _settings(**overrides: object) -> SimpleNamespace:
     return SimpleNamespace(**defaults)
 
 
-def test_full_settings_produce_two_fetch_steps_and_expected_order():
+def test_full_settings_produce_two_fetch_steps_and_expected_order() -> None:
     steps = build_petition_steps(_settings())  # type: ignore[arg-type]
     assert [type(s) for s in steps] == [
         FetchStep,
@@ -43,30 +43,30 @@ def test_full_settings_produce_two_fetch_steps_and_expected_order():
     assert fetch_names == ["fetch_dip_petitions", "fetch_civil_petitions"]
 
 
-def test_missing_dip_key_omits_dip_fetch_step_only():
+def test_missing_dip_key_omits_dip_fetch_step_only() -> None:
     steps = build_petition_steps(_settings(dip_api_key=None))  # type: ignore[arg-type]
     fetch_names = [s.name for s in steps if isinstance(s, FetchStep)]
     assert fetch_names == ["fetch_civil_petitions"]
 
 
-def test_missing_tavily_key_omits_civil_petition_fetch_step():
+def test_missing_tavily_key_omits_civil_petition_fetch_step() -> None:
     steps = build_petition_steps(_settings(tavily_api_key=None))  # type: ignore[arg-type]
     fetch_names = [s.name for s in steps if isinstance(s, FetchStep)]
     assert fetch_names == ["fetch_dip_petitions"]
 
 
-def test_missing_google_cse_config_still_builds_civil_petition_step():
+def test_missing_google_cse_config_still_builds_civil_petition_step() -> None:
     steps = build_petition_steps(_settings(google_cse_key=None, google_cse_id=None))  # type: ignore[arg-type]
     fetch_names = [s.name for s in steps if isinstance(s, FetchStep)]
     assert "fetch_civil_petitions" in fetch_names
 
 
-def test_missing_mistral_key_omits_classify_step():
+def test_missing_mistral_key_omits_classify_step() -> None:
     steps = build_petition_steps(_settings(mistral_api_key=None))  # type: ignore[arg-type]
     assert ClassifyStep not in [type(s) for s in steps]
 
 
-def test_evaluate_state_step_uses_petition_rules():
+def test_evaluate_state_step_uses_petition_rules() -> None:
     from meinimpact.infrastructure.pipeline.state_rules.petition_rules import RULES
 
     steps = build_petition_steps(_settings())  # type: ignore[arg-type]

@@ -55,7 +55,7 @@ class TavilyClient:
             data: dict[str, object] = response.json()
             results = data.get("results") or []
             assert isinstance(results, list)
-            return results  # type: ignore[return-value]
+            return results
         except Exception as exc:
             logger.warning("Tavily search failed for %r: %s", query[:60], exc)
             return []

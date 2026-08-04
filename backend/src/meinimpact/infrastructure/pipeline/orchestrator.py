@@ -16,11 +16,11 @@ import logging
 import time
 from collections import Counter
 from datetime import UTC, datetime
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from sqlalchemy import text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
 
 from meinimpact.core.config import Settings
 from meinimpact.infrastructure.database import Database
@@ -36,6 +36,11 @@ from meinimpact.infrastructure.pipeline.stages import (
     map_domain_action_type,
 )
 from meinimpact.infrastructure.pipeline.step import ItemState, PipelineDeps
+from meinimpact.infrastructure.pipeline.steps.build_rule_context import (
+    PreviousSignatureLookup,
+)
+from meinimpact.infrastructure.pipeline.steps.trace_discards import DiscardSink
+from meinimpact.infrastructure.sources.protocol import RawSourceItem
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +57,7 @@ async def run_ingestion_pipeline(settings: Settings) -> None:
     db = Database(settings.database_url)
     try:
         async with db.engine.connect() as conn:
-            existing = await _load_existing(conn)
+            existing_urls, existing_titles = await _load_existing(conn)
 
         discarded_ids: list[str] = []
 
@@ -61,7 +66,7 @@ async def run_ingestion_pipeline(settings: Settings) -> None:
 
         previous_signature_counts = await _load_previous_signature_counts(db)
 
-        def _previous_signature_lookup(item) -> int | None:  # type: ignore[no-untyped-def]
+        def _previous_signature_lookup(item: RawSourceItem) -> int | None:
             return previous_signature_counts.get(item.get("source_url", ""))
 
         # Stage 0a/0b: both pipelines run concurrently — they use different
@@ -80,8 +85,8 @@ async def run_ingestion_pipeline(settings: Settings) -> None:
         merged = merge_and_deduplicate(
             parliamentary_items,
             petition_items,
-            existing["existing_urls"],
-            existing["existing_titles"],
+            existing_urls,
+            existing_titles,
         )
         state_counts = _count_states(merged)
 
@@ -111,7 +116,9 @@ async def run_ingestion_pipeline(settings: Settings) -> None:
         )
 
     except Exception as exc:
-        logger.exception("Pipeline run %s failed: %s", run_id, exc)
+        logger.critical(
+            "Pipeline run %s ABORTED — nothing persisted: %s", run_id, exc, exc_info=True
+        )
         errors.append(str(exc))
     finally:
         await db.close()
@@ -119,32 +126,18 @@ async def run_ingestion_pipeline(settings: Settings) -> None:
 
 async def _run_both_pipelines(
     deps: PipelineDeps,
-    discard_sink,  # type: ignore[no-untyped-def]
-    previous_signature_lookup,  # type: ignore[no-untyped-def]
+    discard_sink: DiscardSink,
+    previous_signature_lookup: PreviousSignatureLookup,
 ) -> tuple[list[ItemState], list[ItemState]]:
-    """Runs both pipelines concurrently. A failure in one does not prevent
-    the other's results from persisting — each pipeline's own steps already
-    collect their errors into `deps.errors` rather than raising."""
-    parliamentary_result, petition_result = await asyncio.gather(
+    """Runs both pipelines concurrently. Plain `asyncio.gather` (no
+    `return_exceptions`) — a failure in either pipeline propagates
+    immediately and cancels the other, so `run_ingestion_pipeline`'s outer
+    handler aborts the whole run and persists nothing, rather than
+    silently treating a broken source as "found no items"."""
+    return await asyncio.gather(
         run_parliamentary_pipeline(deps, discard_sink),
         run_petition_pipeline(deps, discard_sink, previous_signature_lookup),
-        return_exceptions=True,
     )
-    parliamentary_items = _unwrap_pipeline_result(
-        parliamentary_result, "parliamentary", deps.errors
-    )
-    petition_items = _unwrap_pipeline_result(petition_result, "petition", deps.errors)
-    return parliamentary_items, petition_items
-
-
-def _unwrap_pipeline_result(
-    result: list[ItemState] | BaseException, name: str, errors: list[str]
-) -> list[ItemState]:
-    if isinstance(result, BaseException):
-        errors.append(f"{name} pipeline failed: {result}")
-        logger.error("%s pipeline failed: %s", name, result)
-        return []
-    return result
 
 
 def _count_states(items: list[ItemState]) -> Counter[str]:
@@ -160,15 +153,14 @@ def _count_states(items: list[ItemState]) -> Counter[str]:
 # ---------------------------------------------------------------------------
 
 
-async def _load_existing(conn: object) -> dict[str, object]:
-    result = await conn.execute(  # type: ignore[union-attr]
+async def _load_existing(conn: AsyncConnection) -> tuple[set[str], list[str]]:
+    result = await conn.execute(
         text("SELECT source_url, title FROM civic_actions WHERE active = true")
     )
     rows = result.fetchall()
-    return {
-        "existing_urls": {row[0] for row in rows},
-        "existing_titles": [row[1] for row in rows],
-    }
+    existing_urls = {row[0] for row in rows}
+    existing_titles = [row[1] for row in rows]
+    return existing_urls, existing_titles
 
 
 async def _load_previous_signature_counts(db: Database) -> dict[str, int]:
@@ -269,7 +261,7 @@ async def _deactivate_expired(session: AsyncSession) -> None:
 async def _log_run(
     session: AsyncSession,
     *,
-    run_id: object,
+    run_id: UUID,
     parliamentary_actions_found: int,
     petition_actions_found: int,
     state_counts: Counter[str],
@@ -279,7 +271,7 @@ async def _log_run(
     duration: float,
 ) -> None:
     record = PipelineRunRecord(
-        id=run_id,  # type: ignore[arg-type]
+        id=run_id,
         parliamentary_actions_found=parliamentary_actions_found,
         petition_actions_found=petition_actions_found,
         state_a_count=state_counts.get("A", 0),

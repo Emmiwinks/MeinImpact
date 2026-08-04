@@ -12,6 +12,7 @@ duplication between them.
 """
 
 import asyncio
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -39,7 +40,7 @@ async def check_mdb_position(
     mdb: MdbTarget,
     descriptors: list[str],
     since: datetime,
-    adapters: list[PositionCheckAdapter],
+    adapters: Sequence[PositionCheckAdapter],
 ) -> MdbPositionCheckResult:
     """Runs all given position-check adapters in parallel and aggregates.
 

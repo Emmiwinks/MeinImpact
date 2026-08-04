@@ -5,6 +5,7 @@ from uuid import uuid4
 from meinimpact.infrastructure.pipeline.state_rules.protocol import StateTrace
 from meinimpact.infrastructure.pipeline.step import ItemState, PipelineDeps
 from meinimpact.infrastructure.pipeline.steps.trace_discards import TraceDiscardsStep
+from meinimpact.infrastructure.sources.protocol import RawSourceItem
 
 
 def _deps() -> PipelineDeps:
@@ -12,7 +13,7 @@ def _deps() -> PipelineDeps:
 
 
 def _item(state: str, external_id: str = "1") -> ItemState:
-    raw = {
+    raw: RawSourceItem = {
         "external_id": external_id,
         "title": "x",
         "type": "antrag",
@@ -33,7 +34,7 @@ def _item(state: str, external_id: str = "1") -> ItemState:
     return ItemState(raw=raw, state_trace=trace)
 
 
-async def test_does_not_mutate_the_item_list():
+async def test_does_not_mutate_the_item_list() -> None:
     items = [_item("A"), _item("D")]
     step = TraceDiscardsStep()
     result = await step.process(items, _deps())
@@ -41,7 +42,7 @@ async def test_does_not_mutate_the_item_list():
     assert len(result) == 2
 
 
-async def test_calls_sink_only_for_state_d_items():
+async def test_calls_sink_only_for_state_d_items() -> None:
     sunk: list[str] = []
 
     async def sink(item: ItemState) -> None:
@@ -53,14 +54,14 @@ async def test_calls_sink_only_for_state_d_items():
     assert sunk == ["2", "4"]
 
 
-async def test_no_sink_configured_does_not_error():
+async def test_no_sink_configured_does_not_error() -> None:
     items = [_item("D")]
     step = TraceDiscardsStep()
     result = await step.process(items, _deps())
     assert len(result) == 1
 
 
-async def test_items_without_state_trace_are_skipped_safely():
+async def test_items_without_state_trace_are_skipped_safely() -> None:
     item = ItemState(
         raw={
             "external_id": "1",

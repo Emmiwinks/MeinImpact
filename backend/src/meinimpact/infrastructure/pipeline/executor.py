@@ -8,6 +8,8 @@ can see exactly how many items went into and came out of every step,
 without touching the steps themselves.
 """
 
+from collections.abc import Sequence
+
 import structlog
 
 from meinimpact.infrastructure.pipeline.step import ItemState, PipelineDeps, PipelineStep
@@ -16,7 +18,7 @@ logger = structlog.get_logger(__name__)
 
 
 async def run_pipeline(
-    steps: list[PipelineStep], deps: PipelineDeps
+    steps: Sequence[PipelineStep], deps: PipelineDeps
 ) -> list[ItemState]:
     """Runs `steps` in order, each receiving the previous step's output."""
     items: list[ItemState] = []

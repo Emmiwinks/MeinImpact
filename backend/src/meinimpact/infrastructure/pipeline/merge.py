@@ -80,7 +80,7 @@ def _is_duplicate(a: ItemState, b: ItemState) -> bool:
     descriptor_b = b.raw.get("descriptor")
     if descriptor_a and descriptor_b and set(descriptor_a) & set(descriptor_b):
         return True
-    return fuzz.ratio(a.raw["title"], b.raw["title"]) > _FUZZY_TITLE_THRESHOLD
+    return bool(fuzz.ratio(a.raw["title"], b.raw["title"]) > _FUZZY_TITLE_THRESHOLD)
 
 
 def _should_replace(existing: ItemState, candidate: ItemState) -> bool:
@@ -108,7 +108,7 @@ def _type_priority(item: ItemState) -> int:
 def _type_label(item: ItemState) -> str:
     if item.raw.get("type") == "petition":
         return "bundestag_petition" if item.raw.get("source") == "dip" else "petition"
-    action_types = (item.classified or {}).get("action_types") or []
+    action_types: list[str] = list(item.classified.get("action_types") or []) if item.classified else []
     if "anfrage" in action_types:
         return "anfrage"
     return "brief"

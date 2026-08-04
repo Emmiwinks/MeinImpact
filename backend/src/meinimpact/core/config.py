@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     google_cse_key: str | None = None
     google_cse_id: str | None = None
     max_request_body_bytes: int = 65_536
+    admin_api_key: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env",

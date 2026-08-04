@@ -23,11 +23,12 @@ class AbgeordnetenwatchPositionAdapter:
     async def check_position(
         self, mdb: MdbTarget, descriptors: list[str], since: datetime
     ) -> PositionCheckResult:
-        if mdb.aw_politician_id is None:
+        aw_id = mdb.aw_politician_id
+        if aw_id is None:
             return PositionCheckResult(found=False, source=_SOURCE_NAME)
 
-        params = {
-            "politician": mdb.aw_politician_id,
+        params: dict[str, str | int] = {
+            "politician": aw_id,
             "updated_since": since.date().isoformat(),
         }
         try:

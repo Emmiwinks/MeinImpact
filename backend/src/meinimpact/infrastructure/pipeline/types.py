@@ -19,7 +19,7 @@ class ClassifiedAction(TypedDict):
     source: str
     tavily_context: NotRequired[str]
     signature_count: NotRequired[int]
-    imminence_score: NotRequired[float]
+    descriptor: NotRequired[list[str]]
     # ── Classification output ─────────────────────────────────────────────────
     urgency: str  # "high" | "mid" | "low"
     werte_relevanz: dict[str, float]

@@ -6,6 +6,7 @@ calls the non-streaming JSON-mode endpoint for action classification.
 
 import json
 import logging
+from typing import Any
 
 import httpx
 
@@ -84,9 +85,9 @@ class MistralClassifier:
         """Returns a ClassifiedAction or None on error / malformed output."""
         prompt = _CLASSIFICATION_PROMPT.format(
             title=item["title"],
-            description=item.get("description", ""),  # type: ignore[misc]
-            status=item.get("status", ""),  # type: ignore[misc]
-            tavily_context=item.get("tavily_context", ""),  # type: ignore[misc]
+            description=item.get("description", ""),
+            status=item.get("status", ""),
+            tavily_context=item.get("tavily_context", ""),
         )
         payload = {
             "model": self._model,
@@ -107,7 +108,7 @@ class MistralClassifier:
             content = str(
                 data["choices"][0]["message"]["content"]  # type: ignore[index]
             )
-            classification: dict[str, object] = json.loads(content)
+            classification: dict[str, Any] = json.loads(content)
         except Exception as exc:
             logger.warning("Mistral classification failed: %s", exc)
             return None
@@ -121,12 +122,12 @@ class MistralClassifier:
             return None
 
         return ClassifiedAction(
-            **item,  # type: ignore[misc]
+            **item,
             urgency=str(classification.get("urgency") or "low"),
-            werte_relevanz=dict(classification.get("werte_relevanz") or {}),  # type: ignore[arg-type]
-            pro_argumente=list(classification.get("pro_argumente") or []),  # type: ignore[arg-type]
-            contra_argumente=list(classification.get("contra_argumente") or []),  # type: ignore[arg-type]
-            action_types=list(classification.get("action_types") or []),  # type: ignore[arg-type]
+            werte_relevanz=dict(classification.get("werte_relevanz") or {}),
+            pro_argumente=list(classification.get("pro_argumente") or []),
+            contra_argumente=list(classification.get("contra_argumente") or []),
+            action_types=list(classification.get("action_types") or []),
             is_controversial=bool(classification.get("is_controversial", False)),
             position_required=bool(classification.get("position_required", False)),
         )

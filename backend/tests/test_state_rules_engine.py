@@ -7,6 +7,7 @@ from meinimpact.infrastructure.pipeline.state_rules.engine import evaluate_state
 from meinimpact.infrastructure.pipeline.state_rules.protocol import (
     RuleContext,
     RuleResult,
+    StateRule,
 )
 
 # ---------------------------------------------------------------------------
@@ -47,9 +48,9 @@ class _FakeRule:
 # ---------------------------------------------------------------------------
 
 
-def test_first_match_wins():
+def test_first_match_wins() -> None:
     ctx = _make_context()
-    rules = [
+    rules: list[StateRule] = [
         _FakeRule("never_fires", None),
         _FakeRule("fires_b", RuleResult("B", "reason b", "fires_b")),
         _FakeRule("would_also_fire", RuleResult("A", "reason a", "would_also_fire")),
@@ -60,9 +61,9 @@ def test_first_match_wins():
     assert trace.state_reason == "reason b"
 
 
-def test_rules_checked_includes_every_rule_up_to_and_including_the_match():
+def test_rules_checked_includes_every_rule_up_to_and_including_the_match() -> None:
     ctx = _make_context()
-    rules = [
+    rules: list[StateRule] = [
         _FakeRule("first", None),
         _FakeRule("second", RuleResult("C", "reason", "second")),
         _FakeRule("third_never_checked", None),
@@ -71,23 +72,23 @@ def test_rules_checked_includes_every_rule_up_to_and_including_the_match():
     assert trace.rules_checked == ["first", "second"]
 
 
-def test_no_rule_matches_defaults_to_state_d():
+def test_no_rule_matches_defaults_to_state_d() -> None:
     ctx = _make_context()
-    rules = [_FakeRule("a", None), _FakeRule("b", None)]
+    rules: list[StateRule] = [_FakeRule("a", None), _FakeRule("b", None)]
     trace = evaluate_state(ctx, rules)
     assert trace.engagement_state == "D"
     assert trace.matched_rule == "none"
     assert trace.rules_checked == ["a", "b"]
 
 
-def test_empty_rule_list_defaults_to_state_d():
+def test_empty_rule_list_defaults_to_state_d() -> None:
     trace = evaluate_state(_make_context(), [])
     assert trace.engagement_state == "D"
     assert trace.rules_checked == []
 
 
-def test_evidence_is_carried_from_matched_rule():
+def test_evidence_is_carried_from_matched_rule() -> None:
     ctx = _make_context()
-    rules = [_FakeRule("a", RuleResult("A", "r", "a", evidence={"key": "value"}))]
+    rules: list[StateRule] = [_FakeRule("a", RuleResult("A", "r", "a", evidence={"key": "value"}))]
     trace = evaluate_state(ctx, rules)
     assert trace.evidence == {"key": "value"}

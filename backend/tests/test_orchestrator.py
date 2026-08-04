@@ -11,21 +11,24 @@ import time
 from uuid import uuid4
 from unittest.mock import patch
 
-from meinimpact.infrastructure.pipeline.orchestrator import (
-    _count_states,
-    _run_both_pipelines,
-    _unwrap_pipeline_result,
-)
+import pytest
+
+from meinimpact.infrastructure.pipeline.orchestrator import _count_states, _run_both_pipelines
 from meinimpact.infrastructure.pipeline.state_rules.protocol import StateTrace
 from meinimpact.infrastructure.pipeline.step import ItemState, PipelineDeps
+from meinimpact.infrastructure.sources.protocol import RawSourceItem
 
 
 def _deps() -> PipelineDeps:
     return PipelineDeps(settings=None, run_id=uuid4(), errors=[])  # type: ignore[arg-type]
 
 
+async def _noop_discard(item: ItemState) -> None:
+    pass
+
+
 def _item_with_state(state: str) -> ItemState:
-    raw = {
+    raw: RawSourceItem = {
         "external_id": "1",
         "title": "x",
         "type": "antrag",
@@ -51,7 +54,7 @@ def _item_with_state(state: str) -> ItemState:
 # ---------------------------------------------------------------------------
 
 
-def test_count_states_tallies_by_engagement_state():
+def test_count_states_tallies_by_engagement_state() -> None:
     items = [_item_with_state("A"), _item_with_state("A"), _item_with_state("B")]
     counts = _count_states(items)
     assert counts["A"] == 2
@@ -59,45 +62,25 @@ def test_count_states_tallies_by_engagement_state():
     assert counts["C"] == 0
 
 
-def test_count_states_ignores_items_without_trace():
+def test_count_states_ignores_items_without_trace() -> None:
     item = ItemState(raw=_item_with_state("A").raw)
     counts = _count_states([item])
     assert sum(counts.values()) == 0
 
 
 # ---------------------------------------------------------------------------
-# _unwrap_pipeline_result
+# _run_both_pipelines: concurrency + fail-loud behavior
 # ---------------------------------------------------------------------------
 
 
-def test_unwrap_pipeline_result_passes_through_list():
-    items = [_item_with_state("A")]
-    errors: list[str] = []
-    result = _unwrap_pipeline_result(items, "parliamentary", errors)
-    assert result == items
-    assert errors == []
-
-
-def test_unwrap_pipeline_result_records_error_on_exception():
-    errors: list[str] = []
-    result = _unwrap_pipeline_result(RuntimeError("boom"), "petition", errors)
-    assert result == []
-    assert len(errors) == 1
-    assert "petition" in errors[0]
-    assert "boom" in errors[0]
-
-
-# ---------------------------------------------------------------------------
-# _run_both_pipelines: concurrency + fault tolerance
-# ---------------------------------------------------------------------------
-
-
-async def test_both_pipelines_run_concurrently_not_sequentially():
-    async def slow_parliamentary(deps, discard_sink):
+async def test_both_pipelines_run_concurrently_not_sequentially() -> None:
+    async def slow_parliamentary(deps: PipelineDeps, discard_sink: object) -> list[ItemState]:
         await asyncio.sleep(0.05)
         return [_item_with_state("A")]
 
-    async def slow_petition(deps, discard_sink, previous_signature_lookup):
+    async def slow_petition(
+        deps: PipelineDeps, discard_sink: object, previous_signature_lookup: object
+    ) -> list[ItemState]:
         await asyncio.sleep(0.05)
         return [_item_with_state("C")]
 
@@ -113,7 +96,7 @@ async def test_both_pipelines_run_concurrently_not_sequentially():
     ):
         start = time.monotonic()
         parliamentary_items, petition_items = await _run_both_pipelines(
-            _deps(), lambda item: None, lambda item: None
+            _deps(), _noop_discard, lambda item: None
         )
         elapsed = time.monotonic() - start
 
@@ -123,11 +106,19 @@ async def test_both_pipelines_run_concurrently_not_sequentially():
     assert len(petition_items) == 1
 
 
-async def test_one_pipeline_failing_does_not_block_the_other():
-    async def failing_parliamentary(deps, discard_sink):
+async def test_one_pipeline_failing_aborts_the_whole_run() -> None:
+    """This is a prototype still being verified end-to-end — a broken
+    source must surface as a hard failure, not "0 items found". Isolating
+    pipeline failures (letting the other one's results persist) is a
+    resilience feature for a system already known to work; right now it
+    would hide exactly the kind of bug this behavior is meant to catch."""
+
+    async def failing_parliamentary(deps: PipelineDeps, discard_sink: object) -> list[ItemState]:
         raise RuntimeError("DIP API down")
 
-    async def working_petition(deps, discard_sink, previous_signature_lookup):
+    async def working_petition(
+        deps: PipelineDeps, discard_sink: object, previous_signature_lookup: object
+    ) -> list[ItemState]:
         return [_item_with_state("C")]
 
     with (
@@ -139,13 +130,6 @@ async def test_one_pipeline_failing_does_not_block_the_other():
             "meinimpact.infrastructure.pipeline.orchestrator.run_petition_pipeline",
             side_effect=working_petition,
         ),
+        pytest.raises(RuntimeError, match="DIP API down"),
     ):
-        deps = _deps()
-        parliamentary_items, petition_items = await _run_both_pipelines(
-            deps, lambda item: None, lambda item: None
-        )
-
-    assert parliamentary_items == []
-    assert len(petition_items) == 1
-    assert len(deps.errors) == 1
-    assert "parliamentary" in deps.errors[0]
+        await _run_both_pipelines(_deps(), _noop_discard, lambda item: None)

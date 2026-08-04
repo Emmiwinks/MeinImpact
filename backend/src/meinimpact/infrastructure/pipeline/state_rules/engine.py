@@ -5,18 +5,21 @@ wins. If no rule matches, the item resolves to state 'D' (no engagement
 hook right now) — the pipeline discards it before classification.
 """
 
+from collections.abc import Sequence
+
 from meinimpact.infrastructure.pipeline.state_rules.protocol import (
+    EngagementState,
     RuleContext,
     StateRule,
     StateTrace,
 )
 
-_DEFAULT_STATE = "D"
+_DEFAULT_STATE: EngagementState = "D"
 _DEFAULT_REASON = "Kein aktueller Anknuepfungspunkt fuer Engagement"
 _DEFAULT_RULE_NAME = "none"
 
 
-def evaluate_state(context: RuleContext, rules: list[StateRule]) -> StateTrace:
+def evaluate_state(context: RuleContext, rules: Sequence[StateRule]) -> StateTrace:
     """Evaluates `rules` in order against `context`, returning the full trace."""
     checked: list[str] = []
     for rule in rules:

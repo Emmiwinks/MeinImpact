@@ -25,7 +25,7 @@ class GoogleCseAdapter:
     async def search(self, query: str, *, max_results: int = 10) -> list[dict[str, object]]:
         """Returns raw Google CSE result items. Returns [] on any error,
         including quota exhaustion (403/429)."""
-        params = {
+        params: dict[str, str | int] = {
             "key": self._api_key,
             "cx": self._cse_id,
             "q": query,
@@ -41,4 +41,4 @@ class GoogleCseAdapter:
             return []
 
         items = data.get("items") or []
-        return items if isinstance(items, list) else []  # type: ignore[return-value]
+        return items if isinstance(items, list) else []

@@ -44,7 +44,7 @@ class NewsDataClient:
                 data: dict[str, object] = response.json()
                 results = data.get("results") or []
                 assert isinstance(results, list)
-                return results[:max_results]  # type: ignore[return-value]
+                return results[:max_results]
         except Exception as exc:
             logger.warning("NewsData fetch failed: %s", exc)
             return []

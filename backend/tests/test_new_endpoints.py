@@ -78,7 +78,7 @@ class StubPushRepository:
 
 class StubFeedbackRepository:
     def __init__(self) -> None:
-        self.entries: list[dict] = []
+        self.entries: list[dict[str, object]] = []
 
     async def submit(
         self,

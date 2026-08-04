@@ -53,6 +53,25 @@ class MdbResponse(BaseModel):
     results: list[MdbOption]
 
 
+# ── Admin ─────────────────────────────────────────────────────────────────────
+
+
+class PipelineRunResponse(BaseModel):
+    """Summary of one ingestion pipeline run, for manual/demo verification."""
+
+    id: UUID
+    ran_at: datetime
+    parliamentary_actions_found: int
+    petition_actions_found: int
+    state_a_count: int
+    state_b_count: int
+    state_c_count: int
+    state_d_discarded: int
+    inserted_count: int
+    duration_seconds: float | None
+    errors: list[str]
+
+
 # ── Health ────────────────────────────────────────────────────────────────────
 
 

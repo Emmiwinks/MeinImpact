@@ -1,6 +1,6 @@
 """Tests for MdB DIP-person-ID resolution and caching."""
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from meinimpact.infrastructure.mdb.mdb_id_resolution import (
     InMemoryMdbIdCache,
@@ -9,7 +9,7 @@ from meinimpact.infrastructure.mdb.mdb_id_resolution import (
 from tests.support.httpx_mock import make_json_response, make_mock_client
 
 
-async def test_cache_miss_resolves_and_caches():
+async def test_cache_miss_resolves_and_caches() -> None:
     client = make_mock_client(
         get_side_effect=[make_json_response({"documents": [{"id": "999"}]})]
     )
@@ -25,7 +25,7 @@ async def test_cache_miss_resolves_and_caches():
     assert await cache.get("Sarah Müller") == "999"
 
 
-async def test_cache_hit_does_not_call_dip():
+async def test_cache_hit_does_not_call_dip() -> None:
     cache = InMemoryMdbIdCache()
     await cache.set("Sarah Müller", "cached-id")
     client = make_mock_client(get_side_effect=[Exception("should not be called")])
@@ -39,7 +39,7 @@ async def test_cache_hit_does_not_call_dip():
     assert result == "cached-id"
 
 
-async def test_no_matching_person_returns_none_and_does_not_cache():
+async def test_no_matching_person_returns_none_and_does_not_cache() -> None:
     client = make_mock_client(get_side_effect=[make_json_response({"documents": []})])
     cache = InMemoryMdbIdCache()
     with patch(
@@ -53,7 +53,7 @@ async def test_no_matching_person_returns_none_and_does_not_cache():
     assert await cache.get("Unknown Person") is None
 
 
-async def test_request_error_returns_none():
+async def test_request_error_returns_none() -> None:
     client = make_mock_client(get_side_effect=[Exception("network error")])
     cache = InMemoryMdbIdCache()
     with patch(
@@ -66,10 +66,10 @@ async def test_request_error_returns_none():
     assert result is None
 
 
-async def test_request_uses_name_filter_with_percent_encoding():
+async def test_request_uses_name_filter_with_percent_encoding() -> None:
     captured: list[str] = []
 
-    async def _capturing_get(url: str, **_: object):
+    async def _capturing_get(url: str, **_: object) -> MagicMock:
         captured.append(url)
         return make_json_response({"documents": []})
 
@@ -89,7 +89,7 @@ async def test_request_uses_name_filter_with_percent_encoding():
     assert "+" not in captured[0]
 
 
-async def test_in_memory_cache_get_set_roundtrip():
+async def test_in_memory_cache_get_set_roundtrip() -> None:
     cache = InMemoryMdbIdCache()
     assert await cache.get("x") is None
     await cache.set("x", "123")

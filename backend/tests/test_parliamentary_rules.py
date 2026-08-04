@@ -6,6 +6,7 @@ these tests are fast and safe to re-run once real DIP values are confirmed.
 """
 
 from datetime import datetime, timedelta
+from typing import Any
 
 from meinimpact.infrastructure.pipeline.state_rules.engine import evaluate_state
 from meinimpact.infrastructure.pipeline.state_rules.parliamentary_rules import (
@@ -47,7 +48,7 @@ def _make_item(
     return item
 
 
-def _ctx(**kwargs) -> RuleContext:
+def _ctx(**kwargs: Any) -> RuleContext:
     return RuleContext(item=_make_item(), now=_NOW, **kwargs)
 
 
@@ -56,33 +57,33 @@ def _ctx(**kwargs) -> RuleContext:
 # ---------------------------------------------------------------------------
 
 
-def test_vote_in_29_days_matches():
+def test_vote_in_29_days_matches() -> None:
     ctx = RuleContext(item=_make_item(), now=_NOW, vote_date=(_NOW + timedelta(days=29)).date())
     trace = evaluate_state(ctx, RULES)
     assert trace.engagement_state == "A"
     assert trace.matched_rule == "vote_scheduled"
 
 
-def test_vote_in_31_days_does_not_match():
+def test_vote_in_31_days_does_not_match() -> None:
     ctx = RuleContext(item=_make_item(), now=_NOW, vote_date=(_NOW + timedelta(days=31)).date())
     trace = evaluate_state(ctx, RULES)
     assert trace.matched_rule != "vote_scheduled"
 
 
-def test_vote_exactly_30_days_matches():
+def test_vote_exactly_30_days_matches() -> None:
     ctx = RuleContext(item=_make_item(), now=_NOW, vote_date=(_NOW + timedelta(days=30)).date())
     trace = evaluate_state(ctx, RULES)
     assert trace.engagement_state == "A"
     assert trace.matched_rule == "vote_scheduled"
 
 
-def test_vote_in_the_past_does_not_match():
+def test_vote_in_the_past_does_not_match() -> None:
     ctx = RuleContext(item=_make_item(), now=_NOW, vote_date=(_NOW - timedelta(days=1)).date())
     trace = evaluate_state(ctx, RULES)
     assert trace.matched_rule != "vote_scheduled"
 
 
-def test_no_vote_date_does_not_match():
+def test_no_vote_date_does_not_match() -> None:
     ctx = _ctx()
     trace = evaluate_state(ctx, RULES)
     assert trace.matched_rule != "vote_scheduled"
@@ -93,7 +94,7 @@ def test_no_vote_date_does_not_match():
 # ---------------------------------------------------------------------------
 
 
-def test_committee_active_matches_when_status_and_recent_activity():
+def test_committee_active_matches_when_status_and_recent_activity() -> None:
     item = _make_item(status="Ausschussberatung")
     ctx = RuleContext(item=item, now=_NOW, committee_recently_active=True)
     result = CommitteeActiveRule().evaluate(ctx)
@@ -101,13 +102,13 @@ def test_committee_active_matches_when_status_and_recent_activity():
     assert result.state == "A"
 
 
-def test_committee_active_does_not_match_without_recent_activity():
+def test_committee_active_does_not_match_without_recent_activity() -> None:
     item = _make_item(status="Ausschussberatung")
     ctx = RuleContext(item=item, now=_NOW, committee_recently_active=False)
     assert CommitteeActiveRule().evaluate(ctx) is None
 
 
-def test_committee_active_does_not_match_wrong_status():
+def test_committee_active_does_not_match_wrong_status() -> None:
     item = _make_item(status="2. Beratung")
     ctx = RuleContext(item=item, now=_NOW, committee_recently_active=True)
     assert CommitteeActiveRule().evaluate(ctx) is None
@@ -118,7 +119,7 @@ def test_committee_active_does_not_match_wrong_status():
 # ---------------------------------------------------------------------------
 
 
-def test_petition_near_quorum_matches_above_threshold():
+def test_petition_near_quorum_matches_above_threshold() -> None:
     item = _make_item(type="petition", signature_count=45_000)
     ctx = RuleContext(item=item, now=_NOW)
     result = PetitionNearQuorumRule().evaluate(ctx)
@@ -127,13 +128,13 @@ def test_petition_near_quorum_matches_above_threshold():
     assert "45000" in result.reason
 
 
-def test_petition_near_quorum_does_not_match_at_threshold():
+def test_petition_near_quorum_does_not_match_at_threshold() -> None:
     item = _make_item(type="petition", signature_count=40_000)
     ctx = RuleContext(item=item, now=_NOW)
     assert PetitionNearQuorumRule().evaluate(ctx) is None
 
 
-def test_petition_near_quorum_does_not_match_non_petition():
+def test_petition_near_quorum_does_not_match_non_petition() -> None:
     item = _make_item(type="antrag", signature_count=45_000)
     ctx = RuleContext(item=item, now=_NOW)
     assert PetitionNearQuorumRule().evaluate(ctx) is None
@@ -144,7 +145,7 @@ def test_petition_near_quorum_does_not_match_non_petition():
 # ---------------------------------------------------------------------------
 
 
-def test_committee_referral_matches_antrag_ueberwiesen_no_vote_result():
+def test_committee_referral_matches_antrag_ueberwiesen_no_vote_result() -> None:
     item = _make_item(type="antrag", status="Überwiesen")
     ctx = RuleContext(item=item, now=_NOW, has_vote_result=False)
     result = CommitteeReferralNoVoteRule().evaluate(ctx)
@@ -152,19 +153,19 @@ def test_committee_referral_matches_antrag_ueberwiesen_no_vote_result():
     assert result.state == "B"
 
 
-def test_committee_referral_does_not_match_with_vote_result():
+def test_committee_referral_does_not_match_with_vote_result() -> None:
     item = _make_item(type="antrag", status="Überwiesen")
     ctx = RuleContext(item=item, now=_NOW, has_vote_result=True)
     assert CommitteeReferralNoVoteRule().evaluate(ctx) is None
 
 
-def test_committee_referral_does_not_match_wrong_status():
+def test_committee_referral_does_not_match_wrong_status() -> None:
     item = _make_item(type="antrag", status="Ausschussberatung")
     ctx = RuleContext(item=item, now=_NOW, has_vote_result=False)
     assert CommitteeReferralNoVoteRule().evaluate(ctx) is None
 
 
-def test_committee_referral_does_not_match_petition():
+def test_committee_referral_does_not_match_petition() -> None:
     item = _make_item(type="petition", status="Überwiesen")
     ctx = RuleContext(item=item, now=_NOW, has_vote_result=False)
     assert CommitteeReferralNoVoteRule().evaluate(ctx) is None
@@ -175,19 +176,19 @@ def test_committee_referral_does_not_match_petition():
 # ---------------------------------------------------------------------------
 
 
-def test_insufficient_fraktion_positions_matches_below_threshold():
+def test_insufficient_fraktion_positions_matches_below_threshold() -> None:
     ctx = RuleContext(item=_make_item(), now=_NOW, stellungnahme_fraktion_count=1)
     result = InsufficientFraktionPositionsRule().evaluate(ctx)
     assert result is not None
     assert result.state == "B"
 
 
-def test_insufficient_fraktion_positions_does_not_match_at_threshold():
+def test_insufficient_fraktion_positions_does_not_match_at_threshold() -> None:
     ctx = RuleContext(item=_make_item(), now=_NOW, stellungnahme_fraktion_count=2)
     assert InsufficientFraktionPositionsRule().evaluate(ctx) is None
 
 
-def test_insufficient_fraktion_positions_does_not_match_when_unknown():
+def test_insufficient_fraktion_positions_does_not_match_when_unknown() -> None:
     ctx = RuleContext(item=_make_item(), now=_NOW, stellungnahme_fraktion_count=None)
     assert InsufficientFraktionPositionsRule().evaluate(ctx) is None
 
@@ -197,7 +198,7 @@ def test_insufficient_fraktion_positions_does_not_match_when_unknown():
 # ---------------------------------------------------------------------------
 
 
-def test_early_reading_matches_first_reading_no_vote_scheduled():
+def test_early_reading_matches_first_reading_no_vote_scheduled() -> None:
     item = _make_item(status="1. Beratung")
     ctx = RuleContext(item=item, now=_NOW, vote_date=None)
     result = EarlyReadingNoVoteScheduledRule().evaluate(ctx)
@@ -205,20 +206,20 @@ def test_early_reading_matches_first_reading_no_vote_scheduled():
     assert result.state == "B"
 
 
-def test_early_reading_matches_second_reading_no_vote_scheduled():
+def test_early_reading_matches_second_reading_no_vote_scheduled() -> None:
     item = _make_item(status="2. Beratung")
     ctx = RuleContext(item=item, now=_NOW, vote_date=None)
     result = EarlyReadingNoVoteScheduledRule().evaluate(ctx)
     assert result is not None
 
 
-def test_early_reading_does_not_match_when_vote_scheduled():
+def test_early_reading_does_not_match_when_vote_scheduled() -> None:
     item = _make_item(status="1. Beratung")
     ctx = RuleContext(item=item, now=_NOW, vote_date=(_NOW + timedelta(days=10)).date())
     assert EarlyReadingNoVoteScheduledRule().evaluate(ctx) is None
 
 
-def test_early_reading_does_not_match_other_status():
+def test_early_reading_does_not_match_other_status() -> None:
     item = _make_item(status="Ausschussberatung")
     ctx = RuleContext(item=item, now=_NOW, vote_date=None)
     assert EarlyReadingNoVoteScheduledRule().evaluate(ctx) is None
@@ -229,14 +230,14 @@ def test_early_reading_does_not_match_other_status():
 # ---------------------------------------------------------------------------
 
 
-def test_media_coverage_matches_when_flagged():
+def test_media_coverage_matches_when_flagged() -> None:
     ctx = RuleContext(item=_make_item(), now=_NOW, media_coverage_matched=True)
     result = MediaCoverageRule().evaluate(ctx)
     assert result is not None
     assert result.state == "C"
 
 
-def test_media_coverage_does_not_match_when_not_flagged():
+def test_media_coverage_does_not_match_when_not_flagged() -> None:
     ctx = RuleContext(item=_make_item(), now=_NOW, media_coverage_matched=False)
     assert MediaCoverageRule().evaluate(ctx) is None
 
@@ -246,7 +247,7 @@ def test_media_coverage_does_not_match_when_not_flagged():
 # ---------------------------------------------------------------------------
 
 
-def test_vote_scheduled_wins_over_state_b_when_both_apply():
+def test_vote_scheduled_wins_over_state_b_when_both_apply() -> None:
     item = _make_item(type="antrag", status="Überwiesen")
     ctx = RuleContext(
         item=item,
@@ -259,7 +260,7 @@ def test_vote_scheduled_wins_over_state_b_when_both_apply():
     assert trace.matched_rule == "vote_scheduled"
 
 
-def test_state_b_wins_over_media_coverage_when_both_apply():
+def test_state_b_wins_over_media_coverage_when_both_apply() -> None:
     item = _make_item(type="antrag", status="Überwiesen")
     ctx = RuleContext(item=item, now=_NOW, has_vote_result=False, media_coverage_matched=True)
     trace = evaluate_state(ctx, RULES)
@@ -267,7 +268,7 @@ def test_state_b_wins_over_media_coverage_when_both_apply():
     assert trace.matched_rule == "committee_referral_no_vote"
 
 
-def test_nothing_matches_defaults_to_d():
+def test_nothing_matches_defaults_to_d() -> None:
     ctx = _ctx()
     trace = evaluate_state(ctx, RULES)
     assert trace.engagement_state == "D"

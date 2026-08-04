@@ -1,7 +1,7 @@
 """Tests for the DIP committee-activity adapter (state A trigger #2)."""
 
 from datetime import date
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from meinimpact.infrastructure.sources.dip_committee_activity import (
     DipCommitteeActivityAdapter,
@@ -9,7 +9,7 @@ from meinimpact.infrastructure.sources.dip_committee_activity import (
 from tests.support.httpx_mock import make_json_response, make_mock_client
 
 
-async def test_returns_true_when_documents_found():
+async def test_returns_true_when_documents_found() -> None:
     client = make_mock_client(
         get_side_effect=[make_json_response({"documents": [{"id": "1"}]})]
     )
@@ -22,7 +22,7 @@ async def test_returns_true_when_documents_found():
     assert result is True
 
 
-async def test_returns_false_when_no_documents():
+async def test_returns_false_when_no_documents() -> None:
     client = make_mock_client(get_side_effect=[make_json_response({"documents": []})])
     with patch(
         "meinimpact.infrastructure.sources.dip_committee_activity.httpx.AsyncClient",
@@ -33,7 +33,7 @@ async def test_returns_false_when_no_documents():
     assert result is False
 
 
-async def test_returns_false_on_request_error():
+async def test_returns_false_on_request_error() -> None:
     client = make_mock_client(get_side_effect=[Exception("network error")])
     with patch(
         "meinimpact.infrastructure.sources.dip_committee_activity.httpx.AsyncClient",
@@ -44,10 +44,10 @@ async def test_returns_false_on_request_error():
     assert result is False
 
 
-async def test_request_uses_expected_filter_params():
+async def test_request_uses_expected_filter_params() -> None:
     captured: list[str] = []
 
-    async def _capturing_get(url: str, **_: object):
+    async def _capturing_get(url: str, **_: object) -> MagicMock:
         captured.append(url)
         return make_json_response({"documents": []})
 

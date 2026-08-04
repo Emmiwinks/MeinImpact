@@ -74,3 +74,16 @@ convention = "google"
 python_version = "3.14"
 strict = true
 plugins = []
+# Mirrors RUFF_CACHE_DIR above: /app is owned by root (WORKDIR runs before
+# `USER appuser` in the Dockerfile), so the default .mypy_cache location
+# isn't writable by the non-root container user. Unlike ruff, mypy has no
+# cache-dir environment variable — this must be set here instead.
+cache_dir = "/tmp/.mypy_cache"
+
+[[tool.mypy.overrides]]
+# APScheduler ships no inline types and has no types-apscheduler stub
+# package on PyPI. Pre-existing gap in main.py, unrelated to this change —
+# surfaced now only because mypy previously errored out earlier (the
+# .mypy_cache permission issue) before it reached this file.
+module = "apscheduler.*"
+ignore_missing_imports = true

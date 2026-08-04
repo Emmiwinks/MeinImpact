@@ -26,6 +26,7 @@ from meinimpact.infrastructure.pipeline.steps.trace_discards import (
 )
 from meinimpact.infrastructure.sources.dip_adapter import DipAdapter
 from meinimpact.infrastructure.sources.dip_committee_activity import DipCommitteeActivityAdapter
+from meinimpact.infrastructure.sources.protocol import RawSourceItem
 from meinimpact.infrastructure.sources.tavily_client import TavilyClient
 from meinimpact.infrastructure.sources.tavily_media_adapter import TavilyMediaCoverageAdapter
 
@@ -65,7 +66,7 @@ def _build_rule_context_step(settings: Settings) -> BuildRuleContextStep:
     if settings.dip_api_key:
         committee_adapter = DipCommitteeActivityAdapter(api_key=settings.dip_api_key)
 
-        async def committee_check(item):  # type: ignore[misc]
+        async def committee_check(item: RawSourceItem) -> bool:
             since: date = date.today() - timedelta(days=_COMMITTEE_LOOKBACK_DAYS)
             return await committee_adapter.has_recent_activity(item["external_id"], since)
 
@@ -73,7 +74,7 @@ def _build_rule_context_step(settings: Settings) -> BuildRuleContextStep:
     if settings.tavily_api_key:
         media_adapter = TavilyMediaCoverageAdapter(TavilyClient(settings.tavily_api_key))
 
-        async def media_check(item):  # type: ignore[misc]
+        async def media_check(item: RawSourceItem) -> bool:
             result = await media_adapter.check_coverage(item["title"])
             return result.matched
 

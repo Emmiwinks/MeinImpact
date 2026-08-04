@@ -77,8 +77,18 @@ class StateTrace:
 
 
 class StateRule(Protocol):
-    """One rule in an ordered chain. First rule to return non-None wins."""
+    """One rule in an ordered chain. First rule to return non-None wins.
 
-    name: str
+    `name` is declared as a read-only property (not a plain `name: str`
+    attribute): `name` is never reassigned anywhere it's used, and a plain
+    mutable attribute in a Protocol requires the implementing class to
+    support both read AND write to satisfy it structurally — which rules
+    out frozen dataclasses (e.g. test fakes) even though they're perfectly
+    good implementations. A property-based Protocol member only requires
+    read access, matching how `name` is actually used.
+    """
+
+    @property
+    def name(self) -> str: ...
 
     def evaluate(self, context: RuleContext) -> RuleResult | None: ...

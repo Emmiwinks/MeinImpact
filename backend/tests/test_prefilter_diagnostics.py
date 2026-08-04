@@ -12,13 +12,31 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from meinimpact.core.config import get_settings
-from meinimpact.infrastructure.pipeline.stages import _drop_reason, _is_german
+from meinimpact.infrastructure.pipeline.stages import (
+    _is_german,
+    passes_basic_checks,
+)
 from meinimpact.infrastructure.sources.dip_adapter import DipAdapter
+
+_MIN_TITLE_LEN = 10
+
+
+def _diagnose_drop_reason(item: object) -> str:
+    """Reconstructs a human-readable reason for a passes_basic_checks() drop.
+
+    passes_basic_checks() only returns bool — this exists purely so the
+    diagnostic table below stays readable. Keep in sync with
+    `pipeline/stages.py`'s title-length constant and German-detection order.
+    """
+    title = item["title"]  # type: ignore[index]
+    if len(title) < _MIN_TITLE_LEN:
+        return f"title too short ({len(title)} chars < {_MIN_TITLE_LEN})"
+    return "title not detected as German"
 
 
 @pytest.mark.asyncio
 @pytest.mark.live
-async def test_prefilter_breakdown_live():
+async def test_prefilter_breakdown_live() -> None:
     """Fetches live DIP data and prints a per-item filter decision table."""
     settings = get_settings()
     if not settings.dip_api_key:
@@ -30,11 +48,10 @@ async def test_prefilter_breakdown_live():
 
     passed, dropped = [], []
     for item in items:
-        reason = _drop_reason(item)
-        if reason is None:
+        if passes_basic_checks(item):
             passed.append((item, None))
         else:
-            dropped.append((item, reason))
+            dropped.append((item, _diagnose_drop_reason(item)))
 
     print(f"\n{'=' * 80}")
     n_pass, n_drop = len(passed), len(dropped)
@@ -63,7 +80,7 @@ async def test_prefilter_breakdown_live():
     # Soft assertions — fail loudly if everything is dropped so we notice
     assert len(items) > 0, "DIP adapter returned no items at all"
     if len(passed) == 0:
-        drop_reasons = {}
+        drop_reasons: dict[str, int] = {}
         for _, reason in dropped:
             drop_reasons[reason] = drop_reasons.get(reason, 0) + 1
         summary = ", ".join(f"{r!r}: {n}x" for r, n in drop_reasons.items())
@@ -72,7 +89,7 @@ async def test_prefilter_breakdown_live():
 
 @pytest.mark.asyncio
 @pytest.mark.live
-async def test_german_detection_on_dip_titles():
+async def test_german_detection_on_dip_titles() -> None:
     """Checks langdetect accuracy on a sample of real DIP titles."""
     settings = get_settings()
     if not settings.dip_api_key:

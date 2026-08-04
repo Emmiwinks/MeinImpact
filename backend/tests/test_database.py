@@ -57,4 +57,7 @@ def test_user_profiles_orm_columns_match_current_schema() -> None:
     """Same drift guard for user_profiles. topics was removed in 202606240007."""
     cols = {c.name for c in Base.metadata.tables["user_profiles"].columns}
     assert "topics" not in cols
-    assert "werte" in cols
+    # The user's value axes are stored as `value_axes`, not `werte` — that
+    # name belongs to `civic_actions.werte_relevanz` (migration 202606080004),
+    # a different table entirely.
+    assert "value_axes" in cols

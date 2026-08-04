@@ -1,7 +1,7 @@
 """Tests for the Abgeordnetenwatch position-check adapter."""
 
 from datetime import datetime
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from meinimpact.infrastructure.sources.abgeordnetenwatch_adapter import (
     AbgeordnetenwatchPositionAdapter,
@@ -12,7 +12,7 @@ from tests.support.httpx_mock import make_json_response, make_mock_client
 _SINCE = datetime(2026, 4, 1)
 
 
-async def test_found_true_when_answer_text_matches_descriptor():
+async def test_found_true_when_answer_text_matches_descriptor() -> None:
     client = make_mock_client(
         get_side_effect=[
             make_json_response(
@@ -35,7 +35,7 @@ async def test_found_true_when_answer_text_matches_descriptor():
     assert result.source_url == "https://aw/1"
 
 
-async def test_found_false_when_no_answer_matches():
+async def test_found_false_when_no_answer_matches() -> None:
     client = make_mock_client(
         get_side_effect=[make_json_response({"data": [{"text": "Irrelevant answer."}]})]
     )
@@ -53,7 +53,7 @@ async def test_found_false_when_no_answer_matches():
     assert result.source == "abgeordnetenwatch"
 
 
-async def test_found_false_without_aw_politician_id():
+async def test_found_false_without_aw_politician_id() -> None:
     adapter = AbgeordnetenwatchPositionAdapter()
     result = await adapter.check_position(
         MdbTarget(name="Sarah Müller"), descriptors=["klimaschutz"], since=_SINCE
@@ -61,7 +61,7 @@ async def test_found_false_without_aw_politician_id():
     assert result.found is False
 
 
-async def test_found_false_on_request_error():
+async def test_found_false_on_request_error() -> None:
     client = make_mock_client(get_side_effect=[Exception("boom")])
     with patch(
         "meinimpact.infrastructure.sources.abgeordnetenwatch_adapter.httpx.AsyncClient",
@@ -76,10 +76,10 @@ async def test_found_false_on_request_error():
     assert result.found is False
 
 
-async def test_request_uses_expected_params():
+async def test_request_uses_expected_params() -> None:
     captured: list[dict[str, object]] = []
 
-    async def _capturing_get(url: str, params: dict[str, object] | None = None, **_: object):
+    async def _capturing_get(url: str, params: dict[str, object] | None = None, **_: object) -> MagicMock:
         captured.append({"url": url, "params": params})
         return make_json_response({"data": []})
 
@@ -97,5 +97,5 @@ async def test_request_uses_expected_params():
         )
 
     assert len(captured) == 1
-    assert captured[0]["url"].endswith("/answers")
+    assert str(captured[0]["url"]).endswith("/answers")
     assert captured[0]["params"] == {"politician": 123, "updated_since": "2026-04-01"}

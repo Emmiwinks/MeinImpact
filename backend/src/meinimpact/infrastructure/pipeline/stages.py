@@ -7,6 +7,7 @@ pipeline — see `pipeline/merge.py` (dedup) and `pipeline/steps/prefilter.py`
 (cheap pre-check) for their replacements.
 """
 
+from collections.abc import Mapping
 from typing import Any
 
 from meinimpact.infrastructure.sources.protocol import RawSourceItem
@@ -42,7 +43,7 @@ def _is_german(text: str) -> bool:
         )
 
         try:
-            return detect(text) == "de"
+            return bool(detect(text) == "de")
         except LangDetectException:
             return True  # benefit of the doubt for short texts
     except ImportError:
@@ -85,20 +86,22 @@ _IMPACT_HINT: dict[str, str] = {
     "low": "Laufender Gesetzgebungsprozess",
 }
 
-# Avoids a circular import (ClassifiedAction imports RawSourceItem, and this
-# module is imported by types-adjacent code); a plain dict is sufficient here
-# since map_domain_action_type only reads two known keys.
-ClassifiedActionLike = dict[str, Any]
+def map_domain_action_type(classified: Mapping[str, Any]) -> str:
+    """Maps classification output to a domain ActionType string.
 
-
-def map_domain_action_type(classified: ClassifiedActionLike) -> str:
-    """Maps classification output to a domain ActionType string."""
+    Takes `Mapping[str, Any]` rather than `ClassifiedAction` directly:
+    mypy's TypedDict structural compatibility is stricter in practice than
+    PEP 589 suggests for "TypedDict with extra required keys used where a
+    total=False TypedDict is expected", so a loosely-typed Mapping is used
+    instead — satisfied by `ClassifiedAction`, by plain dict literals in
+    tests, and by anything else read-only dict-shaped.
+    """
     # Prefer explicit action_types list from classification
-    for at in classified.get("action_types", []):  # type: ignore[misc]
+    for at in classified.get("action_types", []):
         if at in _ACTION_TYPE_MAP:
             return _ACTION_TYPE_MAP[at]
     # Fall back to raw source type
-    return _RAW_TYPE_TO_DOMAIN.get(classified.get("type", ""), "representative_letter")  # type: ignore[misc]
+    return _RAW_TYPE_TO_DOMAIN.get(classified.get("type", ""), "representative_letter")
 
 
 def effort_minutes_for(domain_action_type: str) -> int:

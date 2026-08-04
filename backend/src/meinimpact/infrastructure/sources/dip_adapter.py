@@ -27,84 +27,117 @@ _BASE_URL = "https://search.dip.bundestag.de/api/v1"
 _WEB_BASE = "https://dip.bundestag.de"
 _PAGE_SIZE = 50
 
-# Imminence scores by beratungsstand stage.
-# Higher = decision is closer / citizen action is more time-sensitive.
-BERATUNGSSTAND_SCORE: dict[str, float] = {
-    "2. Beratung und Schlussabstimmung": 1.0,
-    "3. Beratung": 1.0,
-    "2. Beratung": 0.8,
-    "Ausschussberatung": 0.5,
-}
+# Lookback window for the single-request Wahlperiode-resolution probe (see
+# _resolve_current_wahlperiode) — recent enough to reliably catch the
+# current legislative period, without being so wide it's likely to span a
+# Wahlperiode change.
+_WAHLPERIODE_PROBE_LOOKBACK_DAYS = 7
 
-# How many days back each pass looks for recent activity.
-_LATE_STAGE_LOOKBACK_DAYS = 7
-_COMMITTEE_LOOKBACK_DAYS = 3
+# Hard ceiling on pages per _fetch_paginated call, so a filter-value or
+# scope mistake pages through DIP's entire history instead of failing fast.
+_MAX_PAGES = 20
 
 
 class DipAdapter:
     """Source adapter for the Bundestag DIP API v1.
 
-    Fetches Vorgänge by beratungsstand stage rather than by topic keywords.
-    Hotness is determined by parliamentary process stage and recency.
+    Fetches Vorgänge by vorgangstyp (Gesetzgebung, Antrag, Petition), not by
+    beratungsstand or topic keywords — see `fetch_new_items` for why
+    beratungsstand filtering happens downstream, in the state-rules engine,
+    rather than in this adapter.
     """
 
     def __init__(self, api_key: str) -> None:
         self._api_key = api_key
 
-    async def fetch_hot_items(self) -> list[RawSourceItem]:
-        """Fetches Vorgänge in active deliberation stages + open Petitionen.
-
-        Three passes:
-        - Pass A: late-stage (2./3. Beratung) updated in last 7 days
-        - Pass B: committee deliberation updated in last 3 days
-        - Pass C: open Bundestag Petitionen (always included)
-
-        Each item receives an imminence_score based on stage and recency.
-        """
-        items: list[RawSourceItem] = []
-        seen_urls: set[str] = set()
-
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            for item in await self._fetch_late_stage(client):
-                if item["source_url"] not in seen_urls:
-                    items.append(item)
-                    seen_urls.add(item["source_url"])
-
-            for item in await self._fetch_committee_stage(client):
-                if item["source_url"] not in seen_urls:
-                    items.append(item)
-                    seen_urls.add(item["source_url"])
-
-            for item in await self._fetch_petitionen(client):
-                if item["source_url"] not in seen_urls:
-                    items.append(item)
-                    seen_urls.add(item["source_url"])
-
-        logger.info("DIP fetch: %d hot items total", len(items))
-        return items
-
     async def fetch_new_items(self, since: datetime) -> list[RawSourceItem]:
         """Satisfies the `SourceAdapter` Protocol for Pipeline 1
-        (parliamentary): late-stage + committee-deliberation Vorgänge only.
-        Excludes open petitions — see `fetch_open_petitions()` for Pipeline
-        2's Bundestag-petition-portal source.
+        (parliamentary): every Gesetzgebung/Antrag Vorgang active since
+        `since`, scoped to the current Wahlperiode. Excludes open
+        petitions — see `fetch_open_petitions()` for Pipeline 2's
+        Bundestag-petition-portal source.
 
-        `since` is currently unused; each pass uses its own fixed lookback
-        window (see `_LATE_STAGE_LOOKBACK_DAYS` / `_COMMITTEE_LOOKBACK_DAYS`),
-        matching `fetch_hot_items()`'s existing behaviour.
+        Deliberately does NOT filter by `beratungsstand`. That used to be
+        a hardcoded allowlist of 4 stage strings (late-stage, committee,
+        early-stage), which `scripts/audit_dip_coverage.py` showed was
+        silently dropping real, active Vorgänge whose status wasn't one of
+        those 4 — e.g. "Beschlussempfehlung liegt vor" (committee
+        recommendation ready, vote imminent), Bundesrat-stage statuses on
+        already-passed Gesetzgebung, and early "Antrag" motions still
+        marked "Noch nicht beraten". The state-rules engine (see
+        `state_rules/parliamentary_rules.py`), not this adapter, is
+        responsible for deciding engagement state from the full status
+        text — anything it doesn't recognise defaults to state D and is
+        discarded downstream (`FilterStateDStep`), so fetching broadly here
+        costs nothing but a few extra free API calls, and new
+        `beratungsstand` wordings DIP introduces won't need an adapter
+        change to be seen at all (only to be scored as A/B/C instead of the
+        safe D default).
+
+        Also note: the real API value is "Gesetzgebung", not
+        "Gesetzentwurf" — `f.vorgangstyp=Gesetzentwurf` returns zero
+        results against the live API (verified directly; an earlier,
+        untested assumption used the wrong string).
+
+        Any HTTP failure propagates as-is — the orchestrator aborts the
+        whole run on any pipeline exception rather than persisting a
+        partial pool as if nothing were wrong.
         """
+        since_date = since.date().isoformat()
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            wahlperiode = await self._resolve_current_wahlperiode(client)
+            params: list[tuple[str, str | int]] = [
+                ("f.vorgangstyp", "Gesetzgebung"),
+                ("f.vorgangstyp", "Antrag"),
+                ("f.datum.start", since_date),
+            ]
+            if wahlperiode is not None:
+                params.append(("f.wahlperiode", wahlperiode))
+            docs = await self._fetch_paginated(client, "vorgang", params)
+
         items: list[RawSourceItem] = []
         seen_urls: set[str] = set()
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            for item in await self._fetch_late_stage(client):
-                if item["source_url"] not in seen_urls:
-                    items.append(item)
-                    seen_urls.add(item["source_url"])
-            for item in await self._fetch_committee_stage(client):
-                if item["source_url"] not in seen_urls:
-                    items.append(item)
-                    seen_urls.add(item["source_url"])
+        for item in [_parse_vorgang(d) for d in docs]:
+            if item["source_url"] not in seen_urls:
+                items.append(item)
+                seen_urls.add(item["source_url"])
         return items
+
+    async def _resolve_current_wahlperiode(self, client: httpx.AsyncClient) -> int | None:
+        """Determines the current Bundestag legislative period from the
+        single most recently updated Vorgang, so `fetch_new_items` can
+        scope its broad query to it without a hardcoded period number that
+        goes stale every ~4 years. `rows=1` keeps this a single bounded
+        request, not a paginated one.
+
+        Returns `None` if no recently updated Vorgang exists at all (e.g. a
+        long recess) — callers then fall back to querying without a
+        Wahlperiode filter, relying on `_MAX_PAGES` to still fail fast
+        rather than hang if that turns out to be too broad.
+        """
+        since = (
+            datetime.now(UTC) - timedelta(days=_WAHLPERIODE_PROBE_LOOKBACK_DAYS)
+        ).date().isoformat()
+        params: list[tuple[str, str | int]] = [
+            ("apikey", self._api_key),
+            ("format", "json"),
+            ("rows", 1),
+            ("f.datum.start", since),
+        ]
+        qs = urlencode(params, quote_via=quote)
+        response = await client.get(f"{_BASE_URL}/vorgang?{qs}")
+        response.raise_for_status()
+        data: dict[str, object] = response.json()
+        docs = data.get("documents") or []
+        assert isinstance(docs, list)
+        if not docs:
+            logger.warning(
+                "Could not resolve current Wahlperiode (no recently updated Vorgang) — "
+                "fetch_new_items will run unscoped, relying on _MAX_PAGES as a bound."
+            )
+            return None
+        wahlperiode = docs[0].get("wahlperiode")
+        return wahlperiode if isinstance(wahlperiode, int) else None
 
     async def fetch_open_petitions(self) -> list[RawSourceItem]:
         """Pipeline 2 source: open Bundestag petitions from the petition
@@ -133,7 +166,7 @@ class DipAdapter:
         self,
         client: httpx.AsyncClient,
         endpoint: str,
-        extra_params: list[tuple[str, str]],
+        extra_params: list[tuple[str, str | int]],
     ) -> list[dict[str, object]]:
         """Fetches all pages from a DIP list endpoint.
 
@@ -141,12 +174,14 @@ class DipAdapter:
         repeated key-value pairs, not comma-separated.
 
         Pagination stops when the cursor returned by the API matches the
-        cursor sent in the request.
+        cursor sent in the request, or after `_MAX_PAGES` pages — whichever
+        comes first. Hitting the cap raises rather than silently truncating,
+        since it means a filter is broader than intended.
         """
         all_docs: list[dict[str, object]] = []
         prev_cursor: str | None = None
 
-        while True:
+        for _ in range(_MAX_PAGES):
             params: list[tuple[str, str | int]] = [
                 ("apikey", self._api_key),
                 ("format", "json"),
@@ -170,38 +205,14 @@ class DipAdapter:
             new_cursor = data.get("cursor")
             assert isinstance(new_cursor, str)
             if new_cursor == prev_cursor:
-                break
+                return all_docs
             prev_cursor = new_cursor
 
-        return all_docs
-
-    async def _fetch_late_stage(self, client: httpx.AsyncClient) -> list[RawSourceItem]:
-        """Pass A: Vorgänge in 2./3. Beratung updated in the last 7 days."""
-        since = (datetime.now(UTC) - timedelta(days=_LATE_STAGE_LOOKBACK_DAYS)).date().isoformat()
-        docs = await self._fetch_paginated(
-            client,
-            "vorgang",
-            [
-                ("f.beratungsstand", "2. Beratung und Schlussabstimmung"),
-                ("f.beratungsstand", "3. Beratung"),
-                ("f.beratungsstand", "2. Beratung"),
-                ("f.datum.start", since),
-            ],
+        raise RuntimeError(
+            f"DIP {endpoint} query exceeded {_MAX_PAGES} pages without exhausting "
+            f"its cursor (params={extra_params!r}) — filter is likely broader "
+            "than intended rather than DIP legitimately having that much data."
         )
-        return [_parse_vorgang(d) for d in docs]
-
-    async def _fetch_committee_stage(self, client: httpx.AsyncClient) -> list[RawSourceItem]:
-        """Pass B: Vorgänge in Ausschussberatung updated in the last 3 days."""
-        since = (datetime.now(UTC) - timedelta(days=_COMMITTEE_LOOKBACK_DAYS)).date().isoformat()
-        docs = await self._fetch_paginated(
-            client,
-            "vorgang",
-            [
-                ("f.beratungsstand", "Ausschussberatung"),
-                ("f.datum.start", since),
-            ],
-        )
-        return [_parse_vorgang(d) for d in docs]
 
     async def _fetch_petitionen(self, client: httpx.AsyncClient) -> list[RawSourceItem]:
         """Pass C: Open Bundestag Petitionen (always included regardless of recency)."""
@@ -221,20 +232,18 @@ class DipAdapter:
 
 
 # ------------------------------------------------------------------
-# Parsers and scoring (module-level for testability)
+# Parsers (module-level for testability)
 # ------------------------------------------------------------------
 
 
 def _parse_vorgang(doc: dict[str, object]) -> RawSourceItem:
-    """Maps a DIP Vorgang document to RawSourceItem with imminence_score."""
+    """Maps a DIP Vorgang document to RawSourceItem."""
     external_id = str(doc.get("id") or "")
     vorgangstyp = str(doc.get("vorgangstyp") or "")
     beratungsstand = str(doc.get("beratungsstand") or "")
     title = " ".join(str(doc.get("titel") or "").split())
     description = " ".join(str(doc.get("abstract") or title).split())
     activity_date = _parse_date(doc.get("datum"))
-
-    imminence = calculate_imminence(beratungsstand, activity_date)
 
     return RawSourceItem(
         external_id=external_id,
@@ -246,25 +255,7 @@ def _parse_vorgang(doc: dict[str, object]) -> RawSourceItem:
         description=description,
         initiated_by=_extract_initiative(doc),
         source="dip",
-        imminence_score=imminence,
     )
-
-
-def calculate_imminence(beratungsstand: str, activity_date: date | None) -> float:
-    """Computes a 0.0–1.0 imminence score from stage and recency.
-
-    Stage weight: 0.7 — how close the item is to a final parliamentary decision.
-    Recency weight: 0.3 — how recently there was activity (7-day window).
-    """
-    stage_score = BERATUNGSSTAND_SCORE.get(beratungsstand, 0.3)
-
-    if activity_date is not None:
-        days_ago = (date.today() - activity_date).days
-        recency_score = max(0.0, 1.0 - days_ago / 7.0)
-    else:
-        recency_score = 0.5
-
-    return stage_score * 0.7 + recency_score * 0.3
 
 
 def _map_vorgangstyp(vorgangstyp: str) -> str:
