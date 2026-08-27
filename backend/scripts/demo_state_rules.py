@@ -24,15 +24,19 @@ sys.stdout.reconfigure(encoding="utf-8")
 # Allow running from backend root without installing the package
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from meinimpact.infrastructure.pipeline.state_rules.engine import evaluate_state
-from meinimpact.infrastructure.pipeline.state_rules.parliamentary_rules import (
+from meinimpact.infrastructure.pipeline.state_rules.engine import (  # noqa: E402
+    evaluate_state,
+)
+from meinimpact.infrastructure.pipeline.state_rules.parliamentary_rules import (  # noqa: E402
     RULES as PARLIAMENTARY_RULES,
 )
-from meinimpact.infrastructure.pipeline.state_rules.petition_rules import (
+from meinimpact.infrastructure.pipeline.state_rules.petition_rules import (  # noqa: E402
     RULES as PETITION_RULES,
 )
-from meinimpact.infrastructure.pipeline.state_rules.protocol import RuleContext
-from meinimpact.infrastructure.sources.protocol import RawSourceItem
+from meinimpact.infrastructure.pipeline.state_rules.protocol import (  # noqa: E402
+    RuleContext,
+)
+from meinimpact.infrastructure.sources.protocol import RawSourceItem  # noqa: E402
 
 NOW = datetime(2026, 7, 10)
 
@@ -78,15 +82,29 @@ def _petition(*, signature_count: int, deadline: date | None = None) -> RawSourc
 BASE_CTX = RuleContext(item=_vorgang(), now=NOW)
 
 PARLIAMENTARY_SCENARIOS: list[tuple[str, RuleContext]] = [
-    ("Vote scheduled in 10 days", replace(BASE_CTX, vote_date=(NOW + timedelta(days=10)).date())),
-    ("Vote scheduled in 45 days (too far out)", replace(BASE_CTX, vote_date=(NOW + timedelta(days=45)).date())),
+    (
+        "Vote scheduled in 10 days",
+        replace(BASE_CTX, vote_date=(NOW + timedelta(days=10)).date()),
+    ),
+    (
+        "Vote scheduled in 45 days (too far out)",
+        replace(BASE_CTX, vote_date=(NOW + timedelta(days=45)).date()),
+    ),
     (
         "Committee actively deliberating",
-        replace(BASE_CTX, item=_vorgang(status="Ausschussberatung"), committee_recently_active=True),
+        replace(
+            BASE_CTX,
+            item=_vorgang(status="Ausschussberatung"),
+            committee_recently_active=True,
+        ),
     ),
     (
         "In committee, but no recent activity",
-        replace(BASE_CTX, item=_vorgang(status="Ausschussberatung"), committee_recently_active=False),
+        replace(
+            BASE_CTX,
+            item=_vorgang(status="Ausschussberatung"),
+            committee_recently_active=False,
+        ),
     ),
     (
         "Bundestag petition close to quorum (45,000 sigs)",
@@ -123,7 +141,9 @@ PETITION_SCENARIOS: list[tuple[str, RuleContext]] = [
     (
         "Near goal, deadline in 5 days",
         RuleContext(
-            item=_petition(signature_count=8_500, deadline=(NOW + timedelta(days=5)).date()),
+            item=_petition(
+                signature_count=8_500, deadline=(NOW + timedelta(days=5)).date()
+            ),
             now=NOW,
             signature_goal=10_000,
         ),
@@ -131,7 +151,9 @@ PETITION_SCENARIOS: list[tuple[str, RuleContext]] = [
     (
         "Near goal, but deadline is 60 days out",
         RuleContext(
-            item=_petition(signature_count=8_500, deadline=(NOW + timedelta(days=60)).date()),
+            item=_petition(
+                signature_count=8_500, deadline=(NOW + timedelta(days=60)).date()
+            ),
             now=NOW,
             signature_goal=10_000,
         ),
@@ -142,21 +164,32 @@ PETITION_SCENARIOS: list[tuple[str, RuleContext]] = [
     ),
     (
         "Momentum: +1,500 signatures since last run",
-        RuleContext(item=_petition(signature_count=5_000), now=NOW, previous_signature_count=3_500),
+        RuleContext(
+            item=_petition(signature_count=5_000),
+            now=NOW,
+            previous_signature_count=3_500,
+        ),
     ),
     (
         "Active, 600 sigs, in the news",
         RuleContext(
-            item=_petition(signature_count=600, deadline=(NOW + timedelta(days=20)).date()),
+            item=_petition(
+                signature_count=600, deadline=(NOW + timedelta(days=20)).date()
+            ),
             now=NOW,
             media_coverage_matched=True,
         ),
     ),
     (
         "Only 200 signatures, in the news (below floor)",
-        RuleContext(item=_petition(signature_count=200), now=NOW, media_coverage_matched=True),
+        RuleContext(
+            item=_petition(signature_count=200), now=NOW, media_coverage_matched=True
+        ),
     ),
-    ("Nothing applies at all", RuleContext(item=_petition(signature_count=50), now=NOW)),
+    (
+        "Nothing applies at all",
+        RuleContext(item=_petition(signature_count=50), now=NOW),
+    ),
 ]
 
 

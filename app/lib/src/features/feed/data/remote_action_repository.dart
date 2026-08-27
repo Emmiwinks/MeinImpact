@@ -45,13 +45,32 @@ class RemoteActionRepository implements ActionRepository {
       'recipient_party': profile.mdbParty ?? '',
       'recipient_wahlkreis': profile.mdbWahlkreis,
       'tone_descriptors': profile.deriveToneDescriptors(),
-      'lebenssituation': <String>[],
-      'sektor': null,
+      'lebenssituation': profile.lebenssituation,
+      'sektor': profile.sektor,
       'plz_prefix': profile.plz != null && profile.plz!.length >= 2
           ? profile.plz!.substring(0, 2)
           : null,
-      'wohnsituation': null,
+      'wohnsituation': profile.wohnsituation,
     });
+  }
+
+  @override
+  Future<String> getContext({
+    required String actionId,
+    required UserProfile profile,
+  }) async {
+    final response = await _apiClient.postJson(
+      '/v1/actions/$actionId/context',
+      {
+        'lebenssituation': profile.lebenssituation,
+        'sektor': profile.sektor,
+        'plz_prefix': profile.plz != null && profile.plz!.length >= 2
+            ? profile.plz!.substring(0, 2)
+            : null,
+        'wohnsituation': profile.wohnsituation,
+      },
+    );
+    return response['context'] as String? ?? '';
   }
 
   @override

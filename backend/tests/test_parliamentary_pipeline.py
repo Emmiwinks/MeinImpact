@@ -6,7 +6,9 @@ from types import SimpleNamespace
 from meinimpact.infrastructure.pipeline.parliamentary_pipeline import (
     build_parliamentary_steps,
 )
-from meinimpact.infrastructure.pipeline.steps.build_rule_context import BuildRuleContextStep
+from meinimpact.infrastructure.pipeline.steps.build_rule_context import (
+    BuildRuleContextStep,
+)
 from meinimpact.infrastructure.pipeline.steps.classify import ClassifyStep
 from meinimpact.infrastructure.pipeline.steps.evaluate_state import EvaluateStateStep
 from meinimpact.infrastructure.pipeline.steps.fetch import FetchStep

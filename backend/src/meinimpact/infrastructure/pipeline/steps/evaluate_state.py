@@ -15,7 +15,9 @@ class EvaluateStateStep:
     def __init__(self, rules: Sequence[StateRule]) -> None:
         self._rules = rules
 
-    async def process(self, items: list[ItemState], deps: PipelineDeps) -> list[ItemState]:
+    async def process(
+        self, items: list[ItemState], deps: PipelineDeps
+    ) -> list[ItemState]:
         for item in items:
             if item.rule_context is None:
                 raise ValueError(

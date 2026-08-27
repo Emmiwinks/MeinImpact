@@ -285,12 +285,18 @@ async def test_fetch_new_items_omits_wahlperiode_filter_when_unresolved() -> Non
     assert all("f.wahlperiode" not in u for u in captured)
 
 
-async def test_resolve_current_wahlperiode_reads_field_from_most_recent_vorgang() -> None:
+async def test_resolve_current_wahlperiode_reads_field_from_most_recent_vorgang() -> (
+    None
+):
     """No hardcoded legislative-period number — it's read off whatever
     DIP itself says is currently active, from a single rows=1 probe."""
     adapter = DipAdapter(api_key="test-key")
     client = _make_client(
-        [_make_response({"numFound": 1, "cursor": _CURSOR_A, "documents": [_ANTRAG_DOC]})]
+        [
+            _make_response(
+                {"numFound": 1, "cursor": _CURSOR_A, "documents": [_ANTRAG_DOC]}
+            )
+        ]
     )
     wahlperiode = await adapter._resolve_current_wahlperiode(client)
 
@@ -299,7 +305,9 @@ async def test_resolve_current_wahlperiode_reads_field_from_most_recent_vorgang(
 
 async def test_resolve_current_wahlperiode_returns_none_when_nothing_recent() -> None:
     adapter = DipAdapter(api_key="test-key")
-    client = _make_client([_make_response({"numFound": 0, "cursor": _CURSOR_A, "documents": []})])
+    client = _make_client(
+        [_make_response({"numFound": 0, "cursor": _CURSOR_A, "documents": []})]
+    )
     wahlperiode = await adapter._resolve_current_wahlperiode(client)
 
     assert wahlperiode is None

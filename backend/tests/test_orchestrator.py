@@ -8,12 +8,15 @@ integration tests. This file tests the parts that don't need a DB.
 
 import asyncio
 import time
-from uuid import uuid4
 from unittest.mock import patch
+from uuid import uuid4
 
 import pytest
 
-from meinimpact.infrastructure.pipeline.orchestrator import _count_states, _run_both_pipelines
+from meinimpact.infrastructure.pipeline.orchestrator import (
+    _count_states,
+    _run_both_pipelines,
+)
 from meinimpact.infrastructure.pipeline.state_rules.protocol import StateTrace
 from meinimpact.infrastructure.pipeline.step import ItemState, PipelineDeps
 from meinimpact.infrastructure.sources.protocol import RawSourceItem
@@ -74,7 +77,9 @@ def test_count_states_ignores_items_without_trace() -> None:
 
 
 async def test_both_pipelines_run_concurrently_not_sequentially() -> None:
-    async def slow_parliamentary(deps: PipelineDeps, discard_sink: object) -> list[ItemState]:
+    async def slow_parliamentary(
+        deps: PipelineDeps, discard_sink: object
+    ) -> list[ItemState]:
         await asyncio.sleep(0.05)
         return [_item_with_state("A")]
 
@@ -113,7 +118,9 @@ async def test_one_pipeline_failing_aborts_the_whole_run() -> None:
     resilience feature for a system already known to work; right now it
     would hide exactly the kind of bug this behavior is meant to catch."""
 
-    async def failing_parliamentary(deps: PipelineDeps, discard_sink: object) -> list[ItemState]:
+    async def failing_parliamentary(
+        deps: PipelineDeps, discard_sink: object
+    ) -> list[ItemState]:
         raise RuntimeError("DIP API down")
 
     async def working_petition(

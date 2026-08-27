@@ -26,7 +26,9 @@ class TraceDiscardsStep:
     def __init__(self, sink: DiscardSink | None = None) -> None:
         self._sink = sink
 
-    async def process(self, items: list[ItemState], deps: PipelineDeps) -> list[ItemState]:
+    async def process(
+        self, items: list[ItemState], deps: PipelineDeps
+    ) -> list[ItemState]:
         run_logger = logger.bind(run_id=str(deps.run_id))
         for item in items:
             trace = item.state_trace

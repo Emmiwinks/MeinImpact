@@ -42,7 +42,9 @@ def _make_item(
 
 
 def test_near_goal_matches_above_80_percent_with_deadline_soon() -> None:
-    item = _make_item(signature_count=8_500, deadline=(_NOW + timedelta(days=10)).date())
+    item = _make_item(
+        signature_count=8_500, deadline=(_NOW + timedelta(days=10)).date()
+    )
     ctx = RuleContext(item=item, now=_NOW, signature_goal=10_000)
     result = NearGoalRule().evaluate(ctx)
     assert result is not None
@@ -50,19 +52,25 @@ def test_near_goal_matches_above_80_percent_with_deadline_soon() -> None:
 
 
 def test_near_goal_does_not_match_below_80_percent() -> None:
-    item = _make_item(signature_count=7_000, deadline=(_NOW + timedelta(days=10)).date())
+    item = _make_item(
+        signature_count=7_000, deadline=(_NOW + timedelta(days=10)).date()
+    )
     ctx = RuleContext(item=item, now=_NOW, signature_goal=10_000)
     assert NearGoalRule().evaluate(ctx) is None
 
 
 def test_near_goal_does_not_match_when_deadline_too_far() -> None:
-    item = _make_item(signature_count=9_000, deadline=(_NOW + timedelta(days=45)).date())
+    item = _make_item(
+        signature_count=9_000, deadline=(_NOW + timedelta(days=45)).date()
+    )
     ctx = RuleContext(item=item, now=_NOW, signature_goal=10_000)
     assert NearGoalRule().evaluate(ctx) is None
 
 
 def test_near_goal_does_not_match_without_goal() -> None:
-    item = _make_item(signature_count=9_000, deadline=(_NOW + timedelta(days=10)).date())
+    item = _make_item(
+        signature_count=9_000, deadline=(_NOW + timedelta(days=10)).date()
+    )
     ctx = RuleContext(item=item, now=_NOW, signature_goal=None)
     assert NearGoalRule().evaluate(ctx) is None
 
@@ -143,7 +151,9 @@ def test_no_trigger_defaults_to_d() -> None:
 
 def test_near_goal_wins_over_active_with_media_coverage() -> None:
     item = _make_item(signature_count=8_500, deadline=(_NOW + timedelta(days=5)).date())
-    ctx = RuleContext(item=item, now=_NOW, signature_goal=10_000, media_coverage_matched=True)
+    ctx = RuleContext(
+        item=item, now=_NOW, signature_goal=10_000, media_coverage_matched=True
+    )
     trace = evaluate_state(ctx, RULES)
     assert trace.engagement_state == "A"
     assert trace.matched_rule == "near_goal"

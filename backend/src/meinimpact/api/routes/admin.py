@@ -31,8 +31,10 @@ def require_admin(
     is rejected rather than the route being open by default.
     """
     configured = settings.admin_api_key
-    if not configured or not x_admin_api_key or not secrets.compare_digest(
-        x_admin_api_key, configured
+    if (
+        not configured
+        or not x_admin_api_key
+        or not secrets.compare_digest(x_admin_api_key, configured)
     ):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
 

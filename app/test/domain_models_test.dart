@@ -35,10 +35,16 @@ void main() {
     expect(profile.toJson(), {
       'werte': {'wirtschaft_gleichheit': 2},
       'region': 'Germany',
-      'plz': null,
+      'plz': profile.plz,
       'mdb_name': null,
       'mdb_party': null,
       'mdb_wahlkreis': null,
+      'city': profile.city,
+      'occupation': profile.occupation,
+      'family_status': profile.familyStatus,
+      'wohnsituation': profile.wohnsituation,
+      'sektor': profile.sektor,
+      'lebenssituation': profile.lebenssituation,
     });
   });
 

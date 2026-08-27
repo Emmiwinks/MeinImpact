@@ -1,11 +1,29 @@
+// Mockup demographic profile used for the meetup demo — the app has no UI
+// yet to collect these fields, so every profile is seeded with this persona
+// unless overridden. Feeds both the on-screen bio card and the
+// lebenssituation/sektor/wohnsituation sent to the personalised-context AI.
+const _demoCity = 'Dresden';
+const _demoOccupation = 'Krankenschwester';
+const _demoFamilyStatus = 'Verheiratet, 40 Jahre · 1 Kind (9 Jahre)';
+const _demoWohnsituation = 'Mietwohnung';
+const _demoSektor = 'Gesundheitswesen';
+const _demoLebenssituation = ['elternteil', 'berufstaetig'];
+const _demoPlz = '01067';
+
 class UserProfile {
   const UserProfile({
     this.werte = const {},
     this.region,
-    this.plz,
+    this.plz = _demoPlz,
     this.mdbName,
     this.mdbParty,
     this.mdbWahlkreis,
+    this.city = _demoCity,
+    this.occupation = _demoOccupation,
+    this.familyStatus = _demoFamilyStatus,
+    this.wohnsituation = _demoWohnsituation,
+    this.sektor = _demoSektor,
+    this.lebenssituation = _demoLebenssituation,
   });
 
   factory UserProfile.fromJson(Map<String, Object?> json) {
@@ -13,10 +31,18 @@ class UserProfile {
     return UserProfile(
       werte: werteRaw.map((k, v) => MapEntry(k, v as int)),
       region: json['region'] as String?,
-      plz: json['plz'] as String?,
+      plz: json['plz'] as String? ?? _demoPlz,
       mdbName: json['mdb_name'] as String?,
       mdbParty: json['mdb_party'] as String?,
       mdbWahlkreis: json['mdb_wahlkreis'] as String?,
+      city: json['city'] as String? ?? _demoCity,
+      occupation: json['occupation'] as String? ?? _demoOccupation,
+      familyStatus: json['family_status'] as String? ?? _demoFamilyStatus,
+      wohnsituation: json['wohnsituation'] as String? ?? _demoWohnsituation,
+      sektor: json['sektor'] as String? ?? _demoSektor,
+      lebenssituation:
+          (json['lebenssituation'] as List<Object?>?)?.cast<String>() ??
+              _demoLebenssituation,
     );
   }
 
@@ -30,6 +56,14 @@ class UserProfile {
   final String? mdbName;
   final String? mdbParty;
   final String? mdbWahlkreis;
+
+  // Demographic bio — mocked for the demo (see defaults above).
+  final String? city;
+  final String? occupation;
+  final String? familyStatus;
+  final String? wohnsituation;
+  final String? sektor;
+  final List<String> lebenssituation;
 
   // Derived axes (-2.0 to +2.0)
   double get axisWirtschaft =>
@@ -67,6 +101,12 @@ class UserProfile {
       'mdb_name': mdbName,
       'mdb_party': mdbParty,
       'mdb_wahlkreis': mdbWahlkreis,
+      'city': city,
+      'occupation': occupation,
+      'family_status': familyStatus,
+      'wohnsituation': wohnsituation,
+      'sektor': sektor,
+      'lebenssituation': lebenssituation,
     };
   }
 }

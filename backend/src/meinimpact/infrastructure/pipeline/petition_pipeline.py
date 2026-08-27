@@ -9,7 +9,11 @@ from meinimpact.infrastructure.pipeline.executor import run_pipeline
 from meinimpact.infrastructure.pipeline.state_rules.petition_rules import (
     RULES as PETITION_RULES,
 )
-from meinimpact.infrastructure.pipeline.step import ItemState, PipelineDeps, PipelineStep
+from meinimpact.infrastructure.pipeline.step import (
+    ItemState,
+    PipelineDeps,
+    PipelineStep,
+)
 from meinimpact.infrastructure.pipeline.steps.build_rule_context import (
     BuildRuleContextStep,
     PreviousSignatureLookup,
@@ -23,12 +27,16 @@ from meinimpact.infrastructure.pipeline.steps.trace_discards import (
     DiscardSink,
     TraceDiscardsStep,
 )
-from meinimpact.infrastructure.sources.civil_petition_adapter import CivilPetitionAdapter
+from meinimpact.infrastructure.sources.civil_petition_adapter import (
+    CivilPetitionAdapter,
+)
 from meinimpact.infrastructure.sources.dip_adapter import DipAdapter, DipPetitionAdapter
 from meinimpact.infrastructure.sources.google_cse_adapter import GoogleCseAdapter
 from meinimpact.infrastructure.sources.protocol import RawSourceItem
 from meinimpact.infrastructure.sources.tavily_client import TavilyClient
-from meinimpact.infrastructure.sources.tavily_media_adapter import TavilyMediaCoverageAdapter
+from meinimpact.infrastructure.sources.tavily_media_adapter import (
+    TavilyMediaCoverageAdapter,
+)
 
 
 def build_petition_steps(
@@ -55,7 +63,9 @@ def build_petition_steps(
         )
         steps.append(
             FetchStep(
-                CivilPetitionAdapter(TavilyClient(settings.tavily_api_key), google_cse=google_cse),
+                CivilPetitionAdapter(
+                    TavilyClient(settings.tavily_api_key), google_cse=google_cse
+                ),
                 name="fetch_civil_petitions",
             )
         )
@@ -84,7 +94,9 @@ def _build_rule_context_step(
 ) -> BuildRuleContextStep:
     media_check = None
     if settings.tavily_api_key:
-        media_adapter = TavilyMediaCoverageAdapter(TavilyClient(settings.tavily_api_key))
+        media_adapter = TavilyMediaCoverageAdapter(
+            TavilyClient(settings.tavily_api_key)
+        )
 
         async def media_check(item: RawSourceItem) -> bool:
             result = await media_adapter.check_coverage(item["title"])

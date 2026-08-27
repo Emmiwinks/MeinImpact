@@ -74,7 +74,9 @@ async def test_persist_inserts_row_without_schema_errors(
     assert inserted == 1
 
 
-async def test_persist_skips_items_without_classification(db_session: AsyncSession) -> None:
+async def test_persist_skips_items_without_classification(
+    db_session: AsyncSession,
+) -> None:
     unclassified = ItemState(raw=cast(RawSourceItem, _classified()), classified=None)
     inserted = await _persist([unclassified], db_session)
     assert inserted == 0
@@ -93,7 +95,9 @@ async def test_persist_stores_werte_relevanz(db_session: AsyncSession) -> None:
     # If werte_relevanz column is missing or wrong type, the insert raises here.
 
 
-async def test_persist_stores_engagement_state_and_reason(db_session: AsyncSession) -> None:
+async def test_persist_stores_engagement_state_and_reason(
+    db_session: AsyncSession,
+) -> None:
     url = "https://dip.bundestag.de/vorgang/engagement-state-test"
     await _persist([_item(source_url=url, state="B")], db_session)
     # If engagement_state/state_reason columns are missing, the insert raises here.

@@ -8,7 +8,7 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 
 from meinimpact.api.dependencies import get_db_session
-from meinimpact.core.config import Settings, get_settings
+from meinimpact.core.config import Settings
 from meinimpact.main import create_app
 
 
@@ -16,7 +16,7 @@ class _FakeResult:
     def __init__(self, row: dict[str, object] | None) -> None:
         self._row = row
 
-    def mappings(self) -> "_FakeResult":
+    def mappings(self) -> _FakeResult:
         return self
 
     def first(self) -> dict[str, object] | None:
@@ -46,6 +46,7 @@ def _client_with_settings(admin_api_key: str | None) -> TestClient:
         "duration_seconds": 12.3,
         "errors": [],
     }
+
     async def _fake_db_session() -> AsyncIterator[_FakeSession]:
         yield _FakeSession(row)
 

@@ -11,6 +11,8 @@ class CivicAction {
     this.deadline,
     this.urgency = 'low',
     this.werteRelevanz = const {},
+    this.proArgumente = const [],
+    this.contraArgumente = const [],
   });
 
   factory CivicAction.fromJson(Map<String, Object?> json) {
@@ -30,6 +32,11 @@ class CivicAction {
       werteRelevanz: werteRaw != null
           ? werteRaw.map((k, v) => MapEntry(k, (v as num).toDouble()))
           : const {},
+      proArgumente: (json['pro_argumente'] as List<Object?>?)?.cast<String>() ??
+          const [],
+      contraArgumente:
+          (json['contra_argumente'] as List<Object?>?)?.cast<String>() ??
+              const [],
     );
   }
 
@@ -44,6 +51,8 @@ class CivicAction {
   final DateTime? deadline;
   final String urgency;
   final Map<String, double> werteRelevanz;
+  final List<String> proArgumente;
+  final List<String> contraArgumente;
 }
 
 class ActionRecommendation {

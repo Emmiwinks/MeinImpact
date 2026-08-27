@@ -68,6 +68,12 @@ class _ProfileCard extends StatelessWidget {
             const SizedBox(height: 6),
             _AxisBar(label: 'Wandel', value: p.axisWandel),
           ],
+          if (p != null && p.city != null) ...[
+            const SizedBox(height: 20),
+            SectionLabel(label: 'Über dich'),
+            const SizedBox(height: 10),
+            _BioCard(profile: p),
+          ],
           const SizedBox(height: 18),
           SizedBox(
             height: 42,
@@ -86,6 +92,47 @@ class _ProfileCard extends StatelessWidget {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BioCard extends StatelessWidget {
+  const _BioCard({required this.profile});
+
+  final UserProfile profile;
+
+  @override
+  Widget build(BuildContext context) {
+    final lines = [
+      if (profile.occupation != null && profile.city != null)
+        '${profile.occupation} · ${profile.city}',
+      if (profile.familyStatus != null) profile.familyStatus!,
+      if (profile.wohnsituation != null) profile.wohnsituation!,
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final line in lines)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                line,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.ink,
+                      height: 1.25,
+                    ),
+              ),
+            ),
         ],
       ),
     );

@@ -5,7 +5,9 @@ from uuid import uuid4
 
 from meinimpact.infrastructure.pipeline.state_rules.protocol import RuleContext
 from meinimpact.infrastructure.pipeline.step import ItemState, PipelineDeps
-from meinimpact.infrastructure.pipeline.steps.build_rule_context import BuildRuleContextStep
+from meinimpact.infrastructure.pipeline.steps.build_rule_context import (
+    BuildRuleContextStep,
+)
 from meinimpact.infrastructure.sources.protocol import RawSourceItem
 
 

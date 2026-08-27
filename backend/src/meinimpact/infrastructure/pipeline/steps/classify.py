@@ -18,14 +18,18 @@ class ClassifyStep:
     def __init__(self, classifier: MistralClassifier) -> None:
         self._classifier = classifier
 
-    async def process(self, items: list[ItemState], deps: PipelineDeps) -> list[ItemState]:
+    async def process(
+        self, items: list[ItemState], deps: PipelineDeps
+    ) -> list[ItemState]:
         results = await asyncio.gather(
             *[self._classifier.classify(item.raw) for item in items],
             return_exceptions=True,
         )
         for item, result in zip(items, results, strict=True):
             if isinstance(result, BaseException):
-                deps.errors.append(f"Classification error for {item.raw.get('external_id')}: {result}")
+                deps.errors.append(
+                    f"Classification error for {item.raw.get('external_id')}: {result}"
+                )
                 item.classified = None
             else:
                 item.classified = result

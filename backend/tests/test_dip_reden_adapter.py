@@ -45,7 +45,15 @@ async def test_found_false_when_no_descriptor_matches() -> None:
     client = make_mock_client(
         get_side_effect=[
             make_json_response(
-                {"documents": [{"id": "999", "titel": "Rede", "deskriptor": [{"name": "Verkehr"}]}]}
+                {
+                    "documents": [
+                        {
+                            "id": "999",
+                            "titel": "Rede",
+                            "deskriptor": [{"name": "Verkehr"}],
+                        }
+                    ]
+                }
             )
         ]
     )

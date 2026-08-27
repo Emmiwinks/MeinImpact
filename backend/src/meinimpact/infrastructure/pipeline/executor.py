@@ -12,7 +12,11 @@ from collections.abc import Sequence
 
 import structlog
 
-from meinimpact.infrastructure.pipeline.step import ItemState, PipelineDeps, PipelineStep
+from meinimpact.infrastructure.pipeline.step import (
+    ItemState,
+    PipelineDeps,
+    PipelineStep,
+)
 
 logger = structlog.get_logger(__name__)
 

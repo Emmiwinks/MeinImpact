@@ -89,6 +89,8 @@ def test_empty_rule_list_defaults_to_state_d() -> None:
 
 def test_evidence_is_carried_from_matched_rule() -> None:
     ctx = _make_context()
-    rules: list[StateRule] = [_FakeRule("a", RuleResult("A", "r", "a", evidence={"key": "value"}))]
+    rules: list[StateRule] = [
+        _FakeRule("a", RuleResult("A", "r", "a", evidence={"key": "value"}))
+    ]
     trace = evaluate_state(ctx, rules)
     assert trace.evidence == {"key": "value"}

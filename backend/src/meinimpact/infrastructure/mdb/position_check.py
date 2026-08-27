@@ -51,4 +51,6 @@ async def check_mdb_position(
     results = await asyncio.gather(
         *[adapter.check_position(mdb, descriptors, since) for adapter in adapters]
     )
-    return MdbPositionCheckResult(found=any(r.found for r in results), matches=tuple(results))
+    return MdbPositionCheckResult(
+        found=any(r.found for r in results), matches=tuple(results)
+    )

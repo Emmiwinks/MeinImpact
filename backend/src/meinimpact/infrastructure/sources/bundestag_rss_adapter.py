@@ -97,5 +97,5 @@ def _parse_pub_date(value: str) -> datetime | None:
         return None
     try:
         return parsedate_to_datetime(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None

@@ -23,7 +23,9 @@ class NewsDataClient:
     def __init__(self, api_key: str) -> None:
         self._api_key = api_key
 
-    async def fetch_recent_politics(self, max_results: int = 10) -> list[dict[str, object]]:
+    async def fetch_recent_politics(
+        self, max_results: int = 10
+    ) -> list[dict[str, object]]:
         """Returns recent German politics articles.
 
         Not called by the pipeline in MVP. Reserved for future news-context

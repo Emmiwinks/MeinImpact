@@ -16,7 +16,14 @@ async def test_found_true_when_answer_text_matches_descriptor() -> None:
     client = make_mock_client(
         get_side_effect=[
             make_json_response(
-                {"data": [{"text": "Ich unterstütze den Klimaschutz.", "url": "https://aw/1"}]}
+                {
+                    "data": [
+                        {
+                            "text": "Ich unterstütze den Klimaschutz.",
+                            "url": "https://aw/1",
+                        }
+                    ]
+                }
             )
         ]
     )
@@ -79,7 +86,9 @@ async def test_found_false_on_request_error() -> None:
 async def test_request_uses_expected_params() -> None:
     captured: list[dict[str, object]] = []
 
-    async def _capturing_get(url: str, params: dict[str, object] | None = None, **_: object) -> MagicMock:
+    async def _capturing_get(
+        url: str, params: dict[str, object] | None = None, **_: object
+    ) -> MagicMock:
         captured.append({"url": url, "params": params})
         return make_json_response({"data": []})
 

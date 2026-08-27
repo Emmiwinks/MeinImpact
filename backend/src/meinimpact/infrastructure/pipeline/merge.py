@@ -38,7 +38,9 @@ def merge_and_deduplicate(
     return _deduplicate_fingerprint(after_url_dedup, existing_titles)
 
 
-def _deduplicate_exact_url(items: list[ItemState], existing_urls: set[str]) -> list[ItemState]:
+def _deduplicate_exact_url(
+    items: list[ItemState], existing_urls: set[str]
+) -> list[ItemState]:
     seen = set(existing_urls)
     kept: list[ItemState] = []
     for item in items:
@@ -108,7 +110,9 @@ def _type_priority(item: ItemState) -> int:
 def _type_label(item: ItemState) -> str:
     if item.raw.get("type") == "petition":
         return "bundestag_petition" if item.raw.get("source") == "dip" else "petition"
-    action_types: list[str] = list(item.classified.get("action_types") or []) if item.classified else []
+    action_types: list[str] = (
+        list(item.classified.get("action_types") or []) if item.classified else []
+    )
     if "anfrage" in action_types:
         return "anfrage"
     return "brief"

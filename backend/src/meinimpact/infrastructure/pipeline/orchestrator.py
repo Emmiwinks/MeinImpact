@@ -117,7 +117,10 @@ async def run_ingestion_pipeline(settings: Settings) -> None:
 
     except Exception as exc:
         logger.critical(
-            "Pipeline run %s ABORTED — nothing persisted: %s", run_id, exc, exc_info=True
+            "Pipeline run %s ABORTED — nothing persisted: %s",
+            run_id,
+            exc,
+            exc_info=True,
         )
         errors.append(str(exc))
     finally:

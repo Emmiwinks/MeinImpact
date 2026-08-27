@@ -8,7 +8,9 @@ from tests.support.httpx_mock import make_json_response, make_mock_client
 
 async def test_returns_items_on_success() -> None:
     client = make_mock_client(
-        get_side_effect=[make_json_response({"items": [{"link": "https://openpetition.de/1"}]})]
+        get_side_effect=[
+            make_json_response({"items": [{"link": "https://openpetition.de/1"}]})
+        ]
     )
     with patch(
         "meinimpact.infrastructure.sources.google_cse_adapter.httpx.AsyncClient",
@@ -44,7 +46,9 @@ async def test_returns_empty_list_on_quota_error() -> None:
 async def test_request_params_use_key_cx_and_query() -> None:
     captured: list[dict[str, object]] = []
 
-    async def _capturing_get(url: str, params: dict[str, object] | None = None, **_: object) -> MagicMock:
+    async def _capturing_get(
+        url: str, params: dict[str, object] | None = None, **_: object
+    ) -> MagicMock:
         captured.append({"url": url, "params": params})
         return make_json_response({"items": []})
 

@@ -22,7 +22,9 @@ class GoogleCseAdapter:
         self._api_key = api_key
         self._cse_id = cse_id
 
-    async def search(self, query: str, *, max_results: int = 10) -> list[dict[str, object]]:
+    async def search(
+        self, query: str, *, max_results: int = 10
+    ) -> list[dict[str, object]]:
         """Returns raw Google CSE result items. Returns [] on any error,
         including quota exhaustion (403/429)."""
         params: dict[str, str | int] = {

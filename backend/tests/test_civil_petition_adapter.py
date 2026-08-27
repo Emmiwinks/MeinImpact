@@ -6,7 +6,9 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from meinimpact.infrastructure.sources.civil_petition_adapter import CivilPetitionAdapter
+from meinimpact.infrastructure.sources.civil_petition_adapter import (
+    CivilPetitionAdapter,
+)
 from meinimpact.infrastructure.sources.google_cse_adapter import GoogleCseAdapter
 from meinimpact.infrastructure.sources.tavily_client import TavilyClient
 
@@ -27,7 +29,13 @@ def _fake_cse(items: list[dict[str, object]]) -> AsyncMock:
 
 async def test_returns_valid_weact_petition() -> None:
     tavily = _fake_tavily(
-        [{"url": "https://weact.campact.de/p/klimaschutz-jetzt", "title": "Klimaschutz jetzt", "content": "..."}]
+        [
+            {
+                "url": "https://weact.campact.de/p/klimaschutz-jetzt",
+                "title": "Klimaschutz jetzt",
+                "content": "...",
+            }
+        ]
     )
     adapter = CivilPetitionAdapter(tavily=cast(TavilyClient, tavily))
     items = await adapter.fetch_new_items(_SINCE)
@@ -38,7 +46,13 @@ async def test_returns_valid_weact_petition() -> None:
 
 async def test_filters_out_non_petition_path() -> None:
     tavily = _fake_tavily(
-        [{"url": "https://openpetition.de/blog/update-1", "title": "Update", "content": "..."}]
+        [
+            {
+                "url": "https://openpetition.de/blog/update-1",
+                "title": "Update",
+                "content": "...",
+            }
+        ]
     )
     adapter = CivilPetitionAdapter(tavily=cast(TavilyClient, tavily))
     items = await adapter.fetch_new_items(_SINCE)
@@ -47,7 +61,13 @@ async def test_filters_out_non_petition_path() -> None:
 
 async def test_filters_out_austrian_section() -> None:
     tavily = _fake_tavily(
-        [{"url": "https://openpetition.de/at/petition/klimaschutz", "title": "x", "content": "..."}]
+        [
+            {
+                "url": "https://openpetition.de/at/petition/klimaschutz",
+                "title": "x",
+                "content": "...",
+            }
+        ]
     )
     adapter = CivilPetitionAdapter(tavily=cast(TavilyClient, tavily))
     items = await adapter.fetch_new_items(_SINCE)
@@ -55,7 +75,9 @@ async def test_filters_out_austrian_section() -> None:
 
 
 async def test_filters_out_unrelated_domain() -> None:
-    tavily = _fake_tavily([{"url": "https://example.com/petition/x", "title": "x", "content": "..."}])
+    tavily = _fake_tavily(
+        [{"url": "https://example.com/petition/x", "title": "x", "content": "..."}]
+    )
     adapter = CivilPetitionAdapter(tavily=cast(TavilyClient, tavily))
     items = await adapter.fetch_new_items(_SINCE)
     assert items == []
@@ -64,9 +86,17 @@ async def test_filters_out_unrelated_domain() -> None:
 async def test_falls_back_to_google_cse_when_tavily_empty() -> None:
     tavily = _fake_tavily([])
     cse = _fake_cse(
-        [{"link": "https://openpetition.de/petition/klimaschutz", "title": "Klimaschutz", "snippet": "..."}]
+        [
+            {
+                "link": "https://openpetition.de/petition/klimaschutz",
+                "title": "Klimaschutz",
+                "snippet": "...",
+            }
+        ]
     )
-    adapter = CivilPetitionAdapter(tavily=cast(TavilyClient, tavily), google_cse=cast(GoogleCseAdapter, cse))
+    adapter = CivilPetitionAdapter(
+        tavily=cast(TavilyClient, tavily), google_cse=cast(GoogleCseAdapter, cse)
+    )
     items = await adapter.fetch_new_items(_SINCE)
     assert len(items) == 1
     assert items[0]["source"] == "google_cse_petition_search"
@@ -74,10 +104,18 @@ async def test_falls_back_to_google_cse_when_tavily_empty() -> None:
 
 async def test_does_not_fall_back_when_tavily_has_results() -> None:
     tavily = _fake_tavily(
-        [{"url": "https://weact.campact.de/petitions/x", "title": "x", "content": "..."}]
+        [
+            {
+                "url": "https://weact.campact.de/petitions/x",
+                "title": "x",
+                "content": "...",
+            }
+        ]
     )
     cse = _fake_cse([{"link": "https://openpetition.de/petition/other"}])
-    adapter = CivilPetitionAdapter(tavily=cast(TavilyClient, tavily), google_cse=cast(GoogleCseAdapter, cse))
+    adapter = CivilPetitionAdapter(
+        tavily=cast(TavilyClient, tavily), google_cse=cast(GoogleCseAdapter, cse)
+    )
     await adapter.fetch_new_items(_SINCE)
     cse.search.assert_not_called()
 

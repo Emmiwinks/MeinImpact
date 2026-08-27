@@ -38,7 +38,9 @@ class _RecordingStep:
     call_log: list[str]
     transform: Callable[[list[ItemState]], list[ItemState]] | None = None
 
-    async def process(self, items: list[ItemState], deps: PipelineDeps) -> list[ItemState]:
+    async def process(
+        self, items: list[ItemState], deps: PipelineDeps
+    ) -> list[ItemState]:
         self.call_log.append(self.name)
         if self.transform is not None:
             return self.transform(items)
@@ -58,7 +60,9 @@ async def test_runs_steps_in_order() -> None:
 
 async def test_passes_output_of_one_step_as_input_to_next() -> None:
     steps = [
-        _RecordingStep("fetch", [], transform=lambda items: [_make_item("1"), _make_item("2")]),
+        _RecordingStep(
+            "fetch", [], transform=lambda items: [_make_item("1"), _make_item("2")]
+        ),
         _RecordingStep("filter", [], transform=lambda items: items[:1]),
     ]
     result = await run_pipeline(steps, _make_deps())
@@ -80,7 +84,9 @@ async def test_starts_with_empty_item_list() -> None:
 
 async def test_logs_one_step_completed_event_per_step_with_counts() -> None:
     steps = [
-        _RecordingStep("fetch", [], transform=lambda items: [_make_item("1"), _make_item("2")]),
+        _RecordingStep(
+            "fetch", [], transform=lambda items: [_make_item("1"), _make_item("2")]
+        ),
         _RecordingStep("filter", [], transform=lambda items: items[:1]),
     ]
     with structlog.testing.capture_logs() as logs:

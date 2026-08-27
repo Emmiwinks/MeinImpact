@@ -10,7 +10,7 @@ from meinimpact.infrastructure.database import Database
 
 
 @pytest.fixture
-async def db_session() -> AsyncGenerator[AsyncSession, None]:
+async def db_session() -> AsyncGenerator[AsyncSession]:
     """Real DB session, rolled back after each test to leave no side effects."""
     settings = Settings()
     db = Database(settings.database_url)

@@ -105,6 +105,12 @@ class _FakeActionRepository implements ActionRepository {
 
   @override
   Future<List<MdbOption>> lookupMdb(String plz) async => const [];
+
+  @override
+  Future<String> getContext({
+    required String actionId,
+    required UserProfile profile,
+  }) async => 'Context.';
 }
 
 class _EmptyActionRepository implements ActionRepository {
@@ -124,6 +130,12 @@ class _EmptyActionRepository implements ActionRepository {
 
   @override
   Future<List<MdbOption>> lookupMdb(String plz) async => const [];
+
+  @override
+  Future<String> getContext({
+    required String actionId,
+    required UserProfile profile,
+  }) async => 'Context.';
 }
 
 class _FailingActionRepository implements ActionRepository {
@@ -143,4 +155,10 @@ class _FailingActionRepository implements ActionRepository {
 
   @override
   Future<List<MdbOption>> lookupMdb(String plz) async => const [];
+
+  @override
+  Future<String> getContext({
+    required String actionId,
+    required UserProfile profile,
+  }) async => 'Context.';
 }

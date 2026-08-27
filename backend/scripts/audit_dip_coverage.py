@@ -44,7 +44,9 @@ _PAGE_SIZE = 50
 _AUDIT_MAX_PAGES = 80
 
 
-async def _resolve_current_wahlperiode(client: httpx.AsyncClient, api_key: str) -> int | None:
+async def _resolve_current_wahlperiode(
+    client: httpx.AsyncClient, api_key: str
+) -> int | None:
     """Same approach as DipAdapter._resolve_current_wahlperiode: take the
     wahlperiode of the single most recently updated Vorgang."""
     since = (datetime.now(UTC) - timedelta(days=7)).date().isoformat()
@@ -122,7 +124,9 @@ async def run_audit(days: int) -> None:
         broad_docs, truncated = await _fetch_broad(client, api_key, wahlperiode, since)
 
     adapter = DipAdapter(api_key)
-    covered_items = await adapter.fetch_new_items(datetime.now(UTC) - timedelta(days=days))
+    covered_items = await adapter.fetch_new_items(
+        datetime.now(UTC) - timedelta(days=days)
+    )
     covered_petitions = await adapter.fetch_open_petitions()
     covered_ids = {item["external_id"] for item in covered_items}
     covered_ids |= {item["external_id"] for item in covered_petitions}
@@ -140,14 +144,18 @@ async def run_audit(days: int) -> None:
         )
     print()
     print(f"Total Vorgänge in broad (unfiltered) query: {len(broad_by_id)}")
-    print(f"Covered by current adapter passes:          {len(covered_ids & set(broad_by_id))}")
+    print(
+        f"Covered by current adapter passes:          {len(covered_ids & set(broad_by_id))}"
+    )
     print(f"Uncovered (in DIP, missed by our filters):  {len(uncovered)}")
     if broad_by_id:
         pct = 100 * len(covered_ids & set(broad_by_id)) / len(broad_by_id)
         print(f"Coverage: {pct:.1f}%")
     print()
 
-    beratungsstand_all = Counter(str(d.get("beratungsstand") or "(none)") for d in broad_docs)
+    beratungsstand_all = Counter(
+        str(d.get("beratungsstand") or "(none)") for d in broad_docs
+    )
     beratungsstand_uncovered = Counter(
         str(d.get("beratungsstand") or "(none)") for d in uncovered.values()
     )
@@ -165,14 +173,18 @@ async def run_audit(days: int) -> None:
 
     print()
     print("=== vorgangstyp distribution (UNCOVERED Vorgänge only) ===")
-    vorgangstyp_uncovered = Counter(str(d.get("vorgangstyp") or "(none)") for d in uncovered.values())
+    vorgangstyp_uncovered = Counter(
+        str(d.get("vorgangstyp") or "(none)") for d in uncovered.values()
+    )
     for typ, count in vorgangstyp_uncovered.most_common():
         print(f"  {count:4d}  {typ}")
 
     print()
     print("=== sample uncovered items (up to 15) ===")
     for eid, d in list(uncovered.items())[:15]:
-        print(f"  [{eid}] ({d.get('beratungsstand')!r}, {d.get('vorgangstyp')!r}) {d.get('titel')}")
+        print(
+            f"  [{eid}] ({d.get('beratungsstand')!r}, {d.get('vorgangstyp')!r}) {d.get('titel')}"
+        )
 
     # ------------------------------------------------------------------
     # Open question 1: what vorgangstyp do the beratungsstand="(none)"
@@ -181,8 +193,12 @@ async def run_audit(days: int) -> None:
     # ------------------------------------------------------------------
     none_status_docs = [d for d in broad_docs if not d.get("beratungsstand")]
     print()
-    print(f"=== vorgangstyp breakdown for beratungsstand=(none) items ({len(none_status_docs)} total) ===")
-    none_status_typ = Counter(str(d.get("vorgangstyp") or "(none)") for d in none_status_docs)
+    print(
+        f"=== vorgangstyp breakdown for beratungsstand=(none) items ({len(none_status_docs)} total) ==="
+    )
+    none_status_typ = Counter(
+        str(d.get("vorgangstyp") or "(none)") for d in none_status_docs
+    )
     for typ, count in none_status_typ.most_common():
         print(f"  {count:4d}  {typ}")
     print("  sample:")
@@ -198,11 +214,17 @@ async def run_audit(days: int) -> None:
         d for d in broad_docs if "petition" in str(d.get("vorgangstyp") or "").lower()
     ]
     print()
-    print(f"=== beratungsstand breakdown for vorgangstyp containing 'Petition' ({len(petition_docs)} total) ===")
-    petition_status = Counter(str(d.get("beratungsstand") or "(none)") for d in petition_docs)
+    print(
+        f"=== beratungsstand breakdown for vorgangstyp containing 'Petition' ({len(petition_docs)} total) ==="
+    )
+    petition_status = Counter(
+        str(d.get("beratungsstand") or "(none)") for d in petition_docs
+    )
     for status, count in petition_status.most_common():
         covered_count = sum(
-            1 for d in petition_docs if str(d.get("beratungsstand") or "(none)") == status
+            1
+            for d in petition_docs
+            if str(d.get("beratungsstand") or "(none)") == status
             and str(d.get("id")) in covered_ids
         )
         print(f"  {count:4d}  {status!r}  (covered: {covered_count})")
@@ -214,7 +236,10 @@ async def run_audit(days: int) -> None:
     print()
     print("=== full vorgangstyp x beratungsstand cross-tab (UNCOVERED only) ===")
     cross: Counter[tuple[str, str]] = Counter(
-        (str(d.get("vorgangstyp") or "(none)"), str(d.get("beratungsstand") or "(none)"))
+        (
+            str(d.get("vorgangstyp") or "(none)"),
+            str(d.get("beratungsstand") or "(none)"),
+        )
         for d in uncovered.values()
     )
     for (typ, status), count in cross.most_common(40):

@@ -23,7 +23,9 @@ def upgrade() -> None:
     # civic_actions: engagement-state columns replace momentum_score
     op.add_column(
         "civic_actions",
-        sa.Column("engagement_state", sa.String(length=1), nullable=False, server_default="C"),
+        sa.Column(
+            "engagement_state", sa.String(length=1), nullable=False, server_default="C"
+        ),
     )
     op.add_column(
         "civic_actions",
@@ -62,12 +64,17 @@ def upgrade() -> None:
     op.add_column(
         "pipeline_runs",
         sa.Column(
-            "parliamentary_actions_found", sa.Integer(), nullable=False, server_default="0"
+            "parliamentary_actions_found",
+            sa.Integer(),
+            nullable=False,
+            server_default="0",
         ),
     )
     op.add_column(
         "pipeline_runs",
-        sa.Column("petition_actions_found", sa.Integer(), nullable=False, server_default="0"),
+        sa.Column(
+            "petition_actions_found", sa.Integer(), nullable=False, server_default="0"
+        ),
     )
     op.add_column(
         "pipeline_runs",
@@ -83,7 +90,9 @@ def upgrade() -> None:
     )
     op.add_column(
         "pipeline_runs",
-        sa.Column("state_d_discarded", sa.Integer(), nullable=False, server_default="0"),
+        sa.Column(
+            "state_d_discarded", sa.Integer(), nullable=False, server_default="0"
+        ),
     )
     op.drop_column("pipeline_runs", "fetched_count")
     op.drop_column("pipeline_runs", "deduplicated_count")
@@ -98,11 +107,15 @@ def downgrade() -> None:
     )
     op.add_column(
         "pipeline_runs",
-        sa.Column("prefiltered_count", sa.Integer(), nullable=False, server_default="0"),
+        sa.Column(
+            "prefiltered_count", sa.Integer(), nullable=False, server_default="0"
+        ),
     )
     op.add_column(
         "pipeline_runs",
-        sa.Column("deduplicated_count", sa.Integer(), nullable=False, server_default="0"),
+        sa.Column(
+            "deduplicated_count", sa.Integer(), nullable=False, server_default="0"
+        ),
     )
     op.add_column(
         "pipeline_runs",
@@ -121,7 +134,9 @@ def downgrade() -> None:
         "civic_actions",
         sa.Column("momentum_score", sa.Float(), nullable=False, server_default="0.3"),
     )
-    op.drop_index("idx_actions_engagement_state", table_name="civic_actions", if_exists=True)
+    op.drop_index(
+        "idx_actions_engagement_state", table_name="civic_actions", if_exists=True
+    )
     op.drop_column("civic_actions", "previous_signature_count")
     op.drop_column("civic_actions", "pipeline_source")
     op.drop_column("civic_actions", "state_reason")

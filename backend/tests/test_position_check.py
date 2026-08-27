@@ -6,7 +6,13 @@ from datetime import datetime
 from meinimpact.infrastructure.mdb.position_check import check_mdb_position
 from meinimpact.infrastructure.sources.protocol import MdbTarget, PositionCheckResult
 
-_MDB = MdbTarget(name="Sarah Müller", aw_politician_id=1, dip_person_id="2", nachname="mueller", vorname="sarah")
+_MDB = MdbTarget(
+    name="Sarah Müller",
+    aw_politician_id=1,
+    dip_person_id="2",
+    nachname="mueller",
+    vorname="sarah",
+)
 _SINCE = datetime(2026, 4, 1)
 
 
@@ -29,8 +35,13 @@ async def test_found_true_when_any_adapter_finds_a_match() -> None:
     calls_a: list[_Call] = []
     calls_b: list[_Call] = []
     adapters = [
-        _FakeAdapter(PositionCheckResult(found=False, source="abgeordnetenwatch"), calls_a),
-        _FakeAdapter(PositionCheckResult(found=True, source="dip_reden", statement_summary="x"), calls_b),
+        _FakeAdapter(
+            PositionCheckResult(found=False, source="abgeordnetenwatch"), calls_a
+        ),
+        _FakeAdapter(
+            PositionCheckResult(found=True, source="dip_reden", statement_summary="x"),
+            calls_b,
+        ),
     ]
     result = await check_mdb_position(_MDB, ["klimaschutz"], _SINCE, adapters)
     assert result.found is True

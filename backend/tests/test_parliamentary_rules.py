@@ -11,8 +11,11 @@ from typing import Any
 from meinimpact.infrastructure.pipeline.state_rules.engine import evaluate_state
 from meinimpact.infrastructure.pipeline.state_rules.parliamentary_rules import (
     RULES,
+    BeschlussempfehlungReadyRule,
+    BundesratStageRule,
     CommitteeActiveRule,
     CommitteeReferralNoVoteRule,
+    EarlyFilingRule,
     EarlyReadingNoVoteScheduledRule,
     InsufficientFraktionPositionsRule,
     MediaCoverageRule,
@@ -58,27 +61,35 @@ def _ctx(**kwargs: Any) -> RuleContext:
 
 
 def test_vote_in_29_days_matches() -> None:
-    ctx = RuleContext(item=_make_item(), now=_NOW, vote_date=(_NOW + timedelta(days=29)).date())
+    ctx = RuleContext(
+        item=_make_item(), now=_NOW, vote_date=(_NOW + timedelta(days=29)).date()
+    )
     trace = evaluate_state(ctx, RULES)
     assert trace.engagement_state == "A"
     assert trace.matched_rule == "vote_scheduled"
 
 
 def test_vote_in_31_days_does_not_match() -> None:
-    ctx = RuleContext(item=_make_item(), now=_NOW, vote_date=(_NOW + timedelta(days=31)).date())
+    ctx = RuleContext(
+        item=_make_item(), now=_NOW, vote_date=(_NOW + timedelta(days=31)).date()
+    )
     trace = evaluate_state(ctx, RULES)
     assert trace.matched_rule != "vote_scheduled"
 
 
 def test_vote_exactly_30_days_matches() -> None:
-    ctx = RuleContext(item=_make_item(), now=_NOW, vote_date=(_NOW + timedelta(days=30)).date())
+    ctx = RuleContext(
+        item=_make_item(), now=_NOW, vote_date=(_NOW + timedelta(days=30)).date()
+    )
     trace = evaluate_state(ctx, RULES)
     assert trace.engagement_state == "A"
     assert trace.matched_rule == "vote_scheduled"
 
 
 def test_vote_in_the_past_does_not_match() -> None:
-    ctx = RuleContext(item=_make_item(), now=_NOW, vote_date=(_NOW - timedelta(days=1)).date())
+    ctx = RuleContext(
+        item=_make_item(), now=_NOW, vote_date=(_NOW - timedelta(days=1)).date()
+    )
     trace = evaluate_state(ctx, RULES)
     assert trace.matched_rule != "vote_scheduled"
 
@@ -138,6 +149,49 @@ def test_petition_near_quorum_does_not_match_non_petition() -> None:
     item = _make_item(type="antrag", signature_count=45_000)
     ctx = RuleContext(item=item, now=_NOW)
     assert PetitionNearQuorumRule().evaluate(ctx) is None
+
+
+# ---------------------------------------------------------------------------
+# BeschlussempfehlungReadyRule (state A #4)
+# ---------------------------------------------------------------------------
+
+
+def test_beschlussempfehlung_ready_matches() -> None:
+    item = _make_item(status="Beschlussempfehlung liegt vor")
+    ctx = RuleContext(item=item, now=_NOW)
+    result = BeschlussempfehlungReadyRule().evaluate(ctx)
+    assert result is not None
+    assert result.state == "A"
+
+
+def test_beschlussempfehlung_ready_does_not_match_other_status() -> None:
+    item = _make_item(status="Ausschussberatung")
+    ctx = RuleContext(item=item, now=_NOW)
+    assert BeschlussempfehlungReadyRule().evaluate(ctx) is None
+
+
+# ---------------------------------------------------------------------------
+# BundesratStageRule (state A #5)
+# ---------------------------------------------------------------------------
+
+
+def test_bundesrat_stage_matches_each_live_status() -> None:
+    for status in (
+        "1. Durchgang im Bundesrat abgeschlossen",
+        "Bundesrat hat zugestimmt",
+        "Bundesrat hat Vermittlungsausschuss nicht angerufen",
+    ):
+        item = _make_item(status=status)
+        ctx = RuleContext(item=item, now=_NOW)
+        result = BundesratStageRule().evaluate(ctx)
+        assert result is not None, f"Expected a match for status={status!r}"
+        assert result.state == "A"
+
+
+def test_bundesrat_stage_does_not_match_decided_status() -> None:
+    item = _make_item(status="Verkündet")
+    ctx = RuleContext(item=item, now=_NOW)
+    assert BundesratStageRule().evaluate(ctx) is None
 
 
 # ---------------------------------------------------------------------------
@@ -226,6 +280,36 @@ def test_early_reading_does_not_match_other_status() -> None:
 
 
 # ---------------------------------------------------------------------------
+# EarlyFilingRule (state B #4)
+# ---------------------------------------------------------------------------
+
+
+def test_early_filing_matches_each_status() -> None:
+    for status in (
+        "Noch nicht beraten",
+        "Dem Bundestag zugeleitet - Noch nicht beraten",
+        "Einbringung beschlossen",
+    ):
+        item = _make_item(type="antrag", status=status)
+        ctx = RuleContext(item=item, now=_NOW)
+        result = EarlyFilingRule().evaluate(ctx)
+        assert result is not None, f"Expected a match for status={status!r}"
+        assert result.state == "B"
+
+
+def test_early_filing_does_not_match_petition() -> None:
+    item = _make_item(type="petition", status="Noch nicht beraten")
+    ctx = RuleContext(item=item, now=_NOW)
+    assert EarlyFilingRule().evaluate(ctx) is None
+
+
+def test_early_filing_does_not_match_other_status() -> None:
+    item = _make_item(type="antrag", status="Überwiesen")
+    ctx = RuleContext(item=item, now=_NOW)
+    assert EarlyFilingRule().evaluate(ctx) is None
+
+
+# ---------------------------------------------------------------------------
 # MediaCoverageRule
 # ---------------------------------------------------------------------------
 
@@ -262,13 +346,21 @@ def test_vote_scheduled_wins_over_state_b_when_both_apply() -> None:
 
 def test_state_b_wins_over_media_coverage_when_both_apply() -> None:
     item = _make_item(type="antrag", status="Überwiesen")
-    ctx = RuleContext(item=item, now=_NOW, has_vote_result=False, media_coverage_matched=True)
+    ctx = RuleContext(
+        item=item, now=_NOW, has_vote_result=False, media_coverage_matched=True
+    )
     trace = evaluate_state(ctx, RULES)
     assert trace.engagement_state == "B"
     assert trace.matched_rule == "committee_referral_no_vote"
 
 
 def test_nothing_matches_defaults_to_d() -> None:
-    ctx = _ctx()
+    """A fully decided Vorgang (per scripts/audit_dip_coverage.py: Verabschiedet,
+    Verkündet, Abgelehnt, Für erledigt erklärt) has no engagement hook —
+    state D is the correct outcome, not a gap. Note: _make_item()'s own
+    default status ("Noch nicht beraten") now matches early_filing, so this
+    test must use a status no rule recognises."""
+    item = _make_item(status="Verabschiedet")
+    ctx = RuleContext(item=item, now=_NOW)
     trace = evaluate_state(ctx, RULES)
     assert trace.engagement_state == "D"

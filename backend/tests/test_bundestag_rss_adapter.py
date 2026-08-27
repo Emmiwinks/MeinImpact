@@ -22,14 +22,21 @@ def _rss(*items: tuple[str, str, str]) -> str:
 
 async def test_found_true_when_recent_article_matches() -> None:
     xml = _rss(
-        ("Müller zum Klimaschutz", "https://bundestag.de/a1", "Mon, 01 Jun 2026 10:00:00 +0200")
+        (
+            "Müller zum Klimaschutz",
+            "https://bundestag.de/a1",
+            "Mon, 01 Jun 2026 10:00:00 +0200",
+        )
     )
     client = make_mock_client(get_side_effect=[make_text_response(xml)])
-    with patch(
-        "meinimpact.infrastructure.sources.bundestag_rss_adapter.datetime"
-    ) as mock_dt, patch(
-        "meinimpact.infrastructure.sources.bundestag_rss_adapter.httpx.AsyncClient",
-        return_value=client,
+    with (
+        patch(
+            "meinimpact.infrastructure.sources.bundestag_rss_adapter.datetime"
+        ) as mock_dt,
+        patch(
+            "meinimpact.infrastructure.sources.bundestag_rss_adapter.httpx.AsyncClient",
+            return_value=client,
+        ),
     ):
         mock_dt.now.return_value = datetime(2026, 6, 15)
         adapter = BundestagRssPositionAdapter()
@@ -44,13 +51,22 @@ async def test_found_true_when_recent_article_matches() -> None:
 
 
 async def test_found_false_when_article_older_than_60_days() -> None:
-    xml = _rss(("Müller zum Klimaschutz", "https://bundestag.de/a1", "Mon, 01 Jan 2026 10:00:00 +0200"))
+    xml = _rss(
+        (
+            "Müller zum Klimaschutz",
+            "https://bundestag.de/a1",
+            "Mon, 01 Jan 2026 10:00:00 +0200",
+        )
+    )
     client = make_mock_client(get_side_effect=[make_text_response(xml)])
-    with patch(
-        "meinimpact.infrastructure.sources.bundestag_rss_adapter.datetime"
-    ) as mock_dt, patch(
-        "meinimpact.infrastructure.sources.bundestag_rss_adapter.httpx.AsyncClient",
-        return_value=client,
+    with (
+        patch(
+            "meinimpact.infrastructure.sources.bundestag_rss_adapter.datetime"
+        ) as mock_dt,
+        patch(
+            "meinimpact.infrastructure.sources.bundestag_rss_adapter.httpx.AsyncClient",
+            return_value=client,
+        ),
     ):
         mock_dt.now.return_value = datetime(2026, 6, 15)
         adapter = BundestagRssPositionAdapter()
@@ -63,7 +79,13 @@ async def test_found_false_when_article_older_than_60_days() -> None:
 
 
 async def test_found_false_when_no_title_matches() -> None:
-    xml = _rss(("Unrelated topic", "https://bundestag.de/a1", "Mon, 01 Jun 2026 10:00:00 +0200"))
+    xml = _rss(
+        (
+            "Unrelated topic",
+            "https://bundestag.de/a1",
+            "Mon, 01 Jun 2026 10:00:00 +0200",
+        )
+    )
     client = make_mock_client(get_side_effect=[make_text_response(xml)])
     with patch(
         "meinimpact.infrastructure.sources.bundestag_rss_adapter.httpx.AsyncClient",

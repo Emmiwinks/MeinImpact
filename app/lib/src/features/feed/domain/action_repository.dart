@@ -13,4 +13,11 @@ abstract interface class ActionRepository {
   });
 
   Future<List<MdbOption>> lookupMdb(String plz);
+
+  /// Returns an AI-generated paragraph explaining what this action means
+  /// for someone matching [profile]'s demographics.
+  Future<String> getContext({
+    required String actionId,
+    required UserProfile profile,
+  });
 }

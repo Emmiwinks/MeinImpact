@@ -12,7 +12,9 @@ class FilterStateDStep:
 
     name = "filter_state_d"
 
-    async def process(self, items: list[ItemState], deps: PipelineDeps) -> list[ItemState]:
+    async def process(
+        self, items: list[ItemState], deps: PipelineDeps
+    ) -> list[ItemState]:
         return [
             item
             for item in items

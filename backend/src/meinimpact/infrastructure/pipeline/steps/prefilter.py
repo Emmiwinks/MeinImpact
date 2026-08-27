@@ -11,5 +11,7 @@ class PrefilterStep:
 
     name = "prefilter"
 
-    async def process(self, items: list[ItemState], deps: PipelineDeps) -> list[ItemState]:
+    async def process(
+        self, items: list[ItemState], deps: PipelineDeps
+    ) -> list[ItemState]:
         return [item for item in items if passes_basic_checks(item.raw)]

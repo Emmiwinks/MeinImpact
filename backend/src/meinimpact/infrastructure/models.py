@@ -337,7 +337,9 @@ class PipelineRunRecord(Base):
     parliamentary_actions_found: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0
     )
-    petition_actions_found: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    petition_actions_found: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )
     state_a_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     state_b_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     state_c_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

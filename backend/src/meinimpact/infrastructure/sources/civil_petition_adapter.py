@@ -35,7 +35,7 @@ class CivilPetitionAdapter:
         self._tavily = tavily
         self._google_cse = google_cse
 
-    async def fetch_new_items(self, since: datetime) -> list[RawSourceItem]:  # noqa: ARG002
+    async def fetch_new_items(self, since: datetime) -> list[RawSourceItem]:
         """`since` is unused — this source is re-searched in full each run,
         there is no incremental "updated since" concept for web search."""
         results = await self._tavily.search(
@@ -70,7 +70,9 @@ def _normalize_cse_item(item: dict[str, object]) -> dict[str, object]:
     }
 
 
-def _parse_results(results: list[dict[str, object]], source: str) -> list[RawSourceItem]:
+def _parse_results(
+    results: list[dict[str, object]], source: str
+) -> list[RawSourceItem]:
     items: list[RawSourceItem] = []
     for r in results:
         url = str(r.get("url") or "")

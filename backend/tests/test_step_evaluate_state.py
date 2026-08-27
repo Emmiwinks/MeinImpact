@@ -6,7 +6,10 @@ from uuid import uuid4
 
 import pytest
 
-from meinimpact.infrastructure.pipeline.state_rules.protocol import RuleContext, RuleResult
+from meinimpact.infrastructure.pipeline.state_rules.protocol import (
+    RuleContext,
+    RuleResult,
+)
 from meinimpact.infrastructure.pipeline.step import ItemState, PipelineDeps
 from meinimpact.infrastructure.pipeline.steps.evaluate_state import EvaluateStateStep
 from meinimpact.infrastructure.sources.protocol import RawSourceItem
@@ -38,7 +41,9 @@ def _item_with_context() -> ItemState:
         "initiated_by": "x",
         "source": "dip",
     }
-    return ItemState(raw=raw, rule_context=RuleContext(item=raw, now=datetime(2026, 1, 1)))
+    return ItemState(
+        raw=raw, rule_context=RuleContext(item=raw, now=datetime(2026, 1, 1))
+    )
 
 
 async def test_attaches_state_trace_from_matching_rule() -> None:

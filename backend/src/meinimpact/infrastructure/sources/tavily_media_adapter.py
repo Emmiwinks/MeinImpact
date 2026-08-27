@@ -42,7 +42,9 @@ class TavilyMediaCoverageAdapter:
             days=_LOOKBACK_DAYS,
             max_results=_MAX_RESULTS,
         )
-        domains = {_extract_domain(str(r.get("url", ""))) for r in results if r.get("url")}
+        domains = {
+            _extract_domain(str(r.get("url", ""))) for r in results if r.get("url")
+        }
         matched = len(results) >= _MIN_ARTICLES and len(domains) >= _MIN_DOMAINS
         return MediaCoverageResult(
             matched=matched,

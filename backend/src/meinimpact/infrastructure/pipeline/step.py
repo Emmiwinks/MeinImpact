@@ -31,7 +31,9 @@ class ItemState:
     rule_context: RuleContext | None = None
     state_trace: StateTrace | None = None
     classified: ClassifiedAction | None = None
-    pipeline_source: str | None = None  # "parliamentary" | "petition", tagged in merge.py
+    pipeline_source: str | None = (
+        None  # "parliamentary" | "petition", tagged in merge.py
+    )
 
 
 @dataclass(frozen=True)

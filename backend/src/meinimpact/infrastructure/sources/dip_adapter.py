@@ -103,7 +103,9 @@ class DipAdapter:
                 seen_urls.add(item["source_url"])
         return items
 
-    async def _resolve_current_wahlperiode(self, client: httpx.AsyncClient) -> int | None:
+    async def _resolve_current_wahlperiode(
+        self, client: httpx.AsyncClient
+    ) -> int | None:
         """Determines the current Bundestag legislative period from the
         single most recently updated Vorgang, so `fetch_new_items` can
         scope its broad query to it without a hardcoded period number that
@@ -116,8 +118,10 @@ class DipAdapter:
         rather than hang if that turns out to be too broad.
         """
         since = (
-            datetime.now(UTC) - timedelta(days=_WAHLPERIODE_PROBE_LOOKBACK_DAYS)
-        ).date().isoformat()
+            (datetime.now(UTC) - timedelta(days=_WAHLPERIODE_PROBE_LOOKBACK_DAYS))
+            .date()
+            .isoformat()
+        )
         params: list[tuple[str, str | int]] = [
             ("apikey", self._api_key),
             ("format", "json"),
@@ -292,7 +296,7 @@ class DipPetitionAdapter:
     def __init__(self, dip_adapter: DipAdapter) -> None:
         self._dip = dip_adapter
 
-    async def fetch_new_items(self, since: datetime) -> list[RawSourceItem]:  # noqa: ARG002
+    async def fetch_new_items(self, since: datetime) -> list[RawSourceItem]:
         return await self._dip.fetch_open_petitions()
 
     async def fetch_item_detail(self, external_id: str) -> RawSourceItem:

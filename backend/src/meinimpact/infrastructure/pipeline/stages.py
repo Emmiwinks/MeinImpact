@@ -86,6 +86,7 @@ _IMPACT_HINT: dict[str, str] = {
     "low": "Laufender Gesetzgebungsprozess",
 }
 
+
 def map_domain_action_type(classified: Mapping[str, Any]) -> str:
     """Maps classification output to a domain ActionType string.
 

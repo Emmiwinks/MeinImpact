@@ -34,6 +34,20 @@ class _ActionDetailCardState extends State<ActionDetailCard> {
   _DraftState _draftState = _DraftState.idle;
   final _draftController = TextEditingController();
   String _errorMessage = '';
+  late Future<String> _contextFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _contextFuture = _loadContext();
+  }
+
+  Future<String> _loadContext() {
+    return widget.repository.getContext(
+      actionId: widget.recommendation.action.id,
+      profile: widget.profile,
+    );
+  }
 
   @override
   void didUpdateWidget(ActionDetailCard oldWidget) {
@@ -41,6 +55,7 @@ class _ActionDetailCardState extends State<ActionDetailCard> {
     if (oldWidget.recommendation.action.id != widget.recommendation.action.id) {
       _draftState = _DraftState.idle;
       _draftController.clear();
+      _contextFuture = _loadContext();
     }
   }
 
@@ -98,9 +113,6 @@ class _ActionDetailCardState extends State<ActionDetailCard> {
   @override
   Widget build(BuildContext context) {
     final action = widget.recommendation.action;
-    final reason = widget.recommendation.reasons.isEmpty
-        ? widget.l10n.reasonFallback
-        : widget.recommendation.reasons.first;
 
     return SurfaceCard(
       color: AppColors.surface,
@@ -119,17 +131,43 @@ class _ActionDetailCardState extends State<ActionDetailCard> {
                 ),
           ),
           const SizedBox(height: 14),
+          // Timing/urgency — why this matters to act on now.
           InfoBox(
             title: widget.l10n.whyNowTitle,
-            body: reason,
+            body: action.impactHint,
             color: AppColors.surfaceMuted,
           ),
           const SizedBox(height: 10),
-          InfoBox(
-            title: widget.l10n.whatItMeansTitle,
-            body: action.impactHint,
-            color: AppColors.greenWash,
+          // Personalised for the current profile via the AI context endpoint.
+          FutureBuilder<String>(
+            future: _contextFuture,
+            builder: (context, snapshot) {
+              final body = switch (snapshot.connectionState) {
+                ConnectionState.done when snapshot.hasError =>
+                  widget.l10n.contextUnavailable,
+                ConnectionState.done =>
+                  (snapshot.data?.isNotEmpty ?? false)
+                      ? snapshot.data!
+                      : widget.l10n.contextUnavailable,
+                _ => widget.l10n.contextLoading,
+              };
+              return InfoBox(
+                title: widget.l10n.whatItMeansTitle,
+                body: body,
+                color: AppColors.greenWash,
+              );
+            },
           ),
+          if (action.proArgumente.isNotEmpty ||
+              action.contraArgumente.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _ProsConsSection(
+              prosTitle: widget.l10n.prosTitle,
+              consTitle: widget.l10n.consTitle,
+              pros: action.proArgumente,
+              cons: action.contraArgumente,
+            ),
+          ],
           const SizedBox(height: 16),
           // External source link — always available
           _SourceButton(label: 'Zur Quelle →', onTap: _openSource),
@@ -144,6 +182,127 @@ class _ActionDetailCardState extends State<ActionDetailCard> {
               onOpen: _openSource,
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ProsConsSection extends StatelessWidget {
+  const _ProsConsSection({
+    required this.prosTitle,
+    required this.consTitle,
+    required this.pros,
+    required this.cons,
+  });
+
+  final String prosTitle;
+  final String consTitle;
+  final List<String> pros;
+  final List<String> cons;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = [
+          if (pros.isNotEmpty)
+            Expanded(
+              child: _ArgumentList(
+                title: prosTitle,
+                points: pros,
+                icon: Icons.add_circle_outline,
+                color: AppColors.green,
+              ),
+            ),
+          if (cons.isNotEmpty)
+            Expanded(
+              child: _ArgumentList(
+                title: consTitle,
+                points: cons,
+                icon: Icons.remove_circle_outline,
+                color: AppColors.amberText,
+              ),
+            ),
+        ];
+        if (constraints.maxWidth < 420 && columns.length > 1) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              columns[0].child,
+              const SizedBox(height: 10),
+              columns[1].child,
+            ],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (var i = 0; i < columns.length; i++) ...[
+              if (i > 0) const SizedBox(width: 10),
+              columns[i],
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ArgumentList extends StatelessWidget {
+  const _ArgumentList({
+    required this.title,
+    required this.points,
+    required this.icon,
+    required this.color,
+  });
+
+  final String title;
+  final List<String> points;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title.toUpperCase(),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: AppColors.mutedText,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.6,
+                ),
+          ),
+          const SizedBox(height: 8),
+          for (final point in points)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(icon, size: 16, color: color),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      point,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppColors.ink,
+                            height: 1.3,
+                          ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );

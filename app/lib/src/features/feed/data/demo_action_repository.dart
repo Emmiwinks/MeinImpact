@@ -63,4 +63,10 @@ class DemoActionRepository implements ActionRepository {
 
   @override
   Future<List<MdbOption>> lookupMdb(String plz) async => const [];
+
+  @override
+  Future<String> getContext({
+    required String actionId,
+    required UserProfile profile,
+  }) async => copy.draftDelta;
 }

@@ -43,7 +43,8 @@ async def test_drops_short_title() -> None:
 async def test_drops_non_german_title() -> None:
     step = PrefilterStep()
     result = await step.process(
-        [_item("This is a long English text about some policy that should be dropped")], _deps()
+        [_item("This is a long English text about some policy that should be dropped")],
+        _deps(),
     )
     assert result == []
 

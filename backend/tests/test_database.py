@@ -43,10 +43,22 @@ def test_civic_actions_orm_columns_match_current_schema() -> None:
     assert "momentum_score" not in cols
     # Core columns that must always be present.
     required = {
-        "id", "title", "action_type", "summary", "region",
-        "deadline", "effort_minutes", "impact_hint", "source_url",
-        "urgency", "werte_relevanz", "active", "updated_at",
-        "engagement_state", "state_reason", "pipeline_source",
+        "id",
+        "title",
+        "action_type",
+        "summary",
+        "region",
+        "deadline",
+        "effort_minutes",
+        "impact_hint",
+        "source_url",
+        "urgency",
+        "werte_relevanz",
+        "active",
+        "updated_at",
+        "engagement_state",
+        "state_reason",
+        "pipeline_source",
         "previous_signature_count",
     }
     missing = required - cols

@@ -63,7 +63,9 @@ class BuildRuleContextStep:
         self._signature_goal_lookup = signature_goal_lookup
         self._previous_signature_lookup = previous_signature_lookup
 
-    async def process(self, items: list[ItemState], deps: PipelineDeps) -> list[ItemState]:
+    async def process(
+        self, items: list[ItemState], deps: PipelineDeps
+    ) -> list[ItemState]:
         contexts = await asyncio.gather(*[self._build_one(item) for item in items])
         for item, context in zip(items, contexts, strict=True):
             item.rule_context = context
@@ -81,10 +83,14 @@ class BuildRuleContextStep:
         return RuleContext(
             item=item.raw,
             now=datetime.now(),
-            vote_date=self._vote_date_lookup(item.raw) if self._vote_date_lookup else None,
+            vote_date=self._vote_date_lookup(item.raw)
+            if self._vote_date_lookup
+            else None,
             committee_recently_active=committee_active,
             has_vote_result=(
-                self._vote_result_lookup(item.raw) if self._vote_result_lookup else False
+                self._vote_result_lookup(item.raw)
+                if self._vote_result_lookup
+                else False
             ),
             stellungnahme_fraktion_count=(
                 self._fraktion_stellungnahme_lookup(item.raw)
@@ -98,6 +104,8 @@ class BuildRuleContextStep:
                 else None
             ),
             signature_goal=(
-                self._signature_goal_lookup(item.raw) if self._signature_goal_lookup else None
+                self._signature_goal_lookup(item.raw)
+                if self._signature_goal_lookup
+                else None
             ),
         )

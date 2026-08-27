@@ -27,7 +27,9 @@ class FetchStep:
         self._lookback_days = lookback_days
         self.name = name or f"fetch_{type(adapter).__name__}"
 
-    async def process(self, items: list[ItemState], deps: PipelineDeps) -> list[ItemState]:
+    async def process(
+        self, items: list[ItemState], deps: PipelineDeps
+    ) -> list[ItemState]:
         since = datetime.now(UTC) - timedelta(days=self._lookback_days)
         new_items = await self._adapter.fetch_new_items(since)
         return items + [ItemState(raw=raw) for raw in new_items]
