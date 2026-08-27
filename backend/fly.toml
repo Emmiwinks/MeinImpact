@@ -8,7 +8,7 @@ primary_region = "fra"
 
 [env]
   MEINIMPACT_ENVIRONMENT = "production"
-  MEINIMPACT_ALLOWED_ORIGINS = '["https://meinimpact.de","https://www.meinimpact.de","https://meinimpact.com"]'
+  MEINIMPACT_ALLOWED_ORIGINS = '["https://meinimpact.de","https://www.meinimpact.de","https://meinimpact.com","https://app.meinimpact.de"]'
 
 [http_service]
   internal_port = 8000

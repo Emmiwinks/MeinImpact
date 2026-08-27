@@ -6,9 +6,15 @@ import 'src/core/profile/user_profile_store.dart';
 import 'src/core/security/token_store.dart';
 import 'src/features/feed/data/remote_action_repository.dart';
 
-// Base URL for local development.
+// Base URL for local development. Overridden in release builds via
+// --dart-define=MEINIMPACT_API_BASE_URL=... (see .github/workflows/app.yml)
+// — this was previously hardcoded and silently ignored the dart-define,
+// so every deployed build tried to reach the developer's own localhost.
 // Use http://10.0.2.2:8000/ when running on an Android emulator.
-const _kBaseUrl = 'http://localhost:8000/';
+const _kBaseUrl = String.fromEnvironment(
+  'MEINIMPACT_API_BASE_URL',
+  defaultValue: 'http://localhost:8000/',
+);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

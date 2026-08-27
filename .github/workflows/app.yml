@@ -117,7 +117,9 @@ jobs:
         run: flutter gen-l10n
 
       - name: Build web release
-        run: flutter build web --release --pwa-strategy=none --dart-define=MEINIMPACT_API_BASE_URL=https://api.meinimpact.de
+        # api.meinimpact.de's DNS was never finished (CNAME not resolving) —
+        # pointing at the working fly.dev URL directly until that's fixed.
+        run: flutter build web --release --pwa-strategy=none --dart-define=MEINIMPACT_API_BASE_URL=https://meinimpact-api.fly.dev/
 
       - name: Deploy to Cloudflare Pages
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
