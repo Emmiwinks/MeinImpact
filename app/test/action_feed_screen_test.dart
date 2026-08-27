@@ -110,7 +110,8 @@ class _FakeActionRepository implements ActionRepository {
   Future<String> getContext({
     required String actionId,
     required UserProfile profile,
-  }) async => 'Context.';
+  }) async =>
+      'Context.';
 }
 
 class _EmptyActionRepository implements ActionRepository {
@@ -135,7 +136,8 @@ class _EmptyActionRepository implements ActionRepository {
   Future<String> getContext({
     required String actionId,
     required UserProfile profile,
-  }) async => 'Context.';
+  }) async =>
+      'Context.';
 }
 
 class _FailingActionRepository implements ActionRepository {
@@ -160,5 +162,6 @@ class _FailingActionRepository implements ActionRepository {
   Future<String> getContext({
     required String actionId,
     required UserProfile profile,
-  }) async => 'Context.';
+  }) async =>
+      'Context.';
 }

@@ -32,8 +32,8 @@ class CivicAction {
       werteRelevanz: werteRaw != null
           ? werteRaw.map((k, v) => MapEntry(k, (v as num).toDouble()))
           : const {},
-      proArgumente: (json['pro_argumente'] as List<Object?>?)?.cast<String>() ??
-          const [],
+      proArgumente:
+          (json['pro_argumente'] as List<Object?>?)?.cast<String>() ?? const [],
       contraArgumente:
           (json['contra_argumente'] as List<Object?>?)?.cast<String>() ??
               const [],

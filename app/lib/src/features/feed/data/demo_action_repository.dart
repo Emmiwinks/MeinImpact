@@ -68,5 +68,6 @@ class DemoActionRepository implements ActionRepository {
   Future<String> getContext({
     required String actionId,
     required UserProfile profile,
-  }) async => copy.draftDelta;
+  }) async =>
+      copy.draftDelta;
 }

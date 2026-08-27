@@ -207,4 +207,3 @@ class _AxisBar extends StatelessWidget {
     );
   }
 }
-

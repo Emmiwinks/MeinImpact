@@ -145,10 +145,9 @@ class _ActionDetailCardState extends State<ActionDetailCard> {
               final body = switch (snapshot.connectionState) {
                 ConnectionState.done when snapshot.hasError =>
                   widget.l10n.contextUnavailable,
-                ConnectionState.done =>
-                  (snapshot.data?.isNotEmpty ?? false)
-                      ? snapshot.data!
-                      : widget.l10n.contextUnavailable,
+                ConnectionState.done => (snapshot.data?.isNotEmpty ?? false)
+                    ? snapshot.data!
+                    : widget.l10n.contextUnavailable,
                 _ => widget.l10n.contextLoading,
               };
               return InfoBox(
