@@ -42,6 +42,12 @@ class CivicAction:
     position_required: bool = False
     active: bool = True
     tavily_context: str | None = None
+    # Topic grouping — internal fingerprint-grouping key, not a taxonomy.
+    # Actions sharing a topic_id are different engagement options (petition,
+    # letter) for the same real-world topic. Defaults to "" only for
+    # construction sites that don't care (e.g. dummy/demo data); the real
+    # pipeline always assigns a real value (see pipeline/merge.py).
+    topic_id: str = ""
     # Engagement-state fields — replace momentum_score
     engagement_state: str = "C"
     state_reason: str | None = None

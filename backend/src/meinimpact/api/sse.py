@@ -17,7 +17,12 @@ def encode_sse(
     lines.append(f"event: {event}")
     if retry_milliseconds is not None:
         lines.append(f"retry: {retry_milliseconds}")
-    payload_lines = data.splitlines() or [""]
+    # split('\n'), not splitlines(): per the SSE spec, N `data:` lines
+    # reconstruct as their values joined by '\n' — split('\n') is the exact
+    # inverse of that join, including a trailing/lone newline in `data`
+    # (splitlines() drops the trailing empty segment, which would silently
+    # lose that newline on the client's reconstruction).
+    payload_lines = data.split("\n")
     lines.extend(f"data: {line}" for line in payload_lines)
     return "\n".join(lines) + "\n\n"
 

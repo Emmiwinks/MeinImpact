@@ -4,42 +4,6 @@
   "@appTitle": {
     "description": "Application title."
   },
-  "languageMenuLabel": "Language",
-  "@languageMenuLabel": {
-    "description": "Accessible label for the language selector."
-  },
-  "languageEnglish": "English",
-  "@languageEnglish": {
-    "description": "Native display name for English."
-  },
-  "languageGerman": "Deutsch",
-  "@languageGerman": {
-    "description": "Native display name for German."
-  },
-  "noActionsAvailable": "No actions available yet.",
-  "@noActionsAvailable": {
-    "description": "Empty state shown when no recommendations are available."
-  },
-  "scoreLabel": "Score {score}",
-  "@scoreLabel": {
-    "description": "Recommendation score label.",
-    "placeholders": {
-      "score": {
-        "type": "int",
-        "example": "90"
-      }
-    }
-  },
-  "effortMinutes": "{minutes, plural, =1{1 min} other{{minutes} min}}",
-  "@effortMinutes": {
-    "description": "Estimated effort in minutes.",
-    "placeholders": {
-      "minutes": {
-        "type": "int",
-        "example": "3"
-      }
-    }
-  },
   "recommendationsLoadError": "Could not load recommendations: {message}",
   "@recommendationsLoadError": {
     "description": "Error shown when recommendations cannot be loaded.",
@@ -50,123 +14,13 @@
       }
     }
   },
-  "topicClimate": "climate",
-  "@topicClimate": {
-    "description": "Display label for the climate topic."
-  },
-  "topicHousing": "housing",
-  "@topicHousing": {
-    "description": "Display label for the housing topic."
-  },
-  "topicEnergy": "energy",
-  "@topicEnergy": {
-    "description": "Display label for the energy topic."
-  },
-  "topicEducation": "education",
-  "@topicEducation": {
-    "description": "Display label for the education topic."
-  },
-  "topicDemocracy": "democracy",
-  "@topicDemocracy": {
-    "description": "Display label for the democracy topic."
-  },
-  "topicSocialJustice": "social justice",
-  "topicHealth": "health",
-  "topicEconomy": "economy",
-  "topicDigitalization": "digital policy",
-  "demoSolarTitle": "Letter to your representative: solar panels on federal buildings",
-  "@demoSolarTitle": {
-    "description": "Demo action title for community solar access."
-  },
-  "demoSolarSummary": "The Bundestag votes on public solar funding in 10 days.",
-  "@demoSolarSummary": {
-    "description": "Demo action summary for community solar access."
-  },
-  "demoSolarImpactHint": "You will be notified when the vote happened and how your representative voted.",
-  "@demoSolarImpactHint": {
-    "description": "Demo action impact hint for community solar access."
-  },
-  "demoSolarReasonTopics": "Matches your profile: climate, housing and public infrastructure.",
-  "@demoSolarReasonTopics": {
-    "description": "Demo recommendation reason for community solar topic matching."
-  },
-  "demoSolarReasonEffort": "Can be adapted and sent in about three minutes.",
-  "@demoSolarReasonEffort": {
-    "description": "Demo recommendation effort reason for community solar access."
-  },
-  "demoSchoolTitle": "Petition: more transparency in lobbying registers",
-  "@demoSchoolTitle": {
-    "description": "Demo action title for school renovation funding."
-  },
-  "demoSchoolSummary": "The petition is close to quorum and asks for clearer public records.",
-  "@demoSchoolSummary": {
-    "description": "Demo action summary for school renovation funding."
-  },
-  "demoSchoolImpactHint": "MeinImpact checks whether the quorum was reached after the deadline.",
-  "@demoSchoolImpactHint": {
-    "description": "Demo action impact hint for school renovation funding."
-  },
-  "demoSchoolReasonSpending": "Matches your interest in transparent democratic processes.",
-  "@demoSchoolReasonSpending": {
-    "description": "Demo recommendation reason for public spending."
-  },
-  "demoSchoolReasonEffort": "Signing takes about two minutes.",
-  "@demoSchoolReasonEffort": {
-    "description": "Demo recommendation effort reason for school renovation funding."
-  },
-  "demoDraftDelta": "Dear representative, I care about transparent decisions.",
-  "@demoDraftDelta": {
-    "description": "Demo draft stream text."
-  },
-  "brandName": "MeinImpact",
-  "appTagline": "Your weekly contribution to democracy - in three minutes.",
-  "profileEyebrow": "What moves you? Choose your topics",
-  "profileButton": "Continue",
-  "feedGreeting": "Good morning",
-  "recommendationsForCount": "{count, plural, =1{1 recommendation for you} other{{count} recommendations for you}}",
-  "@recommendationsForCount": {
-    "placeholders": {
-      "count": {
-        "type": "int",
-        "example": "3"
-      }
-    }
-  },
-  "activeStreak": "4 weeks active",
+  "tabProfile": "My Profile",
+  "tabActions": "My Topics",
+  "tabImpact": "My Impact",
   "aiSupportTitle": "Action with AI support",
-  "whyNowTitle": "Why now",
   "whatItMeansTitle": "What it means for you",
   "contextLoading": "Personalizing for you…",
   "contextUnavailable": "Personalized context is currently unavailable.",
   "prosTitle": "In favor",
-  "consTitle": "Against",
-  "peopleJoined": "1,247 joined this week",
-  "averageTime": "about 2 min average time",
-  "editAndSend": "Adapt and send",
-  "adoptDraft": "Use as is",
-  "impactTrackingTitle": "Track impact and streak",
-  "impactTrackingBody": "MeinImpact follows votes, petition quorums and replies after your action.",
-  "impactStepVote": "Vote reminder set",
-  "impactStepReply": "Reply and result stay visible",
-  "completionTitle": "Well done.",
-  "completionSubtitle": "Your letter is on its way. We will keep tracking what happens next.",
-  "completionStreak": "5 weeks in a row active",
-  "completionNext": "What happens next",
-  "viewMoreActions": "View more actions",
-  "actionTypeLetter": "Letter",
-  "actionTypePetition": "Petition",
-  "actionTypeQuestion": "Question",
-  "actionTypeStatement": "Statement",
-  "actionTypeAction": "Action",
-  "valueMeta": "Value: {topic}",
-  "@valueMeta": {
-    "placeholders": {
-      "topic": {
-        "type": "String",
-        "example": "climate"
-      }
-    }
-  },
-  "reasonFallback": "Chosen because timing, topic and effort fit your profile.",
-  "noActionsHint": "Your weekly recommendation will appear here once matching public actions are available."
+  "consTitle": "Against"
 }

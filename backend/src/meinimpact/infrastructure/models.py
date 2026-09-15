@@ -92,6 +92,10 @@ class CivicActionRecord(Base):
         Boolean, nullable=False, server_default="false"
     )
     tavily_context: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Topic grouping (migration 0009) — internal fingerprint-grouping key,
+    # not a taxonomy. Rows sharing a topic_id are different engagement
+    # options (petition, letter) for the same real-world topic.
+    topic_id: Mapped[str] = mapped_column(String(length=120), nullable=False)
     # Engagement-state columns (migration 0008) — replace momentum_score
     engagement_state: Mapped[str] = mapped_column(
         String(length=1), nullable=False, server_default="C"

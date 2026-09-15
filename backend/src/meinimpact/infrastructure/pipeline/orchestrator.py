@@ -25,7 +25,10 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
 from meinimpact.core.config import Settings
 from meinimpact.infrastructure.database import Database
 from meinimpact.infrastructure.models import CivicActionRecord, PipelineRunRecord
-from meinimpact.infrastructure.pipeline.merge import merge_and_deduplicate
+from meinimpact.infrastructure.pipeline.merge import (
+    ExistingFingerprint,
+    merge_and_deduplicate,
+)
 from meinimpact.infrastructure.pipeline.parliamentary_pipeline import (
     run_parliamentary_pipeline,
 )
@@ -57,7 +60,7 @@ async def run_ingestion_pipeline(settings: Settings) -> None:
     db = Database(settings.database_url)
     try:
         async with db.engine.connect() as conn:
-            existing_urls, existing_titles = await _load_existing(conn)
+            existing_urls, existing_fingerprints = await _load_existing(conn)
 
         discarded_ids: list[str] = []
 
@@ -86,7 +89,7 @@ async def run_ingestion_pipeline(settings: Settings) -> None:
             parliamentary_items,
             petition_items,
             existing_urls,
-            existing_titles,
+            existing_fingerprints,
         )
         state_counts = _count_states(merged)
 
@@ -156,14 +159,21 @@ def _count_states(items: list[ItemState]) -> Counter[str]:
 # ---------------------------------------------------------------------------
 
 
-async def _load_existing(conn: AsyncConnection) -> tuple[set[str], list[str]]:
+async def _load_existing(
+    conn: AsyncConnection,
+) -> tuple[set[str], list[ExistingFingerprint]]:
     result = await conn.execute(
-        text("SELECT source_url, title FROM civic_actions WHERE active = true")
+        text(
+            "SELECT source_url, id, topic_id, title FROM civic_actions "
+            "WHERE active = true"
+        )
     )
     rows = result.fetchall()
     existing_urls = {row[0] for row in rows}
-    existing_titles = [row[1] for row in rows]
-    return existing_urls, existing_titles
+    existing_fingerprints = [
+        ExistingFingerprint(id=row[1], topic_id=row[2], title=row[3]) for row in rows
+    ]
+    return existing_urls, existing_fingerprints
 
 
 async def _load_previous_signature_counts(db: Database) -> dict[str, int]:
@@ -198,7 +208,10 @@ async def _persist(items: list[ItemState], session: AsyncSession) -> int:
 
         record = {
             "id": str(uuid4()),
-            "title": classified["title"],
+            # civic_actions.title is VARCHAR(240) — Vorgang titles (esp.
+            # treaty/agreement Gesetze) can genuinely exceed that; truncate
+            # instead of aborting the whole persist transaction on one item.
+            "title": classified["title"][:240],
             "action_type": domain_type,
             "summary": classified.get("description", classified["title"])[:500],
             "region": None,
@@ -215,6 +228,7 @@ async def _persist(items: list[ItemState], session: AsyncSession) -> int:
             "is_controversial": classified.get("is_controversial", False),
             "position_required": classified.get("position_required", False),
             "tavily_context": classified.get("tavily_context"),
+            "topic_id": item.topic_id or str(uuid4()),
             "engagement_state": engagement_state,
             "state_reason": state_reason,
             "pipeline_source": item.pipeline_source or "parliamentary",

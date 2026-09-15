@@ -123,7 +123,9 @@ directly on the card as the urgency label. It replaces the previous
 red/yellow/green urgency dot — a state-specific sentence is more honest
 and more actionable than a traffic-light colour. Examples:
 - State A: "Abstimmung in 8 Tagen"
-- State B: "Positionen noch offen — eine gute Zeit um deinen MdB zu fragen"
+- State B: "An den Ausschuss überwiesen" (the concrete observed fact,
+  not a generic claim — see `data/ingestion-pipeline.md` "State B
+  triggers" for the other three variants)
 - State C: "Wird gerade breit diskutiert"
 
 A small icon accompanies the state tier for quick scanning (state A:

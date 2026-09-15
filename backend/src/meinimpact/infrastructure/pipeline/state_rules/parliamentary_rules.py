@@ -26,8 +26,12 @@ deliberately left unmatched — state D is the correct outcome for those,
 not a gap.
 
 State B is an action-level DIP signal, not a per-MdB check — see
-`_STATE_B_REASON` and specs/data/ingestion-pipeline.md "State B triggers"
-for why the earlier per-MdB-position version of this was replaced.
+specs/data/ingestion-pipeline.md "State B triggers" for why the earlier
+per-MdB-position version of this was replaced. Each B rule states the
+concrete structural fact it observed (referral status, Fraktion count,
+Beratung stage) as its `reason` — not a shared interpretive claim like
+"positions are still open", which asserts something not actually known,
+just inferred.
 
 If none match, the engine defaults to state D and the item is discarded.
 Reordering, removing, or adding a trigger is a one-line change to this list
@@ -45,7 +49,6 @@ from meinimpact.infrastructure.pipeline.state_rules.shared_rules import (
 
 _VOTE_WINDOW_DAYS = 30
 _MIN_FRAKTION_STELLUNGNAHMEN = 2
-_STATE_B_REASON = "Positionen noch offen — eine gute Zeit um deinen MdB zu fragen"
 
 # Bundesrat-stage statuses on a Vorgang that has already passed the
 # Bundestag but isn't law yet — still a live, time-bound process.
@@ -159,7 +162,7 @@ class CommitteeReferralNoVoteRule:
             return None
         return RuleResult(
             state="B",
-            reason=_STATE_B_REASON,
+            reason="An den Ausschuss überwiesen",
             rule_name=self.name,
             evidence={"status": context.item.get("status")},
         )
@@ -177,7 +180,10 @@ class InsufficientFraktionPositionsRule:
             return None
         return RuleResult(
             state="B",
-            reason=_STATE_B_REASON,
+            reason=(
+                f"Erst {count} von {_MIN_FRAKTION_STELLUNGNAHMEN} Fraktionen "
+                "haben sich öffentlich positioniert"
+            ),
             rule_name=self.name,
             evidence={"stellungnahme_fraktion_count": count},
         )
@@ -191,13 +197,14 @@ class EarlyReadingNoVoteScheduledRule:
 
     def evaluate(self, context: RuleContext) -> RuleResult | None:
         status = context.item.get("status", "")
-        if "1. Beratung" not in status and "2. Beratung" not in status:
+        stage = "1. Beratung" if "1. Beratung" in status else "2. Beratung"
+        if stage not in status:
             return None
         if context.vote_date is not None:
             return None
         return RuleResult(
             state="B",
-            reason=_STATE_B_REASON,
+            reason=f"Noch in der {stage}",
             rule_name=self.name,
             evidence={"status": status},
         )
@@ -216,7 +223,7 @@ class EarlyFilingRule:
             return None
         return RuleResult(
             state="B",
-            reason=_STATE_B_REASON,
+            reason="Gerade erst eingereicht",
             rule_name=self.name,
             evidence={"status": context.item.get("status")},
         )

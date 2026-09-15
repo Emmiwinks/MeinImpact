@@ -205,6 +205,8 @@ def test_committee_referral_matches_antrag_ueberwiesen_no_vote_result() -> None:
     result = CommitteeReferralNoVoteRule().evaluate(ctx)
     assert result is not None
     assert result.state == "B"
+    # Reason states the actual observed fact, not a generic claim.
+    assert result.reason == "An den Ausschuss überwiesen"
 
 
 def test_committee_referral_does_not_match_with_vote_result() -> None:
@@ -235,6 +237,10 @@ def test_insufficient_fraktion_positions_matches_below_threshold() -> None:
     result = InsufficientFraktionPositionsRule().evaluate(ctx)
     assert result is not None
     assert result.state == "B"
+    # Real count in the reason, not a generic claim.
+    assert result.reason == (
+        "Erst 1 von 2 Fraktionen haben sich öffentlich positioniert"
+    )
 
 
 def test_insufficient_fraktion_positions_does_not_match_at_threshold() -> None:
@@ -258,6 +264,8 @@ def test_early_reading_matches_first_reading_no_vote_scheduled() -> None:
     result = EarlyReadingNoVoteScheduledRule().evaluate(ctx)
     assert result is not None
     assert result.state == "B"
+    # Reports which reading it actually is, not a generic claim.
+    assert result.reason == "Noch in der 1. Beratung"
 
 
 def test_early_reading_matches_second_reading_no_vote_scheduled() -> None:
@@ -265,6 +273,7 @@ def test_early_reading_matches_second_reading_no_vote_scheduled() -> None:
     ctx = RuleContext(item=item, now=_NOW, vote_date=None)
     result = EarlyReadingNoVoteScheduledRule().evaluate(ctx)
     assert result is not None
+    assert result.reason == "Noch in der 2. Beratung"
 
 
 def test_early_reading_does_not_match_when_vote_scheduled() -> None:
@@ -295,6 +304,7 @@ def test_early_filing_matches_each_status() -> None:
         result = EarlyFilingRule().evaluate(ctx)
         assert result is not None, f"Expected a match for status={status!r}"
         assert result.state == "B"
+        assert result.reason == "Gerade erst eingereicht"
 
 
 def test_early_filing_does_not_match_petition() -> None:

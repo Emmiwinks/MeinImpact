@@ -11,6 +11,7 @@ from meinimpact.api.dependencies import (
     get_draft_service,
     require_principal,
 )
+from meinimpact.api.sse import encode_sse
 from meinimpact.domain import repositories
 from meinimpact.services.draft_service import DraftService
 
@@ -38,9 +39,16 @@ async def stream_letter(
         )
 
     async def event_stream() -> AsyncIterator[str]:
+        # Must go through encode_sse, not a raw f"data: {token}\n\n" — a
+        # token can legitimately contain an embedded newline (models often
+        # emit a bare "\n" token right after sentence-ending punctuation).
+        # encode_sse splits multi-line data into multiple `data:` lines per
+        # the SSE spec; the naive version let that raw newline corrupt the
+        # frame boundary, silently dropping the *next* token client-side —
+        # exactly the "missing chunk of text" bug this fixes.
         async for token in draft_service.stream_letter(request, action):
-            yield f"data: {token}\n\n"
-        yield "data: [DONE]\n\n"
+            yield encode_sse(event="message", data=token)
+        yield encode_sse(event="message", data="[DONE]")
 
     return StreamingResponse(
         event_stream(),

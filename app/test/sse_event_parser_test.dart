@@ -61,4 +61,26 @@ void main() {
   test('ignores comments and empty messages', () {
     expect(SseEventParser.parseMessage(': keep-alive'), isNull);
   });
+
+  test('preserves a leading space that is part of the token itself', () {
+    // Only the single mandatory field-value delimiter space (the one right
+    // after the colon) is stripped — a token whose own content starts with
+    // a space (e.g. streamed word-boundary tokens like " the") must survive
+    // intact, or streamed words run together with no space between them.
+    final event = SseEventParser.parseMessage('data:  the');
+
+    expect(event, isNotNull);
+    expect(event!.data, ' the');
+  });
+
+  test('concatenating streamed deltas with preserved spaces reads correctly',
+      () {
+    final parser = SseEventParser();
+    final events = parser.addChunk(
+      'data: Bitte\n\ndata:  um\n\ndata:  Ihre\n\ndata:  Position\n\n',
+    );
+
+    final text = events.map((e) => e.data).join();
+    expect(text, 'Bitte um Ihre Position');
+  });
 }

@@ -52,6 +52,7 @@ def _to_domain(record: CivicActionRecord) -> CivicAction:
         position_required=record.position_required,
         active=record.active,
         tavily_context=record.tavily_context,
+        topic_id=record.topic_id,
         engagement_state=record.engagement_state,
         state_reason=record.state_reason,
         pipeline_source=record.pipeline_source,
