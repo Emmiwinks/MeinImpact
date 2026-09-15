@@ -52,6 +52,7 @@ class LocalFeedScorer {
       action: action,
       score: (raw * 100).round(),
       reasons: reasons,
+      werteMatchPercent: (werteMatch * 100).round(),
     );
   }
 

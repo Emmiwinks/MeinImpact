@@ -4,9 +4,9 @@ import 'package:meinimpact/l10n/app_localizations.dart';
 import '../core/profile/user_profile_store.dart';
 import '../features/feed/domain/action_repository.dart';
 import '../features/feed/domain/user_profile.dart';
-import '../features/feed/presentation/action_feed_screen.dart';
 import '../features/onboarding/demographic_screen.dart';
 import '../features/onboarding/value_profile_screen.dart';
+import 'main_tab_screen.dart';
 
 class MeinImpactApp extends StatefulWidget {
   /// Direct constructor — bypasses onboarding (used in tests and demos).
@@ -36,7 +36,6 @@ class MeinImpactApp extends StatefulWidget {
 }
 
 class _MeinImpactAppState extends State<MeinImpactApp> {
-  Locale _locale = const Locale('de');
   UserProfile? _profile;
   // Onboarding steps: 0 = value profile, 1 = demographics, 2 = feed
   int _onboardingStep = 0;
@@ -46,11 +45,6 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
   void initState() {
     super.initState();
     _profile = widget._initialProfile;
-  }
-
-  void _setLocale(Locale locale) {
-    if (_locale == locale) return;
-    setState(() => _locale = locale);
   }
 
   Future<void> _onWerteComplete(Map<String, int> werte) async {
@@ -75,7 +69,8 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      locale: _locale,
+      // No language switcher — German only, matching the real user base.
+      locale: const Locale('de'),
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
@@ -97,21 +92,15 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
   }
 
   Widget _buildHome() {
-    // No profile store → tests / demo mode, go straight to feed
+    // No profile store → tests / demo mode, go straight to the tab shell
     if (widget._profileStore == null) {
-      return ActionFeedScreen(
-        actionRepository: widget._actionRepository,
-        selectedLocale: _locale,
-        onLocaleChanged: _setLocale,
-      );
+      return MainTabScreen(actionRepository: widget._actionRepository);
     }
 
-    // Profile loaded → show feed
+    // Profile loaded → show the tab shell
     if (_profile != null) {
-      return ActionFeedScreen(
+      return MainTabScreen(
         actionRepository: widget._actionRepository,
-        selectedLocale: _locale,
-        onLocaleChanged: _setLocale,
         profile: _profile,
         onEditProfile: () => setState(() {
           _profile = null;

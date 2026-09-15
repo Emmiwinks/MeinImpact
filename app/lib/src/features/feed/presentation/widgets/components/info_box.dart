@@ -7,12 +7,17 @@ class InfoBox extends StatelessWidget {
     required this.title,
     required this.body,
     required this.color,
+    this.accent,
     super.key,
   });
 
   final String title;
   final String body;
   final Color color;
+
+  /// Optional accent for the title (e.g. the engagement-state color) —
+  /// defaults to the neutral muted-text color when omitted.
+  final Color? accent;
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +34,7 @@ class InfoBox extends StatelessWidget {
           Text(
             title.toUpperCase(),
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppColors.mutedText,
+                  color: accent ?? AppColors.mutedText,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.6,
                 ),

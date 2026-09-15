@@ -34,6 +34,7 @@ class ItemState:
     pipeline_source: str | None = (
         None  # "parliamentary" | "petition", tagged in merge.py
     )
+    topic_id: str | None = None  # assigned in merge.py's _assign_topic_ids
 
 
 @dataclass(frozen=True)

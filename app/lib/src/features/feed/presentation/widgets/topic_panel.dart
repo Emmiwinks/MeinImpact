@@ -1,22 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:meinimpact/l10n/app_localizations.dart';
 
-import '../../domain/civic_action.dart';
-import 'action_tile.dart';
+import '../../domain/topic.dart';
 import 'app_colors.dart';
 import 'components/surface_card.dart';
+import 'topic_tile.dart';
 
-class RecommendationPanel extends StatelessWidget {
-  const RecommendationPanel({
-    required this.l10n,
-    required this.recommendations,
+class TopicPanel extends StatelessWidget {
+  const TopicPanel({
+    required this.topics,
     required this.selectedIndex,
     required this.onSelect,
     super.key,
   });
 
-  final AppLocalizations l10n;
-  final List<ActionRecommendation> recommendations;
+  final List<Topic> topics;
   final int selectedIndex;
   final void Function(int index) onSelect;
 
@@ -28,19 +25,18 @@ class RecommendationPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _Header(l10n: l10n, count: recommendations.length),
+          _Header(count: topics.length),
           const SizedBox(height: 16),
-          if (recommendations.isEmpty)
-            _EmptyState(l10n: l10n)
+          if (topics.isEmpty)
+            const _EmptyState()
           else
-            for (int i = 0; i < recommendations.length; i++) ...[
-              ActionTile(
-                l10n: l10n,
-                recommendation: recommendations[i],
+            for (int i = 0; i < topics.length; i++) ...[
+              TopicTile(
+                topic: topics[i],
                 isSelected: i == selectedIndex,
                 onTap: () => onSelect(i),
               ),
-              if (i < recommendations.length - 1) const SizedBox(height: 12),
+              if (i < topics.length - 1) const SizedBox(height: 12),
             ],
         ],
       ),
@@ -49,15 +45,14 @@ class RecommendationPanel extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.l10n, required this.count});
+  const _Header({required this.count});
 
-  final AppLocalizations l10n;
   final int count;
 
   @override
   Widget build(BuildContext context) {
     return Text(
-      l10n.recommendationsForCount(count),
+      count == 1 ? '1 Thema für dich' : '$count Themen für dich',
       style: Theme.of(context).textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.w800,
             letterSpacing: -0.4,
@@ -67,9 +62,7 @@ class _Header extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.l10n});
-
-  final AppLocalizations l10n;
+  const _EmptyState();
 
   @override
   Widget build(BuildContext context) {
@@ -84,14 +77,15 @@ class _EmptyState extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            l10n.noActionsAvailable,
+            'Noch keine Themen verfügbar.',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
           ),
           const SizedBox(height: 6),
           Text(
-            l10n.noActionsHint,
+            'Deine wöchentlichen Themen erscheinen hier, sobald passende '
+            'öffentliche Aktionen verfügbar sind.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: AppColors.mutedText,
                 ),

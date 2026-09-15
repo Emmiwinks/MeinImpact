@@ -1,4 +1,4 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meinimpact/src/app/meinimpact_app.dart';
 import 'package:meinimpact/src/core/network/sse_event_parser.dart';
@@ -8,53 +8,51 @@ import 'package:meinimpact/src/features/feed/domain/mdb.dart';
 import 'package:meinimpact/src/features/feed/domain/user_profile.dart';
 
 void main() {
-  testWidgets('renders recommended actions', (tester) async {
+  testWidgets('renders topics grouped from the pool, no fabricated stats', (
+    tester,
+  ) async {
     await tester.pumpWidget(
-      MeinImpactApp(actionRepository: _FakeActionRepository()),
+      MeinImpactApp(actionRepository: _GroupedTopicRepository()),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('MeinImpact'), findsWidgets);
-    expect(find.text('Write to your representative'), findsWidgets);
-    expect(find.text('Bewertung 90'), findsOneWidget);
+    // Petition and letter share topic_id 'klimaschutz' — one topic tile,
+    // not two, and the headline is the higher-scored option's title.
+    expect(find.text('Brief an deinen Abgeordneten'), findsOneWidget);
+    expect(find.text('Petition zum Klimaschutz'), findsNothing);
+
+    // Real, sourced fact — the topic's existential state badge/reason.
+    expect(find.text('Entscheidung steht an'), findsOneWidget);
+    expect(find.text('Kurz vor dem Quorum: 45.000 von 50.000'), findsOneWidget);
+
+    // No invented score or time-estimate text anywhere.
+    expect(find.textContaining('Bewertung'), findsNothing);
+    expect(find.textContaining('Min.'), findsNothing);
+
+    // No language switcher.
+    expect(find.byKey(const Key('languageSelector')), findsNothing);
   });
 
-  testWidgets('switches between German and English', (tester) async {
+  testWidgets('opening a topic shows both its options', (tester) async {
     await tester.pumpWidget(
-      MeinImpactApp(actionRepository: _FakeActionRepository()),
+      MeinImpactApp(actionRepository: _GroupedTopicRepository()),
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('languageSelector')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('English').last);
+    await tester.tap(find.text('Brief an deinen Abgeordneten'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Score 90'), findsOneWidget);
-    expect(find.text('3 min'), findsOneWidget);
+    expect(find.text('Petition unterschreiben'), findsOneWidget);
+    expect(find.text('Brief schreiben'), findsOneWidget);
   });
 
-  testWidgets('renders empty recommendation state', (tester) async {
+  testWidgets('renders empty topics state', (tester) async {
     await tester.pumpWidget(
       MeinImpactApp(actionRepository: _EmptyActionRepository()),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Noch keine Aktionen verfügbar.'), findsOneWidget);
-  });
-
-  testWidgets('renders empty recommendation state in English', (tester) async {
-    await tester.pumpWidget(
-      MeinImpactApp(actionRepository: _EmptyActionRepository()),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byKey(const Key('languageSelector')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('English').last);
-    await tester.pumpAndSettle();
-
-    expect(find.text('No actions available yet.'), findsOneWidget);
+    expect(find.text('Noch keine Themen verfügbar.'), findsOneWidget);
   });
 
   testWidgets('renders recommendation errors', (tester) async {
@@ -68,27 +66,70 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('bottom navigation has three tabs and switches to Wirkung', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MeinImpactApp(actionRepository: _EmptyActionRepository()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.text('Mein Profil'), findsOneWidget);
+    expect(find.text('Meine Themen'), findsOneWidget);
+    expect(find.text('Meine Wirkung'), findsOneWidget);
+
+    await tester.tap(find.text('Meine Wirkung'));
+    await tester.pumpAndSettle();
+
+    // Distinctive mockup body text — not shown as a real stat, per the
+    // "no made-up facts" rule extending to the mockup tab too.
+    expect(find.textContaining('noch nicht angebunden'), findsOneWidget);
+    // SectionLabel renders its text upper-cased.
+    expect(find.text('BEISPIELANSICHT'), findsOneWidget);
+  });
 }
 
-class _FakeActionRepository implements ActionRepository {
+CivicAction _petitionAction() => const CivicAction(
+      id: 'petition-1',
+      title: 'Petition zum Klimaschutz',
+      actionType: 'petition_signature',
+      summary: 'Eine Petition fordert mehr Klimaschutz.',
+      region: 'Germany',
+      sourceUrl: 'https://weact.campact.de/petitions/1',
+      topicId: 'klimaschutz',
+      engagementState: 'A',
+      stateReason: 'Kurz vor dem Quorum: 45.000 von 50.000',
+    );
+
+CivicAction _letterAction() => const CivicAction(
+      id: 'letter-1',
+      title: 'Brief an deinen Abgeordneten',
+      actionType: 'representative_letter',
+      summary: 'Schreib deiner Abgeordneten zum Klimaschutzgesetz.',
+      region: 'Germany',
+      sourceUrl: 'https://dip.bundestag.de/vorgang/1',
+      topicId: 'klimaschutz',
+      engagementState: 'C',
+      stateReason: null,
+    );
+
+class _GroupedTopicRepository implements ActionRepository {
   @override
   Future<List<ActionRecommendation>> recommendations(
     UserProfile profile,
   ) async {
-    return const [
+    return [
       ActionRecommendation(
-        action: CivicAction(
-          id: 'test-action',
-          title: 'Write to your representative',
-          actionType: 'representative_letter',
-          summary: 'Ask a clear and respectful question.',
-          region: 'Germany',
-          effortMinutes: 3,
-          impactHint: 'The response can be tracked later.',
-          sourceUrl: 'https://example.org',
-        ),
+        action: _petitionAction(),
+        score: 60,
+        reasons: const ['Aktuell verfügbare Maßnahme.'],
+      ),
+      ActionRecommendation(
+        action: _letterAction(),
         score: 90,
-        reasons: ['Matches democracy.'],
+        reasons: const ['Passt zu deinen Werten.'],
       ),
     ];
   }

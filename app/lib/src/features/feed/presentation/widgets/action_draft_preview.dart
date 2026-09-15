@@ -9,6 +9,7 @@ import 'app_colors.dart';
 import 'components/info_box.dart';
 import 'components/surface_card.dart';
 import 'components/text_badges.dart';
+import 'topic_tile.dart' show engagementStateColor, engagementStateLabel;
 
 class ActionDetailCard extends StatefulWidget {
   const ActionDetailCard({
@@ -131,14 +132,29 @@ class _ActionDetailCardState extends State<ActionDetailCard> {
                 ),
           ),
           const SizedBox(height: 14),
-          // Timing/urgency — why this matters to act on now.
+          // Real, pipeline-derived reason only — no invented "impact hint"
+          // text. Falls back to a neutral note when the pipeline didn't
+          // attach a specific reason for this option's engagement_state.
           InfoBox(
-            title: widget.l10n.whyNowTitle,
-            body: action.impactHint,
+            title: engagementStateLabel(action.engagementState),
+            body: action.stateReason ?? 'Öffentlich verfügbare Maßnahme.',
             color: AppColors.surfaceMuted,
+            accent: engagementStateColor(action.engagementState),
           ),
+          if (action.proArgumente.isNotEmpty ||
+              action.contraArgumente.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            ProsConsExpansion(
+              prosTitle: widget.l10n.prosTitle,
+              consTitle: widget.l10n.consTitle,
+              pros: action.proArgumente,
+              cons: action.contraArgumente,
+            ),
+          ],
           const SizedBox(height: 10),
           // Personalised for the current profile via the AI context endpoint.
+          // Shown after the pro/contra facts, not before — it's the most
+          // interpretive/least "hard fact" element on this card.
           FutureBuilder<String>(
             future: _contextFuture,
             builder: (context, snapshot) {
@@ -157,16 +173,6 @@ class _ActionDetailCardState extends State<ActionDetailCard> {
               );
             },
           ),
-          if (action.proArgumente.isNotEmpty ||
-              action.contraArgumente.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            _ProsConsSection(
-              prosTitle: widget.l10n.prosTitle,
-              consTitle: widget.l10n.consTitle,
-              pros: action.proArgumente,
-              cons: action.contraArgumente,
-            ),
-          ],
           const SizedBox(height: 16),
           // External source link — always available
           _SourceButton(label: 'Zur Quelle →', onTap: _openSource),
@@ -187,8 +193,58 @@ class _ActionDetailCardState extends State<ActionDetailCard> {
   }
 }
 
-class _ProsConsSection extends StatelessWidget {
-  const _ProsConsSection({
+/// Expandable pro/contra section — collapsed by default so it doesn't
+/// dominate the card; the arguments themselves are real (Mistral-derived
+/// from the actual Vorgang/petition text), just not force-shown up front.
+class ProsConsExpansion extends StatelessWidget {
+  const ProsConsExpansion({
+    required this.prosTitle,
+    required this.consTitle,
+    required this.pros,
+    required this.cons,
+    super.key,
+  });
+
+  final String prosTitle;
+  final String consTitle;
+  final List<String> pros;
+  final List<String> cons;
+
+  @override
+  Widget build(BuildContext context) {
+    // ExpansionTile paints ink splashes on the nearest Material ancestor —
+    // wrap it in its own transparent Material so that ancestor is this
+    // widget, not the SurfaceCard's opaque DecoratedBox further up.
+    return Material(
+      type: MaterialType.transparency,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: const EdgeInsets.only(bottom: 4),
+          title: Text(
+            'Argumente dafür & dagegen',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: AppColors.ink,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          children: [
+            _ProsConsBody(
+              prosTitle: prosTitle,
+              consTitle: consTitle,
+              pros: pros,
+              cons: cons,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProsConsBody extends StatelessWidget {
+  const _ProsConsBody({
     required this.prosTitle,
     required this.consTitle,
     required this.pros,

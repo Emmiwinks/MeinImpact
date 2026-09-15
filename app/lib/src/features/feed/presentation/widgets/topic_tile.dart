@@ -1,29 +1,39 @@
 import 'package:flutter/material.dart';
-import 'package:meinimpact/l10n/app_localizations.dart';
 
-import '../../domain/civic_action.dart';
-import 'action_type_helpers.dart';
+import '../../domain/topic.dart';
 import 'app_colors.dart';
-import 'shared_widgets.dart';
+import 'components/text_badges.dart';
 
-class ActionTile extends StatelessWidget {
-  const ActionTile({
-    required this.l10n,
-    required this.recommendation,
+/// Real, sourced facts only — no score/effort chips. `engagementState` is
+/// an existential aggregate ("does ≥1 option have a live window right
+/// now"), see topic.dart.
+Color engagementStateColor(String state) => switch (state) {
+      'A' => AppColors.green,
+      'B' => AppColors.amberText,
+      _ => AppColors.blueText,
+    };
+
+String engagementStateLabel(String state) => switch (state) {
+      'A' => 'Entscheidung steht an',
+      'B' => 'Positionen bilden sich',
+      _ => 'Im öffentlichen Diskurs',
+    };
+
+class TopicTile extends StatelessWidget {
+  const TopicTile({
+    required this.topic,
     required this.onTap,
     this.isSelected = false,
     super.key,
   });
 
-  final AppLocalizations l10n;
-  final ActionRecommendation recommendation;
+  final Topic topic;
   final VoidCallback onTap;
   final bool isSelected;
 
   @override
   Widget build(BuildContext context) {
-    final action = recommendation.action;
-    final accent = actionTypeColor(action.actionType);
+    final accent = engagementStateColor(topic.engagementState);
 
     return GestureDetector(
       onTap: onTap,
@@ -44,23 +54,9 @@ class ActionTile extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: AppColors.greenWash,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    actionTypeIcon(action.actionType),
-                    color: accent,
-                    size: 19,
-                  ),
-                ),
-                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    action.title,
+                    topic.title,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w800,
                           height: 1.12,
@@ -69,30 +65,34 @@ class ActionTile extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 Pill(
-                  label: actionTypeLabel(l10n, action.actionType),
+                  label: engagementStateLabel(topic.engagementState),
                   color: accent,
                 ),
               ],
             ),
             const SizedBox(height: 11),
             Text(
-              action.summary,
+              topic.summary,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: AppColors.mutedText,
                     height: 1.25,
                   ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 13),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                SignalDots(score: recommendation.score),
-                MetaChip(label: l10n.effortMinutes(action.effortMinutes)),
-                MetaChip(label: l10n.scoreLabel(recommendation.score)),
-              ],
-            ),
+            if (topic.stateReason != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                topic.stateReason!,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: accent,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+            ],
+            // "Why this is in your feed" (reasons, KPIs) is deliberately
+            // NOT shown here — it's per-user relevance detail, one tap
+            // away in TopicDetailDialog, not feed-list noise.
           ],
         ),
       ),

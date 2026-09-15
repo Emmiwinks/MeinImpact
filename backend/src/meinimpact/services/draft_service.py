@@ -60,9 +60,12 @@ Schreibe einen Brief der:
 - Persönlich klingt, nicht wie eine Vorlage
 - Eine konkrete Bitte oder Frage enthält
 - Keine Parteinamen nennt außer dem Empfänger
-- Mit einer Grußformel endet, aber OHNE Namen — Platzhalter {{USER_FULL_NAME}} am Ende
+- Mit einer Grußformel endet, aber OHNE Namen und OHNE Platzhalter jeglicher \
+Art danach — die Person trägt ihren Namen selbst ein, bevor sie den Brief \
+abschickt
 
-Variiere Satzbau und Wortschatz.\
+Reiner Fließtext — kein Markdown (keine Sternchen, keine #-Überschriften, \
+keine Aufzählungszeichen). Variiere Satzbau und Wortschatz.\
 """
 
 _ANFRAGE_PROMPT = """\
@@ -85,7 +88,9 @@ Schreibe eine öffentliche Frage die:
 - Sachlich und respektvoll formuliert ist
 - Mit der direkten Frage beginnt
 
-Keine Anrede, keine Grußformel. Nur die Frage selbst.\
+Keine Anrede, keine Grußformel. Nur die Frage selbst. Reiner Fließtext — \
+kein Markdown (keine Sternchen, keine #-Überschriften, keine \
+Aufzählungszeichen).\
 """
 
 

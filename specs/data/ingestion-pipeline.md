@@ -173,23 +173,29 @@ has been replaced with the following DIP-derived signals, checked directly
 against the Vorgang:
 
 ```
-State B triggers if ANY of the following:
+State B triggers if ANY of the following. Each gets its own state_reason
+stating the concrete fact that was actually observed — not a shared
+interpretive sentence like "positions are still open", which asserts
+something inferred, not something known:
 
 1. Vorgangstyp is Gesetzentwurf or Antrag AND beratungsstand is
    "Überwiesen" (referred to committee) AND no Abstimmungsergebnis
    exists yet
-   → positions are still forming in committee
+   → state_reason: "An den Ausschuss überwiesen"
 
 2. Fewer than 2 Fraktionen have documented Stellungnahmen on this
    Vorgang
-   → cross-party positioning is incomplete
+   → state_reason: "Erst {count} von 2 Fraktionen haben sich
+     öffentlich positioniert"
 
 3. Vorgang is in "1. Beratung" or "2. Beratung" with no scheduled
    namentliche Abstimmung
-   → the legislative process is structurally still open
+   → state_reason: "Noch in der {1./2. Beratung}"
 
-→ state_reason: "Positionen noch offen — eine gute Zeit um deinen
-  MdB zu fragen"
+4. Filed but not yet referred to committee (earliest structural stage,
+   added after `scripts/audit_dip_coverage.py` showed these Vorgänge
+   were being fetched but falling through to state D unmatched)
+   → state_reason: "Gerade erst eingereicht"
 ```
 
 **Client-side MdB personalisation (device, not pipeline):** when the app

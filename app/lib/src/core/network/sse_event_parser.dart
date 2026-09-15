@@ -53,8 +53,15 @@ class SseEventParser {
       }
       final separator = line.indexOf(':');
       final field = separator == -1 ? line : line.substring(0, separator);
-      final value =
-          separator == -1 ? '' : line.substring(separator + 1).trimLeft();
+      // Per the SSE spec, at most one leading space after the colon is a
+      // field-value delimiter and gets stripped — NOT all leading
+      // whitespace. A streamed token whose content legitimately starts
+      // with a space (e.g. a fresh word after punctuation) would otherwise
+      // lose that space here, running words together in the rendered text.
+      var value = separator == -1 ? '' : line.substring(separator + 1);
+      if (value.startsWith(' ')) {
+        value = value.substring(1);
+      }
       switch (field) {
         case 'id':
           id = value;

@@ -117,6 +117,7 @@ class ActionResponse(BaseModel):
     effort_minutes: int
     impact_hint: str
     source_url: str
+    topic_id: str
 
     @classmethod
     def from_domain(cls, action: CivicAction) -> ActionResponse:
@@ -131,6 +132,7 @@ class ActionResponse(BaseModel):
             effort_minutes=action.effort_minutes,
             impact_hint=action.impact_hint,
             source_url=action.source_url,
+            topic_id=action.topic_id,
         )
 
 
@@ -146,6 +148,7 @@ class ActionPoolItemResponse(BaseModel):
     effort_minutes: int
     impact_hint: str
     source_url: str
+    topic_id: str
     urgency: str = "low"
     werte_relevanz: dict[str, float] = Field(default_factory=dict)
     pro_argumente: list[str] = Field(default_factory=list)
@@ -171,6 +174,7 @@ class ActionPoolItemResponse(BaseModel):
             effort_minutes=action.effort_minutes,
             impact_hint=action.impact_hint,
             source_url=action.source_url,
+            topic_id=action.topic_id,
             urgency=action.urgency,
             werte_relevanz=dict(action.werte_relevanz),
             pro_argumente=list(action.pro_argumente),
