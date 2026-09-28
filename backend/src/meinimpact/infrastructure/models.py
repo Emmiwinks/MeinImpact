@@ -5,13 +5,13 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import uuid4
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     ARRAY,
     Boolean,
     CheckConstraint,
     Date,
     DateTime,
-    Float,
     ForeignKey,
     Integer,
     Numeric,
@@ -53,7 +53,16 @@ class UserProfileRecord(Base):
 
 
 class CivicActionRecord(Base):
-    """Persistent civic action record."""
+    """Persistent civic action record.
+
+    Status (2026-09-27): the `civic_actions` table itself was dropped by
+    migration 202609270010 (retired DIP-sourced pipeline, replaced by
+    `OpportunityRecord`/`opportunities` below). This class is left in place
+    only because `postgres_action_repository.py` still imports it for the
+    old `/v1/actions/*` read endpoints — those will 500 until that read
+    side is rewired onto `opportunities` (a later, deliberate step, not an
+    oversight). Don't add new code against this table.
+    """
 
     __tablename__ = "civic_actions"
 
@@ -110,6 +119,92 @@ class CivicActionRecord(Base):
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
         nullable=False,
+    )
+
+
+class OpportunityRecord(Base):
+    """Persistent civic opportunity record — replaces `CivicActionRecord`.
+
+    Populated by the Tavily-search-based ingestion pipeline (see
+    specs/data/ingestion-pipeline.md "Status" and the project memory
+    `project_dip_to_tavily_pivot.md` / `project_tavily_retrieval_calibration.md`
+    for how this schema was arrived at). One retrieval mechanism, one
+    table — no institutional/campaign split; `source_org` alone identifies
+    where an opportunity came from.
+    """
+
+    __tablename__ = "opportunities"
+
+    __table_args__ = (
+        # support_count_as_of is required exactly when support_count is
+        # set, never independently.
+        CheckConstraint(
+            "(support_count IS NULL) = (support_count_as_of IS NULL)",
+            name="chk_support_count_as_of_pairing",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+    )
+    source_org: Mapped[str] = mapped_column(Text, nullable=False)
+    decision_object: Mapped[str] = mapped_column(Text, nullable=False)
+    plain_language_title: Mapped[str] = mapped_column(Text, nullable=False)
+    plain_language_summary: Mapped[str] = mapped_column(Text, nullable=False)
+    affected_tags: Mapped[list[str]] = mapped_column(
+        ARRAY(Text()), nullable=False, server_default="{}"
+    )
+    region: Mapped[str] = mapped_column(String(length=40), nullable=False)
+    werte_relevanz: Mapped[dict[str, float]] = mapped_column(
+        JSONB, nullable=False, server_default="{}"
+    )
+    deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
+    support_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    support_count_as_of: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    content_published_at: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # Set once at insert, NEVER updated when a later run refreshes this row
+    # (e.g. support_count) — this is the feed sort key ("recently added"),
+    # and re-bumping it on refresh would falsely imply the underlying
+    # opportunity is new again. See specs discussion in
+    # project_tavily_retrieval_calibration.md.
+    retrieved_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+    source_url: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    action_types: Mapped[list[str]] = mapped_column(
+        ARRAY(Text()), nullable=False, server_default="{}"
+    )
+    pro_argumente: Mapped[list[str]] = mapped_column(
+        ARRAY(Text()), nullable=False, server_default="{}"
+    )
+    contra_argumente: Mapped[list[str]] = mapped_column(
+        ARRAY(Text()), nullable=False, server_default="{}"
+    )
+    personal_impact_snippets: Mapped[dict[str, str]] = mapped_column(
+        JSONB, nullable=False, server_default="{}"
+    )
+    # mistral-embed, cosine distance, HNSW index (see migration) — used only
+    # for de-duplication against `decision_object`, not for clustering.
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(1024), nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+    # Identity of the ingestion run that last touched this row (insert or
+    # refresh) — the pool endpoint serves only rows matching the most
+    # recent run's id ("one run, one feed", see this class's module-level
+    # discussion in project memory `project_dip_to_tavily_pivot.md`).
+    # `updated_at` doubles as the tiebreak to find which run_id is latest.
+    last_seen_run_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), nullable=False
     )
 
 
@@ -328,34 +423,3 @@ class ApiSpendRecord(Base):
     )
 
 
-class PipelineRunRecord(Base):
-    """Ingestion pipeline execution log entry."""
-
-    __tablename__ = "pipeline_runs"
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid4,
-    )
-    parliamentary_actions_found: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=0
-    )
-    petition_actions_found: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=0
-    )
-    state_a_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    state_b_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    state_c_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    state_d_discarded: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    inserted_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    errors: Mapped[list[str]] = mapped_column(
-        ARRAY(Text()), nullable=False, server_default="{}"
-    )
-    duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
-    ai_cost_eur: Mapped[Decimal | None] = mapped_column(Numeric(10, 6), nullable=True)
-    ran_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
-        nullable=False,
-    )

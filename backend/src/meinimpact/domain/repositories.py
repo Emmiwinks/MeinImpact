@@ -7,6 +7,7 @@ from meinimpact.domain.entities import (
     CivicAction,
     MdbStatement,
     NewsItem,
+    Opportunity,
     TrackingEvent,
 )
 
@@ -19,6 +20,16 @@ class CivicActionRepository(Protocol):
 
     async def get_action(self, action_id: str) -> CivicAction | None:
         """Returns an action by ID when it exists."""
+
+
+class OpportunityRepository(Protocol):
+    """Read-side persistence boundary for civic opportunities."""
+
+    async def list_current_run(self) -> Sequence[Opportunity]:
+        """Returns only the opportunities touched by the most recent
+        ingestion run — see the pipeline's "one run, one feed" design
+        (project memory `project_dip_to_tavily_pivot.md`). Older runs'
+        rows still exist for de-duplication but are never served."""
 
 
 class NewsRepository(Protocol):

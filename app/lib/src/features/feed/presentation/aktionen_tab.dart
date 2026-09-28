@@ -1,27 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:meinimpact/l10n/app_localizations.dart';
 
-import '../domain/action_repository.dart';
-import '../domain/topic.dart';
+import '../data/opportunity_relevance_ranker.dart';
+import '../domain/opportunity_repository.dart';
 import '../domain/user_profile.dart';
 import 'widgets/feed_error.dart';
 import 'widgets/loading_card.dart';
-import 'widgets/topic_detail_dialog.dart';
-import 'widgets/topic_panel.dart';
+import 'widgets/opportunity_detail_dialog.dart';
+import 'widgets/opportunity_panel.dart';
 
-/// The "Aktionen" tab — topics grouped from the scored action pool, tap to
-/// see the petition/letter options for that topic. Fetches the pool once
-/// per tab instance (device-side scoring, unchanged — see
-/// `LocalFeedScorer`); grouping into topics is a pure presentation
-/// transform on top of that (see `domain/topic.dart`).
+/// The "Aktionen" tab — the current run's opportunities (see
+/// OpportunityRepository.pool, "one run, one feed"), ranked on-device by
+/// personal relevance. Fetches the pool once per tab instance; ranking is
+/// a pure, cheap client-side transform re-applied whenever the profile
+/// changes, not a network concern.
 class AktionenTab extends StatefulWidget {
   const AktionenTab({
-    required this.actionRepository,
+    required this.opportunityRepository,
     required this.profile,
     super.key,
   });
 
-  final ActionRepository actionRepository;
+  final OpportunityRepository opportunityRepository;
   final UserProfile profile;
 
   @override
@@ -29,7 +29,9 @@ class AktionenTab extends StatefulWidget {
 }
 
 class _AktionenTabState extends State<AktionenTab> {
-  late Future<List<Topic>> _future;
+  static const _ranker = OpportunityRelevanceRanker();
+
+  late Future<List<RankedOpportunity>> _future;
   int? _selectedIndex;
 
   @override
@@ -38,22 +40,19 @@ class _AktionenTabState extends State<AktionenTab> {
     _future = _load();
   }
 
-  Future<List<Topic>> _load() async {
-    final scored =
-        await widget.actionRepository.recommendations(widget.profile);
-    return groupIntoTopics(scored);
+  Future<List<RankedOpportunity>> _load() async {
+    final pool = await widget.opportunityRepository.pool();
+    return _ranker.rank(pool, widget.profile);
   }
 
-  void _openTopic(List<Topic> topics, int index) {
+  void _open(List<RankedOpportunity> opportunities, int index) {
     setState(() => _selectedIndex = index);
     final l10n = AppLocalizations.of(context);
     showDialog<void>(
       context: context,
-      builder: (dialogContext) => TopicDetailDialog(
+      builder: (dialogContext) => OpportunityDetailDialog(
         l10n: l10n,
-        topic: topics[index],
-        profile: widget.profile,
-        repository: widget.actionRepository,
+        ranked: opportunities[index],
       ),
     ).then((_) {
       if (mounted) setState(() => _selectedIndex = null);
@@ -62,7 +61,7 @@ class _AktionenTabState extends State<AktionenTab> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<Topic>>(
+    return FutureBuilder<List<RankedOpportunity>>(
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
@@ -71,11 +70,11 @@ class _AktionenTabState extends State<AktionenTab> {
         if (snapshot.hasError) {
           return FeedError(message: snapshot.error.toString());
         }
-        final topics = snapshot.data ?? const [];
-        return TopicPanel(
-          topics: topics,
+        final opportunities = snapshot.data ?? const [];
+        return OpportunityPanel(
+          opportunities: opportunities,
           selectedIndex: _selectedIndex ?? -1,
-          onSelect: (index) => _openTopic(topics, index),
+          onSelect: (index) => _open(opportunities, index),
         );
       },
     );

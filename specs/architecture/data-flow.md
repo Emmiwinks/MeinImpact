@@ -235,38 +235,18 @@ Flutter app
 
 ---
 
-## Flow 10: Daily Ingestion Cronjob (Backend only)
+## Flow 10: Ingestion Pipeline (Backend only)
 
-```
-Backend (APScheduler, runs at 03:00 CET)
-  │
-  ├─ Pipeline 1 (parliamentary, top-down):
-  │    DIP API → active Vorgänge (last 30 days)
-  │    → determine engagement_state (A: vote/committee imminent or
-  │      petition near quorum; B: MdB has not positioned; C: media
-  │      debate via Tavily; D: discard, not classified)
-  │
-  ├─ Pipeline 2 (petition, bottom-up) — runs in parallel:
-  │    DIP (Bundestag petitions) + Tavily (WeAct, openpetition)
-  │    → determine engagement_state (A: near goal/quorum or high
-  │      momentum; C: active + media debate via Tavily; D: discard)
-  │
-  ├─ Merge: combine both pipelines' outputs
-  │    → deduplicate (URL exact + topic fingerprint: DIP descriptor
-  │      or >85% title similarity, keep higher engagement_state)
-  │
-  ├─ Mistral classify_action (state A/B/C items only):
-  │    returns urgency, werte_relevanz{}, pro/contra_argumente[],
-  │    action_types[], is_controversial, position_required
-  │    (no topics — classification is topic-free)
-  │
-  ├─ INSERT INTO civic_actions (..., engagement_state, state_reason,
-  │    pipeline_source, previous_signature_count) ON CONFLICT (source_url) DO UPDATE
-  │
-  ├─ Deactivate actions past deadline + 7 days grace
-  ├─ Refresh MdB statements (Abgeordnetenwatch, DIP Reden, Bundestag RSS)
-  └─ Log run to pipeline_runs (per-state counts, per-pipeline counts)
-```
+**Status (2026-09-27): being redesigned.** The previous daily,
+DIP-sourced, two-pipeline flow (parliamentary + petition, engagement-state
+A/B/C/D rules, merge/dedup by DIP descriptor or fuzzy title) has been
+retired. The DIP API is no longer used for topic-pool sourcing; the new
+pipeline is Tavily-search-based and trigger-only (no daily schedule). Full
+design pending — see `data/ingestion-pipeline.md` "Status" for what's
+agreed so far and what's still open.
+
+MdB-statement refresh (Abgeordnetenwatch, DIP Reden, Bundestag RSS) is
+unaffected by this change — it never fed the topic pool.
 
 No user data involved at any point.
 

@@ -9,6 +9,7 @@ from meinimpact.domain.entities import (
     CivicAction,
     MdbStatement,
     NewsItem,
+    Opportunity,
     Recommendation,
     TrackingEvent,
     UserProfile,
@@ -56,19 +57,14 @@ class MdbResponse(BaseModel):
 # ── Admin ─────────────────────────────────────────────────────────────────────
 
 
-class PipelineRunResponse(BaseModel):
-    """Summary of one ingestion pipeline run, for manual/demo verification."""
+class IngestionRunResponse(BaseModel):
+    """Live summary of one manually-triggered ingestion run — not
+    persisted (see `IngestionSummary`'s docstring)."""
 
-    id: UUID
-    ran_at: datetime
-    parliamentary_actions_found: int
-    petition_actions_found: int
-    state_a_count: int
-    state_b_count: int
-    state_c_count: int
-    state_d_discarded: int
-    inserted_count: int
-    duration_seconds: float | None
+    fetched: int
+    actionable: int
+    inserted: int
+    refreshed: int
     errors: list[str]
 
 
@@ -193,6 +189,70 @@ class ActionPoolResponse(BaseModel):
 
     actions: list[ActionPoolItemResponse]
     version: str
+    generated_at: datetime
+
+
+# ── Opportunities ─────────────────────────────────────────────────────────────
+
+
+class OpportunityResponse(BaseModel):
+    """One civic opportunity — the unit shown on a feed card and its
+    detail popup. No topic/option grouping (see `Opportunity`'s
+    docstring) — this is the whole thing the device needs for both
+    views, no follow-up request required."""
+
+    id: UUID
+    source_org: str
+    decision_object: str
+    plain_language_title: str
+    plain_language_summary: str
+    affected_tags: list[str]
+    region: str
+    werte_relevanz: dict[str, float]
+    deadline: date | None
+    support_count: int | None
+    support_count_as_of: datetime | None
+    content_published_at: date | None
+    retrieved_at: datetime
+    source_url: str
+    action_types: list[str]
+    pro_argumente: list[str]
+    contra_argumente: list[str]
+    personal_impact_snippets: dict[str, str]
+
+    @classmethod
+    def from_domain(cls, opportunity: Opportunity) -> OpportunityResponse:
+        """Builds an API response from a domain opportunity."""
+        return cls(
+            id=opportunity.id,
+            source_org=opportunity.source_org,
+            decision_object=opportunity.decision_object,
+            plain_language_title=opportunity.plain_language_title,
+            plain_language_summary=opportunity.plain_language_summary,
+            affected_tags=list(opportunity.affected_tags),
+            region=opportunity.region,
+            werte_relevanz=dict(opportunity.werte_relevanz),
+            deadline=opportunity.deadline,
+            support_count=opportunity.support_count,
+            support_count_as_of=opportunity.support_count_as_of,
+            content_published_at=opportunity.content_published_at,
+            retrieved_at=opportunity.retrieved_at,
+            source_url=opportunity.source_url,
+            action_types=list(opportunity.action_types),
+            pro_argumente=list(opportunity.pro_argumente),
+            contra_argumente=list(opportunity.contra_argumente),
+            personal_impact_snippets=dict(opportunity.personal_impact_snippets),
+        )
+
+
+class OpportunityPoolResponse(BaseModel):
+    """The current run's opportunities — see
+    `OpportunityRepository.list_current_run`. Ordering is not
+    meaningful server-side; the device sorts by on-device relevance
+    (Betroffenheitsprofil match, then Werteprofil alignment) since the
+    server never sees either profile."""
+
+    opportunities: list[OpportunityResponse]
     generated_at: datetime
 
 

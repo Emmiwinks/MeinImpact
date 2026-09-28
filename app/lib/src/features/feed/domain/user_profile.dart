@@ -1,48 +1,30 @@
-// Mockup demographic profile used for the meetup demo — the app has no UI
-// yet to collect these fields, so every profile is seeded with this persona
-// unless overridden. Feeds both the on-screen bio card and the
-// lebenssituation/sektor/wohnsituation sent to the personalised-context AI.
-const _demoCity = 'Dresden';
-const _demoOccupation = 'Krankenschwester';
-const _demoFamilyStatus = 'Verheiratet, 40 Jahre · 1 Kind (9 Jahre)';
-const _demoWohnsituation = 'Mietwohnung';
-const _demoSektor = 'Gesundheitswesen';
-const _demoLebenssituation = ['elternteil', 'berufstaetig'];
-const _demoPlz = '01067';
+import 'betroffenheitsprofil.dart';
 
 class UserProfile {
   const UserProfile({
     this.werte = const {},
     this.region,
-    this.plz = _demoPlz,
+    this.plz,
     this.mdbName,
     this.mdbParty,
     this.mdbWahlkreis,
-    this.city = _demoCity,
-    this.occupation = _demoOccupation,
-    this.familyStatus = _demoFamilyStatus,
-    this.wohnsituation = _demoWohnsituation,
-    this.sektor = _demoSektor,
-    this.lebenssituation = _demoLebenssituation,
+    this.betroffenheitsprofil = const Betroffenheitsprofil(),
   });
 
   factory UserProfile.fromJson(Map<String, Object?> json) {
     final werteRaw = json['werte'] as Map<String, Object?>? ?? {};
+    final betroffenheitRaw =
+        json['betroffenheitsprofil'] as Map<String, Object?>?;
     return UserProfile(
       werte: werteRaw.map((k, v) => MapEntry(k, v as int)),
       region: json['region'] as String?,
-      plz: json['plz'] as String? ?? _demoPlz,
+      plz: json['plz'] as String?,
       mdbName: json['mdb_name'] as String?,
       mdbParty: json['mdb_party'] as String?,
       mdbWahlkreis: json['mdb_wahlkreis'] as String?,
-      city: json['city'] as String? ?? _demoCity,
-      occupation: json['occupation'] as String? ?? _demoOccupation,
-      familyStatus: json['family_status'] as String? ?? _demoFamilyStatus,
-      wohnsituation: json['wohnsituation'] as String? ?? _demoWohnsituation,
-      sektor: json['sektor'] as String? ?? _demoSektor,
-      lebenssituation:
-          (json['lebenssituation'] as List<Object?>?)?.cast<String>() ??
-              _demoLebenssituation,
+      betroffenheitsprofil: betroffenheitRaw != null
+          ? Betroffenheitsprofil.fromJson(betroffenheitRaw)
+          : const Betroffenheitsprofil(),
     );
   }
 
@@ -57,39 +39,34 @@ class UserProfile {
   final String? mdbParty;
   final String? mdbWahlkreis;
 
-  // Demographic bio — mocked for the demo (see defaults above).
-  final String? city;
-  final String? occupation;
-  final String? familyStatus;
-  final String? wohnsituation;
-  final String? sektor;
-  final List<String> lebenssituation;
+  // Concrete personal-situation profile (Betroffenheitsprofil) — on-device
+  // only, drives feed relevance. Never sent to the backend. See
+  // Betroffenheitsprofil's docstring for why this is separate from werte.
+  final Betroffenheitsprofil betroffenheitsprofil;
 
-  // Derived axes (-2.0 to +2.0)
-  double get axisWirtschaft =>
+  // Derived axes (-2.0 to +2.0). Names match the backend's werte_relevanz
+  // axis vocabulary (opportunity_extractor.py's TAG_AXES) — renamed from
+  // the pre-rebuild wirtschaft/diplomatie/freiheit/wandel keys, same
+  // underlying 8values questions, no change to the quiz itself.
+  double get axisEqualityMarkets =>
       (_q('wirtschaft_gleichheit') + _q('wirtschaft_staat')) / 2.0;
-  double get axisDiplomatie =>
+  double get axisNationGlobe =>
       (_q('diplomatie_nation') + _q('diplomatie_welt')) / 2.0;
-  double get axisFreiheit =>
+  double get axisLibertyAuthority =>
       (_q('freiheit_staat') + _q('freiheit_sicherheit')) / 2.0;
-  double get axisWandel =>
+  double get axisTraditionProgress =>
       (_q('wandel_tradition') + _q('wandel_zukunft')) / 2.0;
 
-  int get answeredCount => werte.values.where((v) => v != 0).length;
+  /// All four axes keyed exactly like an opportunity's `werteRelevanz` map,
+  /// for direct comparison in `OpportunityRelevanceRanker`.
+  Map<String, double> get axisValues => {
+        'equality_markets': axisEqualityMarkets,
+        'nation_globe': axisNationGlobe,
+        'liberty_authority': axisLibertyAuthority,
+        'tradition_progress': axisTraditionProgress,
+      };
 
-  List<String> deriveToneDescriptors() {
-    final result = <String>[];
-    if (axisWirtschaft < -0.5) result.add('community-oriented');
-    if (axisWirtschaft > 0.5) result.add('pragmatic');
-    if (axisDiplomatie < -0.5) result.add('nationally-focused');
-    if (axisDiplomatie > 0.5) result.add('internationally-minded');
-    if (axisFreiheit < -0.5) result.add('rights-conscious');
-    if (axisFreiheit > 0.5) result.add('security-oriented');
-    if (axisWandel < -0.5) result.add('stability-oriented');
-    if (axisWandel > 0.5) result.add('reform-minded');
-    if (result.isEmpty) result.add('balanced');
-    return result;
-  }
+  int get answeredCount => werte.values.where((v) => v != 0).length;
 
   double _q(String key) => (werte[key] ?? 0).toDouble();
 
@@ -101,12 +78,7 @@ class UserProfile {
       'mdb_name': mdbName,
       'mdb_party': mdbParty,
       'mdb_wahlkreis': mdbWahlkreis,
-      'city': city,
-      'occupation': occupation,
-      'family_status': familyStatus,
-      'wohnsituation': wohnsituation,
-      'sektor': sektor,
-      'lebenssituation': lebenssituation,
+      'betroffenheitsprofil': betroffenheitsprofil.toJson(),
     };
   }
 }

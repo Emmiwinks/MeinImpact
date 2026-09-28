@@ -1,11 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../feed/domain/betroffenheitsprofil.dart';
 import '../feed/domain/mdb.dart';
 import '../feed/domain/user_profile.dart';
 import '../feed/presentation/widgets/app_colors.dart';
+import '../feed/presentation/widgets/betroffenheitsprofil_editor.dart';
 import '../feed/presentation/widgets/components/surface_card.dart';
 
+/// PLZ/MdB lookup (unchanged) plus the real Betroffenheitsprofil — replaces
+/// the hardcoded demo persona that used to seed every profile
+/// (city/occupation/familyStatus/wohnsituation/sektor/lebenssituation, see
+/// git history). All Betroffenheitsprofil fields are optional and default
+/// to "not set", matching the "skipping degrades personalisation but never
+/// blocks usage" principle.
 class DemographicScreen extends StatefulWidget {
   const DemographicScreen({
     required this.onComplete,
@@ -27,6 +35,14 @@ class _DemographicScreenState extends State<DemographicScreen> {
   _LookupState _state = _LookupState.idle;
   List<MdbOption> _results = const [];
   MdbOption? _selected;
+
+  Wohnsituation? _wohnsituation;
+  bool _oepnvNutzung = false;
+  bool _autoNutzung = false;
+  bool _hatKinder = false;
+  Erwerbsstatus? _erwerbsstatus;
+  bool _pflegeBetroffen = false;
+  bool? _migrationshintergrund;
 
   @override
   void initState() {
@@ -68,16 +84,26 @@ class _DemographicScreenState extends State<DemographicScreen> {
     }
   }
 
+  Betroffenheitsprofil get _betroffenheitsprofil => Betroffenheitsprofil(
+        wohnsituation: _wohnsituation,
+        oepnvNutzung: _oepnvNutzung,
+        autoNutzung: _autoNutzung,
+        hatKinder: _hatKinder,
+        erwerbsstatus: _erwerbsstatus,
+        pflegeBetroffen: _pflegeBetroffen,
+        migrationshintergrund: _migrationshintergrund,
+      );
+
   void _confirm() {
     final sel = _selected;
-    if (sel == null) return;
     final plz = _plzController.text.trim();
     widget.onComplete(
       UserProfile(
-        plz: plz,
-        mdbName: sel.mdbName,
-        mdbParty: sel.mdbParty,
-        mdbWahlkreis: sel.wahlkreisName,
+        plz: sel != null ? plz : null,
+        mdbName: sel?.mdbName,
+        mdbParty: sel?.mdbParty,
+        mdbWahlkreis: sel?.wahlkreisName,
+        betroffenheitsprofil: _betroffenheitsprofil,
       ),
     );
   }
@@ -101,7 +127,7 @@ class _DemographicScreenState extends State<DemographicScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Dein Abgeordneter',
+                          'Über dich',
                           style:
                               Theme.of(context).textTheme.titleLarge?.copyWith(
                                     fontWeight: FontWeight.w800,
@@ -110,7 +136,8 @@ class _DemographicScreenState extends State<DemographicScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Für persönliche Briefe an deine Vertretung im Bundestag.',
+                          'Hilft uns, dir relevantere Themen zu zeigen. '
+                          'Bleibt auf deinem Gerät, alles optional.',
                           style:
                               Theme.of(context).textTheme.bodyMedium?.copyWith(
                                     color: AppColors.mutedText,
@@ -129,112 +156,179 @@ class _DemographicScreenState extends State<DemographicScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 28),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _plzController,
-                      keyboardType: TextInputType.number,
-                      maxLength: 5,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                      ],
-                      decoration: InputDecoration(
-                        labelText: 'Postleitzahl',
-                        hintText: '10115',
-                        counterText: '',
-                        filled: true,
-                        fillColor: AppColors.surface,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide:
-                              const BorderSide(color: AppColors.subtleBorder),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide:
-                              const BorderSide(color: AppColors.subtleBorder),
-                        ),
+              const SizedBox(height: 24),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _PlzSection(
+                        controller: _plzController,
+                        state: _state,
+                        results: _results,
+                        selected: _selected,
+                        onLookup: _lookup,
+                        onSelect: (opt) => setState(() => _selected = opt),
+                        onChanged: () {
+                          if (_state != _LookupState.idle) {
+                            setState(() {
+                              _state = _LookupState.idle;
+                              _results = const [];
+                              _selected = null;
+                            });
+                          }
+                        },
                       ),
-                      onChanged: (_) {
-                        if (_state != _LookupState.idle) {
-                          setState(() {
-                            _state = _LookupState.idle;
-                            _results = const [];
-                            _selected = null;
-                          });
-                        }
-                      },
-                      onSubmitted: (_) => _lookup(),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  SizedBox(
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed:
-                          _plzController.text.length == 5 ? _lookup : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.green,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: AppColors.subtleBorder,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                      const SizedBox(height: 28),
+                      BetroffenheitsprofilEditor(
+                        value: _betroffenheitsprofil,
+                        onChanged: (bp) => setState(() {
+                          _wohnsituation = bp.wohnsituation;
+                          _oepnvNutzung = bp.oepnvNutzung;
+                          _autoNutzung = bp.autoNutzung;
+                          _hatKinder = bp.hatKinder;
+                          _erwerbsstatus = bp.erwerbsstatus;
+                          _pflegeBetroffen = bp.pflegeBetroffen;
+                          _migrationshintergrund = bp.migrationshintergrund;
+                        }),
                       ),
-                      child: _state == _LookupState.loading
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text(
-                              'Suchen',
-                              style: TextStyle(fontWeight: FontWeight.w700),
-                            ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              _buildResult(context),
-              const Spacer(),
-              if (_state == _LookupState.done && _selected != null)
-                SizedBox(
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: _confirm,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.green,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      'Weiter',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
+                    ],
                   ),
                 ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _confirm,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.green,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Fertig',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
       ),
     );
   }
+}
+
+class _PlzSection extends StatelessWidget {
+  const _PlzSection({
+    required this.controller,
+    required this.state,
+    required this.results,
+    required this.selected,
+    required this.onLookup,
+    required this.onSelect,
+    required this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final _LookupState state;
+  final List<MdbOption> results;
+  final MdbOption? selected;
+  final VoidCallback onLookup;
+  final void Function(MdbOption?) onSelect;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Dein Abgeordneter',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Für persönliche Briefe an deine Vertretung im Bundestag.',
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: AppColors.mutedText),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: controller,
+                keyboardType: TextInputType.number,
+                maxLength: 5,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(
+                  labelText: 'Postleitzahl',
+                  hintText: '10115',
+                  counterText: '',
+                  filled: true,
+                  fillColor: AppColors.surface,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppColors.subtleBorder),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppColors.subtleBorder),
+                  ),
+                ),
+                onChanged: (_) => onChanged(),
+                onSubmitted: (_) => onLookup(),
+              ),
+            ),
+            const SizedBox(width: 10),
+            SizedBox(
+              height: 56,
+              child: ElevatedButton(
+                onPressed: controller.text.length == 5 ? onLookup : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.green,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: AppColors.subtleBorder,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: state == _LookupState.loading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        'Suchen',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _buildResult(context),
+      ],
+    );
+  }
 
   Widget _buildResult(BuildContext context) {
-    switch (_state) {
+    switch (state) {
       case _LookupState.idle:
-        return const SizedBox.shrink();
-
       case _LookupState.loading:
         return const SizedBox.shrink();
 
@@ -266,7 +360,7 @@ class _DemographicScreenState extends State<DemographicScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (_results.length > 1) ...[
+            if (results.length > 1) ...[
               Text(
                 'Deine PLZ liegt in mehreren Wahlkreisen. Wähle deinen:',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -284,9 +378,9 @@ class _DemographicScreenState extends State<DemographicScreen> {
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<MdbOption>(
-                    value: _selected,
+                    value: selected,
                     isExpanded: true,
-                    items: _results
+                    items: results
                         .map(
                           (opt) => DropdownMenuItem(
                             value: opt,
@@ -297,13 +391,13 @@ class _DemographicScreenState extends State<DemographicScreen> {
                           ),
                         )
                         .toList(),
-                    onChanged: (opt) => setState(() => _selected = opt),
+                    onChanged: onSelect,
                   ),
                 ),
               ),
               const SizedBox(height: 14),
             ],
-            if (_selected != null) _MdbCard(mdb: _selected!),
+            if (selected != null) _MdbCard(mdb: selected!),
           ],
         );
     }

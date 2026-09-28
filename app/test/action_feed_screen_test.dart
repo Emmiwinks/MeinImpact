@@ -1,29 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meinimpact/src/app/meinimpact_app.dart';
-import 'package:meinimpact/src/core/network/sse_event_parser.dart';
-import 'package:meinimpact/src/features/feed/domain/action_repository.dart';
-import 'package:meinimpact/src/features/feed/domain/civic_action.dart';
 import 'package:meinimpact/src/features/feed/domain/mdb.dart';
-import 'package:meinimpact/src/features/feed/domain/user_profile.dart';
+import 'package:meinimpact/src/features/feed/domain/opportunity.dart';
+import 'package:meinimpact/src/features/feed/domain/opportunity_repository.dart';
 
 void main() {
-  testWidgets('renders topics grouped from the pool, no fabricated stats', (
+  testWidgets('renders opportunities from the pool, no fabricated stats', (
     tester,
   ) async {
     await tester.pumpWidget(
-      MeinImpactApp(actionRepository: _GroupedTopicRepository()),
+      MeinImpactApp(opportunityRepository: _PoolRepository()),
     );
     await tester.pumpAndSettle();
 
-    // Petition and letter share topic_id 'klimaschutz' — one topic tile,
-    // not two, and the headline is the higher-scored option's title.
-    expect(find.text('Brief an deinen Abgeordneten'), findsOneWidget);
-    expect(find.text('Petition zum Klimaschutz'), findsNothing);
-
-    // Real, sourced fact — the topic's existential state badge/reason.
-    expect(find.text('Entscheidung steht an'), findsOneWidget);
-    expect(find.text('Kurz vor dem Quorum: 45.000 von 50.000'), findsOneWidget);
+    expect(find.text('Petition zum Klimaschutz'), findsOneWidget);
+    expect(find.text('openPetition'), findsOneWidget);
 
     // No invented score or time-estimate text anywhere.
     expect(find.textContaining('Bewertung'), findsNothing);
@@ -33,31 +25,32 @@ void main() {
     expect(find.byKey(const Key('languageSelector')), findsNothing);
   });
 
-  testWidgets('opening a topic shows both its options', (tester) async {
+  testWidgets('opening an opportunity shows its action button', (
+    tester,
+  ) async {
     await tester.pumpWidget(
-      MeinImpactApp(actionRepository: _GroupedTopicRepository()),
+      MeinImpactApp(opportunityRepository: _PoolRepository()),
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Brief an deinen Abgeordneten'));
+    await tester.tap(find.text('Petition zum Klimaschutz'));
     await tester.pumpAndSettle();
 
     expect(find.text('Petition unterschreiben'), findsOneWidget);
-    expect(find.text('Brief schreiben'), findsOneWidget);
   });
 
-  testWidgets('renders empty topics state', (tester) async {
+  testWidgets('renders empty pool state', (tester) async {
     await tester.pumpWidget(
-      MeinImpactApp(actionRepository: _EmptyActionRepository()),
+      MeinImpactApp(opportunityRepository: _EmptyRepository()),
     );
     await tester.pumpAndSettle();
 
     expect(find.text('Noch keine Themen verfügbar.'), findsOneWidget);
   });
 
-  testWidgets('renders recommendation errors', (tester) async {
+  testWidgets('renders pool-loading errors', (tester) async {
     await tester.pumpWidget(
-      MeinImpactApp(actionRepository: _FailingActionRepository()),
+      MeinImpactApp(opportunityRepository: _FailingRepository()),
     );
     await tester.pumpAndSettle();
 
@@ -71,7 +64,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      MeinImpactApp(actionRepository: _EmptyActionRepository()),
+      MeinImpactApp(opportunityRepository: _EmptyRepository()),
     );
     await tester.pumpAndSettle();
 
@@ -91,118 +84,45 @@ void main() {
   });
 }
 
-CivicAction _petitionAction() => const CivicAction(
+Opportunity _petitionOpportunity() => Opportunity(
       id: 'petition-1',
-      title: 'Petition zum Klimaschutz',
-      actionType: 'petition_signature',
-      summary: 'Eine Petition fordert mehr Klimaschutz.',
-      region: 'Germany',
+      sourceOrg: 'openPetition',
+      decisionObject: 'Klimaschutzgesetz verschärfen',
+      plainLanguageTitle: 'Petition zum Klimaschutz',
+      plainLanguageSummary: 'Eine Petition fordert mehr Klimaschutz.',
+      affectedTags: const ['Umwelt/Natur'],
+      region: 'bund',
+      werteRelevanz: const {},
       sourceUrl: 'https://weact.campact.de/petitions/1',
-      topicId: 'klimaschutz',
-      engagementState: 'A',
-      stateReason: 'Kurz vor dem Quorum: 45.000 von 50.000',
+      actionTypes: const ['petition'],
+      proArgumente: const [],
+      contraArgumente: const [],
+      personalImpactSnippets: const {},
+      retrievedAt: DateTime(2026, 9, 27),
     );
 
-CivicAction _letterAction() => const CivicAction(
-      id: 'letter-1',
-      title: 'Brief an deinen Abgeordneten',
-      actionType: 'representative_letter',
-      summary: 'Schreib deiner Abgeordneten zum Klimaschutzgesetz.',
-      region: 'Germany',
-      sourceUrl: 'https://dip.bundestag.de/vorgang/1',
-      topicId: 'klimaschutz',
-      engagementState: 'C',
-      stateReason: null,
-    );
-
-class _GroupedTopicRepository implements ActionRepository {
+class _PoolRepository implements OpportunityRepository {
   @override
-  Future<List<ActionRecommendation>> recommendations(
-    UserProfile profile,
-  ) async {
-    return [
-      ActionRecommendation(
-        action: _petitionAction(),
-        score: 60,
-        reasons: const ['Aktuell verfügbare Maßnahme.'],
-      ),
-      ActionRecommendation(
-        action: _letterAction(),
-        score: 90,
-        reasons: const ['Passt zu deinen Werten.'],
-      ),
-    ];
-  }
-
-  @override
-  Stream<SseEvent> streamDraft({
-    required String actionId,
-    required UserProfile profile,
-    String letterType = 'brief',
-  }) async* {
-    yield const SseEvent(event: 'message', data: 'Draft');
-    yield const SseEvent(event: 'message', data: '[DONE]');
-  }
+  Future<List<Opportunity>> pool() async => [_petitionOpportunity()];
 
   @override
   Future<List<MdbOption>> lookupMdb(String plz) async => const [];
-
-  @override
-  Future<String> getContext({
-    required String actionId,
-    required UserProfile profile,
-  }) async =>
-      'Context.';
 }
 
-class _EmptyActionRepository implements ActionRepository {
+class _EmptyRepository implements OpportunityRepository {
   @override
-  Future<List<ActionRecommendation>> recommendations(
-    UserProfile profile,
-  ) async {
-    return const [];
-  }
-
-  @override
-  Stream<SseEvent> streamDraft({
-    required String actionId,
-    required UserProfile profile,
-    String letterType = 'brief',
-  }) async* {}
+  Future<List<Opportunity>> pool() async => const [];
 
   @override
   Future<List<MdbOption>> lookupMdb(String plz) async => const [];
-
-  @override
-  Future<String> getContext({
-    required String actionId,
-    required UserProfile profile,
-  }) async =>
-      'Context.';
 }
 
-class _FailingActionRepository implements ActionRepository {
+class _FailingRepository implements OpportunityRepository {
   @override
-  Future<List<ActionRecommendation>> recommendations(
-    UserProfile profile,
-  ) async {
+  Future<List<Opportunity>> pool() async {
     throw StateError('Backend unavailable');
   }
 
   @override
-  Stream<SseEvent> streamDraft({
-    required String actionId,
-    required UserProfile profile,
-    String letterType = 'brief',
-  }) async* {}
-
-  @override
   Future<List<MdbOption>> lookupMdb(String plz) async => const [];
-
-  @override
-  Future<String> getContext({
-    required String actionId,
-    required UserProfile profile,
-  }) async =>
-      'Context.';
 }

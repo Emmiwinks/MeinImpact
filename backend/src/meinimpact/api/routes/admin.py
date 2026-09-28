@@ -1,22 +1,28 @@
 """Admin operational routes.
 
-Currently exposes one thing: a manual trigger for the ingestion procedure
-that APScheduler otherwise runs once a day (see `main.py`'s "daily_ingestion"
-job). Both call the exact same `run_ingestion_pipeline` function — there is
-only one definition of the procedure, this route just lets it be fired on
-demand for verification/demos instead of waiting for 03:00 CET.
+Exposes a manual trigger for the ingestion pipeline. Ingestion is
+trigger-based only (no scheduled job) — see
+specs/data/ingestion-pipeline.md "Status".
 """
 
 import secrets
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from meinimpact.api import schemas
 from meinimpact.api.dependencies import get_db_session
 from meinimpact.core.config import Settings, get_settings
-from meinimpact.infrastructure.pipeline.orchestrator import run_ingestion_pipeline
+from meinimpact.infrastructure.ai.embeddings import MistralEmbeddingClient
+from meinimpact.infrastructure.ai.opportunity_extractor import OpportunityExtractor
+from meinimpact.infrastructure.opportunities.postgres_opportunity_repository import (
+    PostgresOpportunityRepository,
+)
+from meinimpact.infrastructure.pipeline.opportunity_pipeline import run_ingestion
+from meinimpact.infrastructure.sources.tavily_client import TavilyClient
+from meinimpact.infrastructure.sources.tavily_opportunity_adapter import (
+    TavilyOpportunityAdapter,
+)
 
 router = APIRouter(prefix="/v1/admin", tags=["admin"])
 
@@ -43,21 +49,35 @@ def require_admin(
 async def trigger_ingestion_run(
     settings: Settings = Depends(get_settings),
     session: AsyncSession = Depends(get_db_session),
-) -> schemas.PipelineRunResponse:
-    """Runs the ingestion procedure now and returns its `pipeline_runs` row."""
-    await run_ingestion_pipeline(settings)
-    result = await session.execute(
-        text(
-            "SELECT id, ran_at, parliamentary_actions_found, petition_actions_found, "
-            "state_a_count, state_b_count, state_c_count, state_d_discarded, "
-            "inserted_count, duration_seconds, errors "
-            "FROM pipeline_runs ORDER BY ran_at DESC LIMIT 1"
-        )
-    )
-    row = result.mappings().first()
-    if row is None:
+) -> schemas.IngestionRunResponse:
+    """Runs the opportunity ingestion pipeline now, for every region."""
+    if not settings.tavily_api_key or not settings.mistral_api_key:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Ingestion run produced no pipeline_runs row",
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Ingestion requires MEINIMPACT_TAVILY_API_KEY and "
+            "MEINIMPACT_MISTRAL_API_KEY to be configured",
         )
-    return schemas.PipelineRunResponse(**row)
+
+    source = TavilyOpportunityAdapter(TavilyClient(settings.tavily_api_key))
+    extractor = OpportunityExtractor(
+        api_key=settings.mistral_api_key,
+        base_url=settings.mistral_base_url,
+        model=settings.mistral_extraction_model,
+    )
+    embedder = MistralEmbeddingClient(
+        api_key=settings.mistral_api_key,
+        base_url=settings.mistral_base_url,
+        model=settings.mistral_embedding_model,
+    )
+    repository = PostgresOpportunityRepository(session)
+
+    summary = await run_ingestion(
+        source=source, extractor=extractor, embedder=embedder, repository=repository
+    )
+    return schemas.IngestionRunResponse(
+        fetched=summary.fetched,
+        actionable=summary.actionable,
+        inserted=summary.inserted,
+        refreshed=summary.refreshed,
+        errors=summary.errors,
+    )

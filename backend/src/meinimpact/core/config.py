@@ -28,12 +28,20 @@ class Settings(BaseSettings):
     access_token_minutes: int = 15
     mistral_api_key: str | None = None
     mistral_model: str = "mistral-small-latest"
+    # Opportunity extraction needs more reliable multi-constraint structured
+    # output than mistral-small gave in calibration (inconsistent
+    # personal_impact_snippets formatting) — see
+    # project_tavily_retrieval_calibration.md. Separate from mistral_model,
+    # which stays small/cheap for letter-draft generation.
+    mistral_extraction_model: str = "mistral-medium-latest"
+    mistral_embedding_model: str = "mistral-embed"
     mistral_base_url: str = "https://api.mistral.ai/v1"
+    # Unused by any pipeline for now — DipAdapter is preserved unwired in
+    # infrastructure/sources/dip_adapter.py in case a later project stage
+    # needs it again. See specs/data/ingestion-pipeline.md "Status".
     dip_api_key: str | None = None
     tavily_api_key: str | None = None
     newsdata_api_key: str | None = None
-    google_cse_key: str | None = None
-    google_cse_id: str | None = None
     max_request_body_bytes: int = 65_536
     admin_api_key: str | None = None
 

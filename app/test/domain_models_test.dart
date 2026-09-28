@@ -1,194 +1,252 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:meinimpact/src/features/feed/domain/civic_action.dart';
-import 'package:meinimpact/src/features/feed/domain/topic.dart';
+import 'package:meinimpact/src/features/feed/data/opportunity_relevance_ranker.dart';
+import 'package:meinimpact/src/features/feed/domain/betroffenheitsprofil.dart';
+import 'package:meinimpact/src/features/feed/domain/opportunity.dart';
 import 'package:meinimpact/src/features/feed/domain/user_profile.dart';
 
-CivicAction _action({
-  String id = 'action-1',
-  String topicId = 'topic-1',
-  String actionType = 'representative_letter',
-  String engagementState = 'C',
-  String? stateReason,
+Opportunity _opportunity({
+  String id = 'opp-1',
+  List<String> affectedTags = const [],
+  Map<String, double> werteRelevanz = const {},
+  Map<String, String> personalImpactSnippets = const {},
+  List<String> actionTypes = const ['petition'],
+  DateTime? deadline,
+  int? supportCount,
 }) {
-  return CivicAction(
+  return Opportunity(
     id: id,
-    title: 'Title $id',
-    actionType: actionType,
-    summary: 'Summary $id',
-    region: 'Germany',
+    sourceOrg: 'openPetition',
+    decisionObject: 'Decision $id',
+    plainLanguageTitle: 'Title $id',
+    plainLanguageSummary: 'Summary $id',
+    affectedTags: affectedTags,
+    region: 'bund',
+    werteRelevanz: werteRelevanz,
     sourceUrl: 'https://example.org/$id',
-    topicId: topicId,
-    engagementState: engagementState,
-    stateReason: stateReason,
+    actionTypes: actionTypes,
+    proArgumente: const [],
+    contraArgumente: const [],
+    personalImpactSnippets: personalImpactSnippets,
+    retrievedAt: DateTime(2026, 9, 27),
+    deadline: deadline,
+    supportCount: supportCount,
   );
 }
 
 void main() {
-  test('maps civic action recommendation from backend JSON', () {
-    final recommendation = ActionRecommendation.fromJson({
-      'action': {
-        'id': 'action-1',
-        'title': 'Action title',
-        'action_type': 'representative_letter',
-        'summary': 'Action summary',
-        'region': 'Germany',
+  group('Opportunity.fromJson', () {
+    test('maps the full backend shape', () {
+      final opportunity = Opportunity.fromJson({
+        'id': 'opp-1',
+        'source_org': 'openPetition',
+        'decision_object': 'Mietendeckel einführen',
+        'plain_language_title': 'Soll ein Mietendeckel eingeführt werden?',
+        'plain_language_summary': 'Zusammenfassung.',
+        'affected_tags': ['Wohnen/Miete'],
+        'region': 'bund',
+        'werte_relevanz': {'equality_markets': -0.8},
+        'deadline': '2026-12-01',
+        'support_count': 12345,
+        'support_count_as_of': '2026-09-27T00:00:00Z',
+        'content_published_at': null,
+        'retrieved_at': '2026-09-27T10:00:00Z',
+        'source_url': 'https://openpetition.de/petition/online/x',
+        'action_types': ['petition'],
+        'pro_argumente': ['Argument 1'],
+        'contra_argumente': ['Gegenargument 1'],
+        'personal_impact_snippets': {
+          'wohnsituation:mieter': 'Betrifft dich direkt.',
+        },
+      });
+
+      expect(opportunity.id, 'opp-1');
+      expect(opportunity.sourceOrg, 'openPetition');
+      expect(opportunity.affectedTags, ['Wohnen/Miete']);
+      expect(opportunity.werteRelevanz, {'equality_markets': -0.8});
+      expect(opportunity.deadline, DateTime.parse('2026-12-01'));
+      expect(opportunity.supportCount, 12345);
+      expect(
+        opportunity.personalImpactSnippets['wohnsituation:mieter'],
+        'Betrifft dich direkt.',
+      );
+    });
+
+    test('handles absent optional fields without throwing', () {
+      final opportunity = Opportunity.fromJson({
+        'id': 'opp-2',
+        'source_org': 'WeAct/Campact',
+        'decision_object': 'x',
+        'plain_language_title': 'x',
+        'plain_language_summary': 'x',
+        'region': 'bund',
+        'retrieved_at': '2026-09-27T10:00:00Z',
         'source_url': 'https://example.org',
-        'topic_id': 'topic-1',
-        'engagement_state': 'B',
-        'state_reason': 'Positionen noch offen',
-      },
-      'score': 91,
-      'reasons': ['Passt zu deinen Werten.'],
-    });
+      });
 
-    expect(recommendation.score, 91);
-    expect(recommendation.reasons, ['Passt zu deinen Werten.']);
-    expect(recommendation.action.id, 'action-1');
-    expect(recommendation.action.actionType, 'representative_letter');
-    expect(recommendation.action.topicId, 'topic-1');
-    expect(recommendation.action.engagementState, 'B');
-    expect(recommendation.action.stateReason, 'Positionen noch offen');
-  });
-
-  test('falls back to the action id as topic_id when the field is absent', () {
-    final action = CivicAction.fromJson({
-      'id': 'action-2',
-      'title': 'Title',
-      'action_type': 'representative_letter',
-      'summary': 'Summary',
-      'region': null,
-      'source_url': 'https://example.org',
-    });
-
-    expect(action.topicId, 'action-2');
-    expect(action.engagementState, 'C');
-  });
-
-  test('serializes user profile for backend requests', () {
-    const profile = UserProfile(
-      werte: {'wirtschaft_gleichheit': 2},
-      region: 'Germany',
-    );
-
-    expect(profile.toJson(), {
-      'werte': {'wirtschaft_gleichheit': 2},
-      'region': 'Germany',
-      'plz': profile.plz,
-      'mdb_name': null,
-      'mdb_party': null,
-      'mdb_wahlkreis': null,
-      'city': profile.city,
-      'occupation': profile.occupation,
-      'family_status': profile.familyStatus,
-      'wohnsituation': profile.wohnsituation,
-      'sektor': profile.sektor,
-      'lebenssituation': profile.lebenssituation,
+      expect(opportunity.affectedTags, isEmpty);
+      expect(opportunity.werteRelevanz, isEmpty);
+      expect(opportunity.deadline, isNull);
+      expect(opportunity.supportCount, isNull);
+      expect(opportunity.personalImpactSnippets, isEmpty);
     });
   });
 
-  test('derives value axes from werte question scores', () {
-    const profile = UserProfile(
-      werte: {
-        'wirtschaft_gleichheit': -2,
-        'wirtschaft_staat': -1,
-      },
-    );
-
-    expect(profile.axisWirtschaft, -1.5);
-    expect(profile.axisDiplomatie, 0.0);
-  });
-
-  group('groupIntoTopics', () {
-    test('groups two options sharing a topic_id into one topic', () {
-      final petition = ActionRecommendation(
-        action: _action(
-          id: 'p1',
-          topicId: 'topic-a',
-          actionType: 'petition_signature',
-          engagementState: 'A',
-          stateReason: 'Kurz vor dem Quorum',
-        ),
-        score: 60,
-        reasons: const [],
+  group('ActionCta.forOpportunity', () {
+    test('labels a petition', () {
+      final cta = ActionCta.forOpportunity(
+        _opportunity(actionTypes: const ['petition']),
       );
-      final letter = ActionRecommendation(
-        action: _action(
-          id: 'l1',
-          topicId: 'topic-a',
-          engagementState: 'C',
-        ),
-        score: 80,
-        reasons: const ['Passt zu deinen Werten.'],
+      expect(cta.label, 'Petition unterschreiben');
+    });
+
+    test('labels a consultation', () {
+      final cta = ActionCta.forOpportunity(
+        _opportunity(actionTypes: const ['consultation']),
+      );
+      expect(cta.label, 'Jetzt mitmachen');
+    });
+
+    test('falls back to a generic label with no action types', () {
+      final cta = ActionCta.forOpportunity(
+        _opportunity(actionTypes: const []),
+      );
+      expect(cta.label, isNotEmpty);
+    });
+  });
+
+  group('Betroffenheitsprofil.matchingKeys', () {
+    test('is empty for an unanswered profile', () {
+      expect(const Betroffenheitsprofil().matchingKeys(), isEmpty);
+    });
+
+    test('includes only set/true fields, formatted like the backend keys', () {
+      const profile = Betroffenheitsprofil(
+        wohnsituation: Wohnsituation.mieter,
+        oepnvNutzung: true,
+        hatKinder: true,
+        erwerbsstatus: Erwerbsstatus.schuelerStudent,
+        migrationshintergrund: true,
       );
 
-      final topics = groupIntoTopics([petition, letter]);
-
-      expect(topics, hasLength(1));
-      expect(topics.single.options, hasLength(2));
-      // Existential state aggregate: A (petition) beats C (letter) — the
-      // topic surfaces the petition's own honest reason, not a merged one.
-      expect(topics.single.engagementState, 'A');
-      expect(topics.single.stateReason, 'Kurz vor dem Quorum');
-      // Headline text (and its reasons) come from the highest-scored option
-      // (the letter, score 80) — a cosmetic tie-break, not a ranking claim.
-      expect(topics.single.title, 'Title l1');
-      expect(topics.single.reasons, ['Passt zu deinen Werten.']);
+      expect(profile.matchingKeys(), {
+        'wohnsituation:mieter',
+        'oepnv_nutzung:true',
+        'hat_kinder:true',
+        'erwerbsstatus:schueler_student',
+        'migrationshintergrund:true',
+      });
     });
 
-    test('items with no matching topic_id become their own singleton topics',
+    test('false booleans and null migrationshintergrund produce no key', () {
+      const profile = Betroffenheitsprofil(
+        oepnvNutzung: false,
+        migrationshintergrund: null,
+      );
+      expect(profile.matchingKeys(), isEmpty);
+    });
+
+    test('migrationshintergrund:false is distinct from null (no key either)',
         () {
-      final a = ActionRecommendation(
-        action: _action(id: 'a', topicId: 'topic-a'),
-        score: 50,
-        reasons: const [],
-      );
-      final b = ActionRecommendation(
-        action: _action(id: 'b', topicId: 'topic-b'),
-        score: 40,
-        reasons: const [],
-      );
-
-      final topics = groupIntoTopics([a, b]);
-
-      expect(topics, hasLength(2));
-      expect(topics.every((t) => t.options.length == 1), isTrue);
-    });
-
-    test('sorts topics by descending score', () {
-      final low = ActionRecommendation(
-        action: _action(id: 'low', topicId: 'topic-low'),
-        score: 20,
-        reasons: const [],
-      );
-      final high = ActionRecommendation(
-        action: _action(id: 'high', topicId: 'topic-high'),
-        score: 90,
-        reasons: const [],
-      );
-
-      final topics = groupIntoTopics([low, high]);
-
-      expect(topics.map((t) => t.topicId), ['topic-high', 'topic-low']);
+      const profile = Betroffenheitsprofil(migrationshintergrund: false);
+      expect(profile.matchingKeys(), isEmpty);
     });
   });
 
-  group('optionKindOf', () {
-    test('petition_signature is a petition option', () {
-      expect(
-        optionKindOf(_action(actionType: 'petition_signature')),
-        OptionKind.petition,
+  group('UserProfile axis derivation', () {
+    test('derives axes from werte question scores under the new names', () {
+      const profile = UserProfile(
+        werte: {
+          'wirtschaft_gleichheit': -2,
+          'wirtschaft_staat': -1,
+          'diplomatie_nation': 2,
+        },
       );
+
+      expect(profile.axisEqualityMarkets, -1.5);
+      expect(profile.axisNationGlobe, 1.0);
+      expect(profile.axisLibertyAuthority, 0.0);
+      expect(profile.axisTraditionProgress, 0.0);
     });
 
-    test('representative_letter and anything else is a letter option', () {
-      expect(
-        optionKindOf(_action(actionType: 'representative_letter')),
-        OptionKind.letter,
+    test('axisValues keys match the backend werte_relevanz vocabulary', () {
+      const profile = UserProfile(werte: {'wirtschaft_gleichheit': 2});
+      expect(profile.axisValues.keys, {
+        'equality_markets',
+        'nation_globe',
+        'liberty_authority',
+        'tradition_progress',
+      });
+    });
+  });
+
+  group('OpportunityRelevanceRanker', () {
+    const ranker = OpportunityRelevanceRanker();
+
+    test('never drops an opportunity, regardless of match', () {
+      final pool = [
+        _opportunity(id: 'a'),
+        _opportunity(id: 'b', affectedTags: const ['Wohnen/Miete']),
+      ];
+      final ranked = ranker.rank(pool, const UserProfile());
+      expect(ranked, hasLength(2));
+    });
+
+    test('opportunities with a matched personal snippet rank above others', () {
+      final matched = _opportunity(
+        id: 'matched',
+        personalImpactSnippets: const {
+          'wohnsituation:mieter': 'Betrifft dich.',
+        },
       );
-      expect(
-        optionKindOf(_action(actionType: 'public_question')),
-        OptionKind.letter,
+      final unmatched = _opportunity(id: 'unmatched');
+      const profile = UserProfile(
+        betroffenheitsprofil: Betroffenheitsprofil(
+          wohnsituation: Wohnsituation.mieter,
+        ),
       );
+
+      final ranked = ranker.rank([unmatched, matched], profile);
+
+      expect(ranked.first.opportunity.id, 'matched');
+      expect(ranked.first.matchedSnippet, 'Betrifft dich.');
+      expect(ranked.last.matchedSnippet, isNull);
+    });
+
+    test('orders by werte alignment when profile is sufficiently answered', () {
+      final aligned = _opportunity(
+        id: 'aligned',
+        werteRelevanz: const {'equality_markets': 1.0},
+      );
+      final opposed = _opportunity(
+        id: 'opposed',
+        werteRelevanz: const {'equality_markets': -1.0},
+      );
+      // 4 answered questions — meets _minAnsweredForWerteMatch.
+      const profile = UserProfile(
+        werte: {
+          'wirtschaft_gleichheit': 2,
+          'wirtschaft_staat': 2,
+          'diplomatie_nation': 1,
+          'freiheit_staat': 1,
+        },
+      );
+
+      final ranked = ranker.rank([opposed, aligned], profile);
+
+      expect(ranked.first.opportunity.id, 'aligned');
+      expect(ranked.first.werteAlignment, greaterThan(0.5));
+      expect(ranked.last.werteAlignment, lessThan(0.5));
+    });
+
+    test('werte alignment stays neutral when profile has under 4 answers', () {
+      final opportunity = _opportunity(
+        werteRelevanz: const {'equality_markets': 1.0},
+      );
+      const profile = UserProfile(werte: {'wirtschaft_gleichheit': 2});
+
+      final ranked = ranker.rank([opportunity], profile);
+
+      expect(ranked.single.werteAlignment, 0.5);
     });
   });
 }

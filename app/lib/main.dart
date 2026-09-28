@@ -4,7 +4,7 @@ import 'src/app/meinimpact_app.dart';
 import 'src/core/network/api_client.dart';
 import 'src/core/profile/user_profile_store.dart';
 import 'src/core/security/token_store.dart';
-import 'src/features/feed/data/remote_action_repository.dart';
+import 'src/features/feed/data/remote_opportunity_repository.dart';
 
 // Base URL for local development. Overridden in release builds via
 // --dart-define=MEINIMPACT_API_BASE_URL=... (see .github/workflows/app.yml)
@@ -39,7 +39,7 @@ void main() async {
 
   runApp(
     MeinImpactApp.withProfile(
-      actionRepository: RemoteActionRepository(apiClient),
+      opportunityRepository: RemoteOpportunityRepository(apiClient),
       profileStore: profileStore,
       initialProfile: initialProfile,
     ),

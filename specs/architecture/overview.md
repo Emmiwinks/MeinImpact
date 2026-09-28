@@ -131,12 +131,11 @@ Device (Flutter app)
 │
 Backend (Fly.io)
 │
-│  Daily cronjob (two parallel pipelines, see data/ingestion-pipeline.md):
-│    Parliamentary (DIP API) + Petition (DIP, WeAct/openpetition via Tavily)
-│    Determine engagement_state per item (A/B/C/D); discard state D
-│    Merge + deduplicate (exact URL, then topic fingerprint)
-│    Classify with Mistral (value axes, urgency, pro/contra — no topics)
-│    Write to PostgreSQL action pool with engagement_state + state_reason
+│  Trigger-based ingestion pipeline (not scheduled — see
+│  data/ingestion-pipeline.md "Status"): Tavily-search-based topic
+│  discovery (replaces the retired DIP-sourced pipeline), full design
+│  pending. Classify with Mistral (value axes, urgency, pro/contra).
+│  Write to PostgreSQL action pool.
 │
 │  On tracking event:
 │    Look up push_tokens subscribed to action_id

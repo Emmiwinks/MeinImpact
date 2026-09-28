@@ -63,8 +63,10 @@ specs/
 │   └── general-profile.md         ← Demographics, MdB lookup, letter context
 │
 ├── data/
-│   ├── sources-federal.md         ← DIP, AW, WeAct, NewsData, MdB statements
-│   ├── ingestion-pipeline.md      ← Daily pipeline stages 1–9
+│   ├── sources-federal.md         ← AW, MdB statements; topic sourcing being
+│   │                                 redesigned (Tavily search, was DIP)
+│   ├── ingestion-pipeline.md      ← Trigger-based (was daily); pipeline being
+│   │                                 redesigned, was DIP-sourced
 │   ├── database-schema.md         ← All PostgreSQL tables + pool view
 │   └── caching.md                 ← Redis server cache, Hive client cache
 │

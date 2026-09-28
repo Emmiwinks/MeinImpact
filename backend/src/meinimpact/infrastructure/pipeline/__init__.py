@@ -1,1 +1,1 @@
-"""Ingestion pipeline package."""
+"""Opportunity ingestion pipeline."""

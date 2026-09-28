@@ -78,9 +78,18 @@ const _kQuestions = [
 ];
 
 class ValueProfileScreen extends StatefulWidget {
-  const ValueProfileScreen({required this.onComplete, super.key});
+  const ValueProfileScreen({
+    required this.onComplete,
+    this.onUseExampleProfile,
+    super.key,
+  });
 
   final void Function(Map<String, int> werte) onComplete;
+
+  /// Shortcut shown only during first-time setup (null when re-doing the
+  /// quiz from an existing profile) — fills every question neutral and
+  /// hands off to a hardcoded example Betroffenheitsprofil instead.
+  final VoidCallback? onUseExampleProfile;
 
   @override
   State<ValueProfileScreen> createState() => _ValueProfileScreenState();
@@ -175,6 +184,22 @@ class _ValueProfileScreenState extends State<ValueProfileScreen> {
                       color: AppColors.mutedText,
                     ),
               ),
+              if (widget.onUseExampleProfile != null) ...[
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: widget.onUseExampleProfile,
+                    icon: const Icon(Icons.bolt, size: 18),
+                    label: const Text('Beispiel-Profil übernehmen'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.greenDark,
+                      padding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 32),
               Expanded(
                 child: _QuestionCard(
@@ -277,29 +302,96 @@ class _QuestionCard extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 28),
-        Slider(
-          value: value.toDouble(),
-          min: -2,
-          max: 2,
-          divisions: 4,
-          activeColor: AppColors.green,
-          inactiveColor: AppColors.subtleBorder,
-          onChanged: (v) => onChanged(v.round()),
-        ),
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            for (final label in ['−2', '−1', '0', '+1', '+2'])
-              Text(
-                label,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.mutedText,
-                      fontSize: 11,
+            Expanded(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _LikertButton(
+                      label: 'Stimme voll zu',
+                      selected: value == -2,
+                      onTap: () => onChanged(-2),
                     ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _LikertButton(
+                      label: 'Stimme eher zu',
+                      selected: value == -1,
+                      onTap: () => onChanged(-1),
+                    ),
+                  ),
+                ],
               ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _LikertButton(
+                      label: 'Stimme eher zu',
+                      selected: value == 1,
+                      onTap: () => onChanged(1),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _LikertButton(
+                      label: 'Stimme voll zu',
+                      selected: value == 2,
+                      onTap: () => onChanged(2),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ],
+    );
+  }
+}
+
+class _LikertButton extends StatelessWidget {
+  const _LikertButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? AppColors.greenWash : AppColors.surface,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: selected ? AppColors.green : AppColors.subtleBorder,
+            ),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: selected ? AppColors.greenDark : AppColors.ink,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

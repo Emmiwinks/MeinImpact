@@ -34,6 +34,14 @@ retention rules. This is the authoritative source for the backend data model.
 The public civic action pool. Populated by the ingestion pipeline.
 Read by all devices. Contains no user data.
 
+**Status (2026-09-27):** `engagement_state`, `state_reason`,
+`pipeline_source`, `previous_signature_count`, and `topic_id` belong to
+the retired DIP-sourced pipeline (see `data/ingestion-pipeline.md`
+"Status") and are dead columns for now — no code writes them anymore.
+They're left in place rather than migrated away column-by-column; the
+plan is to drop and recreate this table in one migration once the new
+pipeline's schema is known, rather than patch it twice.
+
 ```sql
 CREATE TABLE civic_actions (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),

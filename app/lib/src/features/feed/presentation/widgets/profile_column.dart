@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../domain/betroffenheitsprofil.dart';
 import '../../domain/user_profile.dart';
 import 'app_colors.dart';
+import 'betroffenheitsprofil_editor.dart';
 import 'components/surface_card.dart';
 import 'components/text_badges.dart';
 
@@ -9,27 +11,38 @@ class ProfileColumn extends StatelessWidget {
   const ProfileColumn({
     required this.profile,
     required this.onEdit,
+    required this.onBetroffenheitsprofilChanged,
     super.key,
   });
 
   final UserProfile? profile;
   final VoidCallback onEdit;
+  final ValueChanged<Betroffenheitsprofil> onBetroffenheitsprofilChanged;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _ProfileCard(profile: profile, onEdit: onEdit),
+        _ProfileCard(
+          profile: profile,
+          onEdit: onEdit,
+          onBetroffenheitsprofilChanged: onBetroffenheitsprofilChanged,
+        ),
       ],
     );
   }
 }
 
 class _ProfileCard extends StatelessWidget {
-  const _ProfileCard({required this.profile, required this.onEdit});
+  const _ProfileCard({
+    required this.profile,
+    required this.onEdit,
+    required this.onBetroffenheitsprofilChanged,
+  });
 
   final UserProfile? profile;
   final VoidCallback onEdit;
+  final ValueChanged<Betroffenheitsprofil> onBetroffenheitsprofilChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -60,19 +73,13 @@ class _ProfileCard extends StatelessWidget {
             const SizedBox(height: 20),
             SectionLabel(label: 'Deine Werte'),
             const SizedBox(height: 10),
-            _AxisBar(label: 'Wirtschaft', value: p.axisWirtschaft),
+            _AxisBar(label: 'Wirtschaft', value: p.axisEqualityMarkets),
             const SizedBox(height: 6),
-            _AxisBar(label: 'Diplomatie', value: p.axisDiplomatie),
+            _AxisBar(label: 'Diplomatie', value: p.axisNationGlobe),
             const SizedBox(height: 6),
-            _AxisBar(label: 'Freiheit', value: p.axisFreiheit),
+            _AxisBar(label: 'Freiheit', value: p.axisLibertyAuthority),
             const SizedBox(height: 6),
-            _AxisBar(label: 'Wandel', value: p.axisWandel),
-          ],
-          if (p != null && p.city != null) ...[
-            const SizedBox(height: 20),
-            SectionLabel(label: 'Über dich'),
-            const SizedBox(height: 10),
-            _BioCard(profile: p),
+            _AxisBar(label: 'Wandel', value: p.axisTraditionProgress),
           ],
           const SizedBox(height: 18),
           SizedBox(
@@ -87,52 +94,18 @@ class _ProfileCard extends StatelessWidget {
                 ),
               ),
               child: const Text(
-                'Profil bearbeiten',
+                'Fragebogen erneut ausfüllen',
                 style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BioCard extends StatelessWidget {
-  const _BioCard({required this.profile});
-
-  final UserProfile profile;
-
-  @override
-  Widget build(BuildContext context) {
-    final lines = [
-      if (profile.occupation != null && profile.city != null)
-        '${profile.occupation} · ${profile.city}',
-      if (profile.familyStatus != null) profile.familyStatus!,
-      if (profile.wohnsituation != null) profile.wohnsituation!,
-    ];
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (final line in lines)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Text(
-                line,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.ink,
-                      height: 1.25,
-                    ),
-              ),
+          if (p != null) ...[
+            const SizedBox(height: 24),
+            BetroffenheitsprofilEditor(
+              value: p.betroffenheitsprofil,
+              onChanged: onBetroffenheitsprofilChanged,
             ),
+          ],
         ],
       ),
     );

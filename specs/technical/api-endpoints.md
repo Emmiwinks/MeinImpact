@@ -83,6 +83,11 @@ check before token validation).
 
 ### Action Pool
 
+**Status (2026-09-27):** `engagement_state` and `pipeline_source` below
+belong to the retired DIP-sourced pipeline — see
+`data/ingestion-pipeline.md` "Status". Kept as a reference for the
+response shape until the new pipeline defines what replaces them.
+
 ```
 GET /actions/pool
 

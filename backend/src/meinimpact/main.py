@@ -4,8 +4,6 @@ import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -19,6 +17,7 @@ from meinimpact.api.routes import (
     letters,
     mdb,
     news,
+    opportunities,
     push,
 )
 from meinimpact.core.config import Settings, get_settings
@@ -27,7 +26,6 @@ from meinimpact.core.middleware import (
     SecurityHeadersMiddleware,
 )
 from meinimpact.infrastructure.mdb.wks_service import WksService
-from meinimpact.infrastructure.pipeline.orchestrator import run_ingestion_pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -47,22 +45,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             )
         app.state.wks_service = wks
 
-        scheduler = AsyncIOScheduler()
-        scheduler.add_job(
-            run_ingestion_pipeline,
-            CronTrigger(hour=3, minute=0, timezone="Europe/Berlin"),
-            args=[resolved_settings],
-            id="daily_ingestion",
-            replace_existing=True,
-        )
-        scheduler.start()
-        logger.info("Ingestion scheduler started (daily 03:00 CET)")
+        # Ingestion is trigger-based only (POST /v1/admin/ingestion/run) —
+        # no scheduled job, and none planned; see
+        # project_dip_to_tavily_pivot.md for why.
 
-        try:
-            yield
-        finally:
-            scheduler.shutdown(wait=False)
-            logger.info("Ingestion scheduler stopped")
+        yield
 
     app = FastAPI(
         title=resolved_settings.app_name,
@@ -86,6 +73,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health.router)
     app.include_router(auth.router)
     app.include_router(actions.router)
+    app.include_router(opportunities.router)
     app.include_router(letters.router)
     app.include_router(mdb.router)
     app.include_router(news.router)

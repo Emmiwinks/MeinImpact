@@ -11,6 +11,7 @@ services:
       - ./src:/app/src
       - ./tests:/app/tests
       - ./migrations:/app/migrations
+      - ./scripts:/app/scripts
     ports:
       - "8000:8000"
     depends_on:
@@ -25,7 +26,9 @@ services:
       start_period: 15s
 
   db:
-    image: postgres:17-alpine
+    # pgvector-enabled image (plain postgres:17-alpine has no `vector`
+    # extension) — needed for opportunities.embedding.
+    image: pgvector/pgvector:pg17
     environment:
       POSTGRES_DB: meinimpact
       POSTGRES_USER: meinimpact

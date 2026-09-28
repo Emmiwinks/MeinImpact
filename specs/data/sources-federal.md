@@ -38,115 +38,26 @@ State (Länder) and municipal sources are out of scope for MVP.
 
 ## Source Categories
 
-Sources are grouped by which pipeline they feed. See
-`data/ingestion-pipeline.md` for the full pipeline structure.
+**Status (2026-09-27): being redesigned.** The DIP-based parliamentary
+source and the DIP part of the petition source (below, formerly "Source
+1") have been retired — the topic pool no longer sources from the
+Bundestag DIP API. The new source model (Tavily search-based topic
+discovery) is not yet written up here; see `data/ingestion-pipeline.md`
+"Status" for what's agreed so far.
 
-**Parliamentary sources (Pipeline 1, top-down):**
-- Source 1: Bundestag DIP API — Vorgänge (primary action source; state B is
-  also determined directly from DIP fields — beratungsstand, Stellungnahme
-  count — not from an MdB check, see `data/ingestion-pipeline.md`)
-- Tavily quality-media search — state C determination
+The DIP API adapter code is preserved unused (`infrastructure/sources/
+dip_adapter.py`) in case a later stage of the project needs it again, but
+nothing in the pipeline calls it.
 
 MdB position sources (3a: Abgeordnetenwatch, 3b: DIP Plenarprotokolle, 3c:
-Bundestag.de MdB RSS — see Source 6 below) do **not** feed the ingestion
-pipeline. They serve tracking's MdB-statement refresh and the app's
-client-side state-B personalisation only.
+Bundestag.de MdB RSS — see Source 6 below) are **unaffected** by this —
+they never fed the ingestion pipeline, and continue to serve tracking's
+MdB-statement refresh and the app's client-side personalisation exactly
+as before.
 
-**Petition sources (Pipeline 2, bottom-up):**
-- Source 1: Bundestag DIP API — open Bundestag petitions
-- Source 4: Tavily / Google Custom Search — WeAct, openpetition
-- Tavily quality-media search — state C determination
-
----
-
-## Source 1: Bundestag DIP API
-
-**Purpose:** Gesetzentwürfe, Anträge, and open Petitionen from the
-Bundestag parliamentary record. Votes (Abstimmungen) are tracked via
-the `beratungsstand` field on Vorgänge, not a separate endpoint.
-
-**Base URL:** `https://search.dip.bundestag.de/api/v1`
-**OpenAPI spec:** v1.5 (downloaded 2026-06-12)
-**Authentication:** API key required for all requests (401 otherwise).
-Pass as query param `apikey=` or header `Authorization: ApiKey <key>`.
-Free registration at dip.bundestag.de. A public demo key is available.
-**Rate limit:** ~10 requests/second; batch fetching is safe at 1 req/sec
-
-**Key endpoints used:**
-
-```
-GET /vorgang
-  ?f.beratungsstand=2.+Beratung+und+Schlussabstimmung
-  &f.beratungsstand=3.+Beratung
-  &f.beratungsstand=2.+Beratung
-  &f.aktualisiert.start={7_days_ago}
-  &format=json
-  → Late-stage Vorgänge approaching a vote
-
-GET /vorgang
-  ?f.beratungsstand=Ausschussberatung
-  &f.aktualisiert.start={3_days_ago}
-  &format=json
-  → Vorgänge in active committee deliberation
-
-GET /vorgang
-  ?f.vorgangstyp=Petition
-  &f.beratungsstand=Noch+nicht+beraten
-  &format=json
-  → Open Bundestag petitions (always included)
-```
-
-Each fetched Vorgang is run through engagement state determination
-(state A/B/C/D) based entirely on DIP-derived signals: `beratungsstand`
-stage, scheduled vote dates, committee activity, and — for state B —
-committee-referral status and Stellungnahme count (no per-user MdB check
-involved; see `data/ingestion-pipeline.md` "State B triggers" for why).
-See `data/ingestion-pipeline.md` "State Determination: Parliamentary
-Actions" for the full logic. Items resolving to state D are discarded
-before classification.
-
-> **Note on beratungsstand values:** The controlled vocabulary is not
-> published by the Bundestag. The values above are verified against live
-> API data and should be re-checked if DIP API behaviour changes.
-
-**Endpoints that do NOT exist (corrected from earlier assumptions):**
-- `GET /abstimmung` — this endpoint is not in the API. Votes are
-  represented as Vorgänge with `beratungsstand` indicating the outcome.
-- `f.status` filter — does not exist. Use `f.beratungsstand` instead.
-
-**Pagination:**
-All list endpoints return a `cursor` field (always present, never null).
-Send the cursor back in the next request. Stop when the returned cursor
-equals the cursor you just sent (i.e., it stops changing).
-
-```
-GET /vorgang?...&cursor={prev_cursor}
-  → Stop when response.cursor == prev_cursor
-```
-
-**Fields extracted per item:**
-
-```python
-{
-  "external_id": str,           # DIP Vorgangs-ID (string matching ^\d+$)
-  "title": str,                 # Vorgang.titel  (NOT betreff — that field does not exist)
-  "type": str,                  # "antrag" | "petition" | "gesetzentwurf"
-  "status": str,                # Vorgang.beratungsstand
-  "deadline": date | None,      # Vorgang.datum (date of latest associated document)
-  "source_url": str,            # https://dip.bundestag.de/vorgang/{id}
-  "description": str,           # Vorgang.abstract if present, else titel
-  "initiated_by": str,          # Vorgang.initiative[] joined as comma-separated string
-}
-```
-
-**Known limitations:**
-- No `/abstimmung` endpoint: vote outcomes must be inferred from
-  `beratungsstand` (e.g. "Angenommen", "Abgelehnt") on the Vorgang.
-- Full bill text requires a secondary fetch via `/drucksache-text/{id}`.
-- API occasionally returns incomplete data for new items; retry after 24h.
-- `f.beratungsstand` values for "open petitions" may need tuning as the
-  controlled vocabulary is not published; "Noch nicht beraten" is the
-  current best guess.
+Civil-society petition sourcing (Tavily/Google CSE, formerly "Source 4")
+is also being redesigned as part of this pivot, not carried over as-is —
+see `data/ingestion-pipeline.md`.
 
 ---
 
@@ -214,66 +125,16 @@ store either the PLZ or the MdB result.
 
 ---
 
-## Source 4: Civil Society Petitions (Tavily / Google Custom Search)
+## Source 4: Civil Society Petitions — retired pending redesign
 
-**Purpose:** Civil society petitions from WeAct (weact.campact.de) and
-openPetition (openpetition.de) for active topics.
-
-**Why not an RSS/API:** Neither platform provides a documented public API or
-RSS feed. WeAct has no feed; openPetition has no public API. Data is accessed
-via web search instead.
-
-**Primary method — Tavily search:**
-```python
-async def find_civil_society_petition(topic: str, keywords: list[str]) -> RawSourceItem | None:
-    query = f"{' OR '.join(keywords)} Petition unterzeichnen 2026"
-    results = await tavily_client.search(
-        query=query,
-        include_domains=["weact.campact.de", "openpetition.de"],
-        search_depth="basic",
-        max_results=3,
-        days=30,
-    )
-    if not results.get("results"):
-        return None
-    best = results["results"][0]
-    return RawSourceItem(
-        external_id=slugify(best["url"]),
-        title=best["title"],
-        description=best["content"][:500],
-        source_url=best["url"],
-        type="petition",
-        status="offen",
-        deadline=None,
-        initiated_by="Zivilgesellschaft",
-        source="tavily_petition_search",
-    )
-```
-
-**Fallback method — Google Custom Search API:**
-If Tavily returns no results, fall back to Google Custom Search
-(`site:openpetition.de OR site:weact.campact.de`).
-Free tier: 100 queries/day (sufficient for MVP at ≤10 topics/day).
-
-**Requires:** `MEINIMPACT_TAVILY_API_KEY` or `MEINIMPACT_GOOGLE_CSE_KEY` +
-`MEINIMPACT_GOOGLE_CSE_ID`.
-
-**Fields extracted:**
-```python
-{
-  "external_id": str,      # Slugified URL
-  "title": str,            # From search result title
-  "description": str,      # First 500 chars of search result content
-  "source_url": str,       # Direct petition URL
-  "type": "petition",
-  "source": "tavily_petition_search",
-}
-```
-
-**Known limitations:**
-- No signature count available via search (prefilter signature rule skipped)
-- Result quality depends on Tavily indexing freshness (~24h lag)
-- May occasionally surface expired petitions; deadline check in prefilter catches these
+**Status (2026-09-27):** This source (Tavily/Google CSE search for WeAct
+and openPetition results) and the `CivilPetitionAdapter` /
+`GoogleCseAdapter` code that implemented it have been removed. Petition
+sourcing is being redesigned as part of the move to Tavily-search-based
+topic discovery, not carried over as-is — see `data/ingestion-pipeline.md`
+"Status". If the new design still wants civil-society petitions, the
+Tavily-search approach documented in git history for this section is a
+reasonable starting point.
 
 ---
 
@@ -386,18 +247,11 @@ for AI classification. See `data/ingestion-pipeline.md`.
 
 ## Merge Conflict Resolution
 
-Both pipelines can independently surface the same real-world action
-(e.g. a Bundestag petition also picked up by the petition pipeline's
-DIP query, or a petition also covered by WeAct). Resolution happens at
-the merge stage in `data/ingestion-pipeline.md`, not per-source:
-
-1. Deduplicate by exact `source_url` match first
-2. Then deduplicate by topic fingerprint: same DIP descriptor OR fuzzy
-   title match >85% similarity
-3. On conflict: keep the action with the higher `engagement_state`
-   (A > B > C)
-4. If states are equal: keep by type priority — Bundestag petition >
-   WeAct/openpetition petition > Brief > Anfrage
+**Status (2026-09-27):** The two-pipeline model (parliamentary + petition)
+and its DIP-descriptor/fuzzy-title dedup logic have been retired along
+with the rest of the old ingestion pipeline — see
+`data/ingestion-pipeline.md` "Status". How deduplication works against a
+Tavily-search-based source is part of the pending redesign.
 
 ---
 
@@ -407,7 +261,7 @@ Each adapter is independent. If one source fails:
 - Log error to Sentry
 - Skip that source for this run
 - Other sources proceed normally
-- Alert if DIP API fails (primary source): log as critical
+- Alert if the primary topic-discovery source fails: log as critical
 
 No action is deleted from the pool due to a source fetch failure.
 Actions expire naturally via their `deadline` field.
@@ -424,10 +278,7 @@ Actions expire naturally via their `deadline` field.
 
 ## Open Questions
 
-- [ ] WeAct signature count: confirm whether RSS includes counts or
-      whether HTML scraping is required. If scraping: add to adapter.
 - [ ] Bundestag.de MdB RSS naming: confirm the `{nachname}-{vorname}`
       URL pattern holds for all current MdBs, or build a lookup table.
-- [ ] DIP petition beratungsstand: confirm the exact `beratungsstand`
-      values used for open/active public petitions. Current assumption
-      is "Noch nicht beraten" — verify against live API data.
+- [ ] Tavily-search-based topic discovery: full source/query design
+      pending — see `data/ingestion-pipeline.md` "Status".

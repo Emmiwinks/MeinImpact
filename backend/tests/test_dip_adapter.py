@@ -27,6 +27,11 @@ from meinimpact.infrastructure.sources.dip_adapter import (
     _parse_vorgang,
 )
 
+# DipAdapter is preserved but not wired into any pipeline right now (see
+# specs/data/ingestion-pipeline.md "Status") — excluded from the default
+# test run. Run explicitly with `pytest -m dormant` to verify it still works.
+pytestmark = pytest.mark.dormant
+
 # ---------------------------------------------------------------------------
 # Sample API response fixtures — matching real DIP Vorgang schema
 # ---------------------------------------------------------------------------

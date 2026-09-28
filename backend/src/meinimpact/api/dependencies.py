@@ -25,6 +25,9 @@ from meinimpact.infrastructure.feedback.postgres_feedback_repository import (
     PostgresFeedbackRepository,
 )
 from meinimpact.infrastructure.news.dummy_news_repository import DummyNewsRepository
+from meinimpact.infrastructure.opportunities.postgres_opportunity_repository import (
+    PostgresOpportunityRepository,
+)
 from meinimpact.infrastructure.push.postgres_push_repository import (
     PostgresPushSubscriptionRepository,
 )
@@ -89,6 +92,13 @@ def get_action_repository(
 ) -> repositories.CivicActionRepository:
     """Returns the PostgreSQL-backed civic action repository."""
     return PostgresActionRepository(session)
+
+
+def get_opportunity_repository(
+    session: AsyncSession = Depends(get_db_session),
+) -> repositories.OpportunityRepository:
+    """Returns the PostgreSQL-backed opportunity repository."""
+    return PostgresOpportunityRepository(session)
 
 
 def get_action_stats_repository(

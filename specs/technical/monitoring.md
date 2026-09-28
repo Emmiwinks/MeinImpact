@@ -107,6 +107,11 @@ await SentryFlutter.init(
 
 ## Pipeline Health Check
 
+**Status (2026-09-27):** The queries below assume the retired DIP-sourced
+pipeline's schema (`pipeline_runs.state_a_count` etc., `actions.
+engagement_state`) — see `data/ingestion-pipeline.md` "Status". Kept as a
+reference for the query shape until the new pipeline's schema is known.
+
 A simple query to check pipeline status:
 
 ```sql

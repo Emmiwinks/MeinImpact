@@ -117,34 +117,43 @@ Each feed card shows:
 └─────────────────────────────────────────────┘
 ```
 
-**Urgency label:** The `state_reason` text (server-generated, German,
-set by the ingestion pipeline per `engagement_state`) is displayed
-directly on the card as the urgency label. It replaces the previous
-red/yellow/green urgency dot — a state-specific sentence is more honest
-and more actionable than a traffic-light colour. Examples:
+**Urgency label — status (2026-09-27): pending redesign.** The text below
+described `state_reason`/`engagement_state` (A/B/C), which came from the
+now-retired DIP-derived ingestion pipeline — see
+`data/ingestion-pipeline.md` "Status". It's kept here as a reference for
+the display pattern (a specific sentence beats a traffic-light dot) until
+the new pipeline defines what replaces it; the concrete states (A/B/C) and
+the MdB personalisation logic below should not be assumed to survive
+as-is.
+
+The `state_reason` text (server-generated, German, set by the ingestion
+pipeline per `engagement_state`) was displayed directly on the card as the
+urgency label, replacing a red/yellow/green urgency dot — a state-specific
+sentence is more honest and more actionable than a traffic-light colour.
+Examples:
 - State A: "Abstimmung in 8 Tagen"
 - State B: "An den Ausschuss überwiesen" (the concrete observed fact,
-  not a generic claim — see `data/ingestion-pipeline.md` "State B
-  triggers" for the other three variants)
+  not a generic claim)
 - State C: "Wird gerade breit diskutiert"
 
-A small icon accompanies the state tier for quick scanning (state A:
+A small icon accompanied the state tier for quick scanning (state A:
 ⏳, state B: 💬, state C: 📣), but the text itself — not the icon colour —
-carries the meaning, per the accessibility rule that colour is never the
+carried the meaning, per the accessibility rule that colour is never the
 only indicator.
 
-**Client-side state-B personalisation:** `state_reason` for a state-B
-action is action-level and identical for every user (see
-`data/ingestion-pipeline.md` "State B triggers" — it's a DIP signal, not
-a per-MdB check). Before rendering a state-B card, the app checks the
-cached Abgeordnetenwatch answer history for the user's own MdB
-(`profile.mdb` in Hive, refreshed every 30 days per
-`data/sources-federal.md` Source 3). If that MdB has already answered a
-question on this topic, the displayed label is overridden locally to
-*"[MdB Name] hat sich bereits geäußert — schreib trotzdem"*. This is a
-display-only override: the underlying `engagement_state` and its
-contribution to sort order are unchanged, and no other user's view of
-the same action is affected.
+**Client-side state-B personalisation (retired along with state B):**
+`state_reason` for a state-B action was action-level and identical for
+every user — it came from a DIP signal, not a per-MdB check. Before
+rendering a state-B card, the app checked the cached Abgeordnetenwatch
+answer history for the user's own MdB (`profile.mdb` in Hive, refreshed
+every 30 days per `data/sources-federal.md` Source 3). If that MdB had
+already answered a question on this topic, the displayed label was
+overridden locally to *"[MdB Name] hat sich bereits geäußert — schreib
+trotzdem"*. This was a display-only override: the underlying
+`engagement_state` and its contribution to sort order were unchanged, and
+no other user's view of the same action was affected. This mechanism has
+no state-B to attach to anymore; revisit once the new pipeline design
+lands.
 
 **Relevanz dots:** 5-dot display derived from werte match:
 - match ≥ 0.8: 5 dots
