@@ -45,9 +45,7 @@ class _FakeAsyncClient:
         self, url: str, headers: dict[str, str], json: dict[str, object]
     ) -> _FakeResponse:
         _FakeAsyncClient.last_call = {"url": url, "headers": headers, "json": json}
-        return _FakeResponse(
-            {"data": [{"embedding": [0.1, 0.2, 0.3], "index": 0}]}
-        )
+        return _FakeResponse({"data": [{"embedding": [0.1, 0.2, 0.3], "index": 0}]})
 
 
 @pytest.mark.asyncio

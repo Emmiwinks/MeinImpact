@@ -48,7 +48,10 @@ async def test_fetch_drops_results_outside_allowlist_even_if_returned() -> None:
 async def test_fetch_applies_path_allowlist() -> None:
     client = _fake_client(
         [
-            {"title": "Real petition", "url": "https://openpetition.de/petition/online/x"},
+            {
+                "title": "Real petition",
+                "url": "https://openpetition.de/petition/online/x",
+            },
             {"title": "Blog post", "url": "https://openpetition.de/blog/some-post"},
         ]
     )

@@ -261,7 +261,10 @@ async def main() -> None:
 
     for label, cfg in REGIONS.items():
         result = await run_query(
-            client, label, cfg["query"], cfg["allowlist"]  # type: ignore[arg-type]
+            client,
+            label,
+            cfg["query"],
+            cfg["allowlist"],  # type: ignore[arg-type]
         )
         run_output["queries"].append(result)  # type: ignore[attr-defined]
 

@@ -421,5 +421,3 @@ class ApiSpendRecord(Base):
         default=lambda: datetime.now(UTC),
         nullable=False,
     )
-
-

@@ -62,7 +62,9 @@ def _fake_client_returning(content_json: dict[str, object] | None, status: int =
         ) -> None:
             del exc_type, exc, traceback
 
-        async def post(self, url: str, headers: dict[str, str], json: dict[str, object]):
+        async def post(
+            self, url: str, headers: dict[str, str], json: dict[str, object]
+        ):
             del url, headers, json
             body = _chat_response(content_json or {})
             return _FakeResponse(body, status=status)
@@ -77,7 +79,9 @@ async def test_extract_returns_none_when_not_actionable(
     monkeypatch.setattr(
         httpx, "AsyncClient", _fake_client_returning({"is_actionable": False})
     )
-    extractor = OpportunityExtractor(api_key="k", base_url="https://x.test/v1", model="m")
+    extractor = OpportunityExtractor(
+        api_key="k", base_url="https://x.test/v1", model="m"
+    )
 
     result = await extractor.extract(_item())
 
@@ -85,9 +89,13 @@ async def test_extract_returns_none_when_not_actionable(
 
 
 @pytest.mark.asyncio
-async def test_extract_returns_none_on_http_error(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_extract_returns_none_on_http_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(httpx, "AsyncClient", _fake_client_returning(None, status=500))
-    extractor = OpportunityExtractor(api_key="k", base_url="https://x.test/v1", model="m")
+    extractor = OpportunityExtractor(
+        api_key="k", base_url="https://x.test/v1", model="m"
+    )
 
     result = await extractor.extract(_item())
 
@@ -95,7 +103,9 @@ async def test_extract_returns_none_on_http_error(monkeypatch: pytest.MonkeyPatc
 
 
 @pytest.mark.asyncio
-async def test_extract_parses_full_valid_response(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_extract_parses_full_valid_response(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     payload = {
         "is_actionable": True,
         "decision_object": "Mietendeckel einführen",
@@ -113,7 +123,9 @@ async def test_extract_parses_full_valid_response(monkeypatch: pytest.MonkeyPatc
         "action_types": ["petition"],
     }
     monkeypatch.setattr(httpx, "AsyncClient", _fake_client_returning(payload))
-    extractor = OpportunityExtractor(api_key="k", base_url="https://x.test/v1", model="m")
+    extractor = OpportunityExtractor(
+        api_key="k", base_url="https://x.test/v1", model="m"
+    )
 
     result = await extractor.extract(_item())
 

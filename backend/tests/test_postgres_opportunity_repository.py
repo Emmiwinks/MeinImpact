@@ -107,7 +107,9 @@ async def test_upsert_refreshes_on_exact_url_match() -> None:
     session.commit.assert_awaited_once()
 
 
-async def test_upsert_refreshes_on_embedding_similarity_match_when_url_differs() -> None:
+async def test_upsert_refreshes_on_embedding_similarity_match_when_url_differs() -> (
+    None
+):
     existing = OpportunityRecord(
         source_url="https://weact.campact.de/petitions/other-slug",
         support_count=None,
@@ -132,7 +134,9 @@ async def test_upsert_refreshes_on_embedding_similarity_match_when_url_differs()
     session.add.assert_not_called()
 
 
-async def test_refresh_does_not_null_out_support_count_when_new_run_found_none() -> None:
+async def test_refresh_does_not_null_out_support_count_when_new_run_found_none() -> (
+    None
+):
     existing = OpportunityRecord(
         source_url="https://openpetition.de/petition/online/x",
         support_count=100,

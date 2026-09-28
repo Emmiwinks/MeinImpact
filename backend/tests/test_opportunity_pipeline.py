@@ -80,7 +80,9 @@ async def test_can_be_scoped_to_specific_regions() -> None:
     source.fetch.assert_awaited_once_with("bund")
 
 
-async def test_non_actionable_items_are_skipped_without_embedding_or_persisting() -> None:
+async def test_non_actionable_items_are_skipped_without_embedding_or_persisting() -> (
+    None
+):
     item = _item("https://openpetition.de/petition/online/x")
     source, extractor, embedder, repository = _mocks({"bund": [item]})
     extractor.extract = AsyncMock(return_value=None)

@@ -47,7 +47,9 @@ MISTRAL_API_KEY = os.environ["MEINIMPACT_MISTRAL_API_KEY"]
 # Round 1 (mistral-small-latest) showed inconsistent personal_impact_snippets
 # formatting — testing whether a stronger model follows the multi-constraint
 # prompt more reliably before concluding it needs prompt-only fixes.
-MISTRAL_MODEL = os.environ.get("MEINIMPACT_DRYRUN_MISTRAL_MODEL", "mistral-medium-latest")
+MISTRAL_MODEL = os.environ.get(
+    "MEINIMPACT_DRYRUN_MISTRAL_MODEL", "mistral-medium-latest"
+)
 MISTRAL_BASE_URL = os.environ.get(
     "MEINIMPACT_MISTRAL_BASE_URL", "https://api.mistral.ai/v1"
 )
@@ -211,9 +213,7 @@ def _normalize_extraction(extracted: dict) -> dict:
     tags = extracted.get("affected_tags") or []
     expected_axes = {axis for tag in tags for axis in TAG_AXES.get(tag, [])}
     werte = extracted.get("werte_relevanz") or {}
-    extracted["werte_relevanz"] = {
-        k: v for k, v in werte.items() if k in expected_axes
-    }
+    extracted["werte_relevanz"] = {k: v for k, v in werte.items() if k in expected_axes}
 
     snippets = extracted.get("personal_impact_snippets") or {}
     extracted["personal_impact_snippets"] = {
@@ -312,7 +312,9 @@ async def main() -> None:
         print(f"  affected_tags:     {e.get('affected_tags')}")
         print(f"  werte_relevanz:    {e.get('werte_relevanz')}")
         print(f"  deadline:          {e.get('deadline')}")
-        print(f"  support_count:     {e.get('support_count')} (as of {e.get('support_count_as_of')})")
+        print(
+            f"  support_count:     {e.get('support_count')} (as of {e.get('support_count_as_of')})"
+        )
         print(f"  content_published_at: {e.get('content_published_at')}")
         print(f"  pro_argumente:     {e.get('pro_argumente')}")
         print(f"  contra_argumente:  {e.get('contra_argumente')}")
