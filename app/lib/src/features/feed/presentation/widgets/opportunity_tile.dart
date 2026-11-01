@@ -49,102 +49,91 @@ class OpportunityTile extends StatelessWidget {
             ),
           ],
         ),
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                width: 4,
-                decoration: BoxDecoration(
-                  color: source.color,
-                  borderRadius: const BorderRadius.horizontal(
-                    left: Radius.circular(18),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 15, 15, 15),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+        // The source-colored stripe is a left border clipped to the card's
+        // radius, so the card sizes to its content without IntrinsicHeight
+        // (which mis-measured fractional line heights by a pixel).
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              border: Border(left: BorderSide(color: source.color, width: 4)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 15, 15, 15),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Row(
-                        children: [
-                          Icon(source.icon, size: 15, color: source.color),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              '${opportunity.sourceOrg} · '
-                              '${opportunity.kind.label}',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelMedium
-                                  ?.copyWith(
+                      Icon(source.icon, size: 15, color: source.color),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          '${opportunity.sourceOrg} · '
+                          '${opportunity.kind.label}',
+                          style:
+                              Theme.of(context).textTheme.labelMedium?.copyWith(
                                     color: source.color,
                                     fontWeight: FontWeight.w800,
                                   ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (daysLeft != null) ...[
-                            const SizedBox(width: 6),
-                            _DeadlineBadge(daysLeft: daysLeft),
-                          ],
-                        ],
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      if (isTopMatch) ...[
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.star_rounded,
-                              size: 14,
-                              color: AppColors.greenDark,
-                            ),
-                            const SizedBox(width: 3),
-                            Text(
-                              'PASST ZU DIR',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelSmall
-                                  ?.copyWith(
+                      if (daysLeft != null) ...[
+                        const SizedBox(width: 6),
+                        _DeadlineBadge(daysLeft: daysLeft),
+                      ],
+                    ],
+                  ),
+                  if (isTopMatch) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.star_rounded,
+                          size: 14,
+                          color: AppColors.greenDark,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          'PASST ZU DIR',
+                          style:
+                              Theme.of(context).textTheme.labelSmall?.copyWith(
                                     color: AppColors.greenDark,
                                     fontWeight: FontWeight.w800,
                                     letterSpacing: 0.6,
                                   ),
-                            ),
-                          ],
                         ),
                       ],
-                      const SizedBox(height: 8),
-                      Text(
-                        opportunity.title,
-                        style:
-                            Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                  height: 1.12,
-                                ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        hook,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: ranked.matchedSnippet != null
-                                  ? AppColors.greenDark
-                                  : AppColors.mutedText,
-                              fontWeight: ranked.matchedSnippet != null
-                                  ? FontWeight.w600
-                                  : FontWeight.normal,
-                              height: 1.25,
-                            ),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                    ),
+                  ],
+                  const SizedBox(height: 8),
+                  Text(
+                    opportunity.title,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          height: 1.12,
+                        ),
                   ),
-                ),
+                  const SizedBox(height: 8),
+                  Text(
+                    hook,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: ranked.matchedSnippet != null
+                              ? AppColors.greenDark
+                              : AppColors.mutedText,
+                          fontWeight: ranked.matchedSnippet != null
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                          height: 1.25,
+                        ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
