@@ -9,10 +9,10 @@ import 'components/surface_card.dart';
 import 'components/text_badges.dart';
 import 'pros_cons_expansion.dart';
 
-/// Opened from a feed tile. One opportunity, one view — no more topic/
-/// option drill-down (de-duplication already happened server-side, so
-/// there's nothing left to pick between). Everything needed is already in
-/// the pool response; no follow-up network request on open.
+/// Opened from a feed tile. One opportunity, one view; everything needed is
+/// already in the pool response, so opening makes no network request. The
+/// call to action deep-links to the registry, where the participation
+/// itself happens.
 class OpportunityDetailDialog extends StatelessWidget {
   const OpportunityDetailDialog({
     required this.l10n,
@@ -32,8 +32,8 @@ class OpportunityDetailDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final opportunity = ranked.opportunity;
-    final cta = ActionCta.forOpportunity(opportunity);
-    final daysLeft = opportunity.deadline?.difference(DateTime.now()).inDays;
+    final daysLeft = opportunity.daysLeft(DateTime.now());
+    final place = opportunity.organizer ?? opportunity.locality;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -51,10 +51,18 @@ class OpportunityDetailDialog extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    MetaChip(label: opportunity.sourceOrg),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        MetaChip(label: opportunity.sourceOrg),
+                        MetaChip(label: opportunity.kind.label),
+                        if (place != null) MetaChip(label: place),
+                      ],
+                    ),
                     const SizedBox(height: 10),
                     Text(
-                      opportunity.plainLanguageTitle,
+                      opportunity.title,
                       style:
                           Theme.of(context).textTheme.headlineSmall?.copyWith(
                                 fontWeight: FontWeight.w800,
@@ -64,20 +72,20 @@ class OpportunityDetailDialog extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      opportunity.plainLanguageSummary,
+                      opportunity.summary,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: AppColors.mutedText,
                             height: 1.3,
                           ),
                     ),
                     if (ranked.matchedSnippet != null ||
-                        (daysLeft != null && daysLeft >= 0) ||
-                        opportunity.supportCount != null) ...[
+                        daysLeft != null ||
+                        opportunity.supportCount != null ||
+                        opportunity.isAnnounced) ...[
                       const SizedBox(height: 12),
                       _PersonalRelevanceSection(
                         matchedSnippet: ranked.matchedSnippet,
-                        daysLeft: daysLeft,
-                        supportCount: opportunity.supportCount,
+                        facts: _facts(opportunity, daysLeft),
                       ),
                     ],
                     if (opportunity.affectedTags.isNotEmpty) ...[
@@ -102,7 +110,10 @@ class OpportunityDetailDialog extends StatelessWidget {
                       ),
                     ],
                     const SizedBox(height: 16),
-                    _PrimaryButton(label: cta.label, onPressed: _openSource),
+                    _PrimaryButton(
+                      label: opportunity.kind.callToAction,
+                      onPressed: _openSource,
+                    ),
                   ],
                 ),
               ),
@@ -119,20 +130,33 @@ class OpportunityDetailDialog extends StatelessWidget {
   }
 }
 
-/// Real computed/observed facts only: the matched personal-impact
-/// snippet, a genuine deadline countdown, and an opportunistic support
-/// count — never a ranking claim (see rebuild plan section 6: support
-/// count is informational only, never used to sort).
+/// Registry facts as short chips: start date of announced procedures, days
+/// left, and support (with its goal when the registry has one). Support is
+/// informational only, never a ranking claim.
+List<String> _facts(Opportunity opportunity, int? daysLeft) {
+  final opensOn = opportunity.opensOn;
+  final support = opportunity.supportCount;
+  final goal = opportunity.supportGoal;
+  return [
+    if (opportunity.isAnnounced && opensOn != null)
+      'Ab ${opensOn.day}.${opensOn.month}.${opensOn.year}',
+    if (daysLeft != null) daysLeft == 0 ? 'Endet heute' : 'Noch $daysLeft Tage',
+    if (support != null)
+      goal != null
+          ? '$support von $goal Unterstützer:innen'
+          : '$support Unterstützer:innen',
+  ];
+}
+
+/// The matched personal-impact snippet plus the registry fact chips.
 class _PersonalRelevanceSection extends StatelessWidget {
   const _PersonalRelevanceSection({
     required this.matchedSnippet,
-    required this.daysLeft,
-    required this.supportCount,
+    required this.facts,
   });
 
   final String? matchedSnippet;
-  final int? daysLeft;
-  final int? supportCount;
+  final List<String> facts;
 
   @override
   Widget build(BuildContext context) {
@@ -154,20 +178,12 @@ class _PersonalRelevanceSection extends StatelessWidget {
                   letterSpacing: 0.6,
                 ),
           ),
-          if ((daysLeft != null && daysLeft! >= 0) || supportCount != null) ...[
+          if (facts.isNotEmpty) ...[
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: [
-                if (daysLeft != null && daysLeft! >= 0)
-                  _KpiChip(
-                    label:
-                        daysLeft == 0 ? 'Heute Frist' : 'Noch $daysLeft Tage',
-                  ),
-                if (supportCount != null)
-                  _KpiChip(label: '$supportCount Unterstützer:innen'),
-              ],
+              children: [for (final fact in facts) _KpiChip(label: fact)],
             ),
           ],
           if (matchedSnippet != null) ...[

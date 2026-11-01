@@ -1,30 +1,26 @@
 """Admin operational routes.
 
-Exposes a manual trigger for the ingestion pipeline. Ingestion is
-trigger-based only (no scheduled job) — see
-specs/data/ingestion-pipeline.md "Status".
+Ingestion is trigger-based only (no scheduled job). A run reads several
+registries politely and enriches new listings with an LLM, which takes
+minutes, so the route starts it in the background and returns at once.
+Only one run at a time.
 """
 
+import asyncio
+import logging
 import secrets
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, status
 
 from meinimpact.api import schemas
-from meinimpact.api.dependencies import get_db_session
 from meinimpact.core.config import Settings, get_settings
-from meinimpact.infrastructure.ai.embeddings import MistralEmbeddingClient
-from meinimpact.infrastructure.ai.opportunity_extractor import OpportunityExtractor
-from meinimpact.infrastructure.opportunities.postgres_opportunity_repository import (
-    PostgresOpportunityRepository,
-)
-from meinimpact.infrastructure.pipeline.opportunity_pipeline import run_ingestion
-from meinimpact.infrastructure.sources.tavily_client import TavilyClient
-from meinimpact.infrastructure.sources.tavily_opportunity_adapter import (
-    TavilyOpportunityAdapter,
-)
+from meinimpact.services.ingestion import run_configured_ingestion
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1/admin", tags=["admin"])
+
+_ingestion_lock = asyncio.Lock()
 
 
 def require_admin(
@@ -45,39 +41,36 @@ def require_admin(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
 
-@router.post("/ingestion/run", dependencies=[Depends(require_admin)])
+@router.post(
+    "/ingestion/run",
+    dependencies=[Depends(require_admin)],
+    status_code=status.HTTP_202_ACCEPTED,
+)
 async def trigger_ingestion_run(
+    background_tasks: BackgroundTasks,
     settings: Settings = Depends(get_settings),
-    session: AsyncSession = Depends(get_db_session),
 ) -> schemas.IngestionRunResponse:
-    """Runs the opportunity ingestion pipeline now, for every region."""
-    if not settings.tavily_api_key or not settings.mistral_api_key:
+    """Starts an ingestion run in the background; the summary is logged."""
+    if not settings.mistral_api_key:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Ingestion requires MEINIMPACT_TAVILY_API_KEY and "
-            "MEINIMPACT_MISTRAL_API_KEY to be configured",
+            detail="Ingestion requires MEINIMPACT_MISTRAL_API_KEY to be configured",
         )
+    if _ingestion_lock.locked():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An ingestion run is already in progress",
+        )
+    await _ingestion_lock.acquire()
+    background_tasks.add_task(_run_and_release, settings)
+    return schemas.IngestionRunResponse(status="started")
 
-    source = TavilyOpportunityAdapter(TavilyClient(settings.tavily_api_key))
-    extractor = OpportunityExtractor(
-        api_key=settings.mistral_api_key,
-        base_url=settings.mistral_base_url,
-        model=settings.mistral_extraction_model,
-    )
-    embedder = MistralEmbeddingClient(
-        api_key=settings.mistral_api_key,
-        base_url=settings.mistral_base_url,
-        model=settings.mistral_embedding_model,
-    )
-    repository = PostgresOpportunityRepository(session)
 
-    summary = await run_ingestion(
-        source=source, extractor=extractor, embedder=embedder, repository=repository
-    )
-    return schemas.IngestionRunResponse(
-        fetched=summary.fetched,
-        actionable=summary.actionable,
-        inserted=summary.inserted,
-        refreshed=summary.refreshed,
-        errors=summary.errors,
-    )
+async def _run_and_release(settings: Settings) -> None:
+    try:
+        summary = await run_configured_ingestion(settings)
+        logger.info("Admin-triggered ingestion finished: %s", summary)
+    except Exception:
+        logger.exception("Admin-triggered ingestion failed")
+    finally:
+        _ingestion_lock.release()

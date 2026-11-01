@@ -57,30 +57,35 @@ class CivicAction:
 
 @dataclass(frozen=True)
 class Opportunity:
-    """A civic opportunity from the Tavily-sourced pipeline — see
-    `infrastructure/models.py`'s `OpportunityRecord` for the schema
-    rationale. Unlike the retired `CivicAction`, there is no topic/option
-    grouping: one row is already one deduplicated, standalone thing.
+    """An open way to participate, as shown in the app.
+
+    Registry facts (kind, dates, support, source) come straight from the
+    publishing registry; title, summary, tags, werte axes, arguments and
+    personal-impact snippets come from enrichment. Only relevant, active,
+    not-yet-closed opportunities are ever served.
     """
 
     id: uuid.UUID
     source_org: str
-    decision_object: str
-    plain_language_title: str
-    plain_language_summary: str
-    affected_tags: tuple[str, ...]
-    region: str
-    werte_relevanz: dict[str, float]
-    deadline: date | None
-    support_count: int | None
-    support_count_as_of: datetime | None
-    content_published_at: date | None
-    retrieved_at: datetime
     source_url: str
-    action_types: tuple[str, ...]
+    kind: str
+    status: str
+    region: str
+    locality: str | None
+    organizer: str | None
+    title: str
+    summary: str
+    affected_tags: tuple[str, ...]
+    werte_relevanz: dict[str, float]
     pro_argumente: tuple[str, ...]
     contra_argumente: tuple[str, ...]
     personal_impact_snippets: dict[str, str]
+    opens_on: date | None
+    closes_on: date | None
+    support_count: int | None
+    support_goal: int | None
+    support_count_as_of: datetime | None
+    first_seen_at: datetime
 
 
 @dataclass(frozen=True)

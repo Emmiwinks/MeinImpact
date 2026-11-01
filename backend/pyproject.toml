@@ -11,6 +11,7 @@ requires-python = ">=3.14"
 dependencies = [
     "alembic>=1.14.0",
     "asyncpg>=0.30.0",
+    "beautifulsoup4>=4.13.0",
     "fastapi>=0.115.0",
     "httpx>=0.28.0",
     "pgvector>=0.3.6",
@@ -37,7 +38,7 @@ where = ["src"]
 [tool.pytest.ini_options]
 addopts = "--cov=meinimpact --cov-report=term-missing --cov-fail-under=80 -m 'not live and not dormant'"
 asyncio_mode = "auto"
-pythonpath = ["src"]
+pythonpath = ["src", "tests"]
 testpaths = ["tests"]
 markers = [
     "live: hits the real external API, excluded from the default test run",
@@ -73,10 +74,6 @@ ignore = ["B008"]
 [tool.ruff.lint.per-file-ignores]
 "scripts/*" = ["E501"]
 "src/meinimpact/infrastructure/push/postgres_push_repository.py" = ["E501"]
-"src/meinimpact/infrastructure/ai/opportunity_extractor.py" = ["E501"]
-"tests/test_opportunity_extractor.py" = ["E501"]
-"tests/test_opportunity_pipeline.py" = ["E501"]
-"tests/test_postgres_opportunity_repository.py" = ["E501"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

@@ -1,0 +1,216 @@
+"""Turns a registry listing into what the app shows, and decides relevance.
+
+One LLM call per listing answers two questions:
+1. Is this a real way for citizens to influence a public decision, at a
+   level the app covers? Registries also list property viewings, staff
+   trainings, award ceremonies and highly technical EU acts (all seen
+   live); those are filtered here.
+2. If so: neutral plain-language framing, topic tags, werte axes, pro/contra
+   and personal-impact snippets.
+
+Registry facts (dates, counts, URL) never come from the model; they stay
+with the listing. The model's structured output is normalized in code:
+tags outside the taxonomy, axes not belonging to the tags and snippet keys
+outside the Betroffenheitsprofil are dropped, never trusted.
+"""
+
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+from typing import Any
+
+from meinimpact.infrastructure.ai.mistral_json import JsonCompleter
+from meinimpact.infrastructure.ai.taxonomy import (
+    AXIS_LANGUAGE,
+    TAG_AXES,
+    TAG_BETROFFENHEIT_KEYS,
+)
+from meinimpact.infrastructure.listings.model import Listing, Region
+
+_MAX_DETAIL_CHARS = 4000
+_MAX_ARGUMENTS = 3
+
+_SCOPES: Mapping[str, Region | None] = {
+    "eu": Region.EU,
+    "bund": Region.BUND,
+    "sachsen": Region.SACHSEN,
+    "dresden": Region.DRESDEN,
+    "andere_kommune": None,
+    "andere_region": None,
+}
+
+
+class EnrichmentError(ValueError):
+    """The model's answer is unusable (missing fields, wrong types)."""
+
+
+@dataclass(frozen=True, slots=True)
+class Enrichment:
+    is_relevant: bool
+    reason: str
+    region: Region | None = None
+    title: str = ""
+    summary: str = ""
+    affected_tags: tuple[str, ...] = ()
+    werte_relevanz: Mapping[str, float] = field(default_factory=dict)
+    pro_argumente: tuple[str, ...] = ()
+    contra_argumente: tuple[str, ...] = ()
+    personal_impact_snippets: Mapping[str, str] = field(default_factory=dict)
+
+
+def build_prompt(listing: Listing, detail: str | None) -> str:
+    tag_list = "\n".join(
+        f"- {tag}" + (f" (Achse: {', '.join(axes)})" if axes else "")
+        for tag, axes in TAG_AXES.items()
+    )
+    axis_list = "\n".join(f"- {axis}: {text}" for axis, text in AXIS_LANGUAGE.items())
+    snippet_list = "\n".join(
+        f"- {tag}: {', '.join(keys)}" for tag, keys in TAG_BETROFFENHEIT_KEYS.items()
+    )
+    facts = "\n".join(
+        f"{label}: {value}"
+        for label, value in (
+            ("Quelle", listing.source_id),
+            ("Art laut Quelle", ", ".join(listing.source_labels) or listing.kind),
+            ("Veranstalter/Behörde", listing.organizer),
+            ("Ort laut Quelle", listing.locality),
+            ("Titel", listing.title),
+            ("Kurztext", listing.summary),
+        )
+        if value
+    )
+    detail_text = (detail or "")[:_MAX_DETAIL_CHARS] or "(kein weiterer Text)"
+
+    return f"""Du arbeitest für eine neutrale deutsche Civic-Tech-App. Sie zeigt
+Menschen in Dresden, Sachsen und Deutschland konkrete Möglichkeiten, auf
+öffentliche Entscheidungen Einfluss zu nehmen. Bewerte den Eintrag unten
+und antworte NUR mit JSON in genau dieser Struktur:
+
+{{
+  "is_participation": <bool>,
+  "reason": "<ein kurzer Satz, warum (nicht)>",
+  "scope": "eu" | "bund" | "sachsen" | "dresden" | "andere_kommune" | "andere_region",
+  "title": "<neutrale Frage, keine Kampagnensprache>",
+  "summary": "<2-3 neutrale, allgemeinverständliche Sätze>",
+  "affected_tags": ["<tag>", ...],
+  "werte_relevanz": {{"<achse>": <-1.0 bis 1.0>}},
+  "pro_argumente": ["<arg>", "<arg>"],
+  "contra_argumente": ["<arg>", "<arg>"],
+  "personal_impact_snippets": {{"<feld:wert>": "<ein ganzer Satz>"}}
+}}
+
+is_participation = true NUR wenn eine Privatperson hier selbst aktiv auf
+eine öffentliche oder politische Entscheidung einwirken kann, z.B.:
+Petition unterschreiben, Stellungnahme/Einwendung zu einem Plan abgeben
+(z.B. Bebauungsplan-Auslegung), an einer Konsultation oder Bürgerumfrage zu
+öffentlicher Planung/Politik teilnehmen, an einem öffentlichen Bürgerdialog
+zu einem Vorhaben teilnehmen. Und das Thema muss für eine Privatperson
+verständlich und nachvollziehbar relevant sein.
+is_participation = false z.B. bei: Immobilien-Besichtigungen oder
+-Verkäufen, Stellen- und Referentenausschreibungen, internen Schulungen oder
+Auswertungen der Verwaltung, Preisverleihungen und Wettbewerben,
+Informationsveranstaltungen nur für Fachgruppen, Förderprogramm-Infos,
+Bekanntmachungen ohne Beteiligungsmöglichkeit, Fachumfragen für bestimmte
+Branchen, hochtechnischen Rechtsakten ohne erkennbaren Bezug zum Alltag
+(z.B. Zulassungen einzelner Stoffe, Zollkontingente).
+Wenn false: alle Felder außer is_participation, reason und scope leer lassen.
+
+scope = wo das Thema für Menschen zählt: "dresden" (Stadt Dresden),
+"sachsen" (Freistaat Sachsen oder sachsenweit), "bund" (bundesweit
+relevant, auch wenn es anderswo angestoßen wurde), "eu", "andere_kommune"
+(nur eine andere sächsische Stadt/Gemeinde/einen Landkreis), "andere_region"
+(nur ein anderes Bundesland oder eine Stadt außerhalb Sachsens).
+
+title und summary: neutral, ohne die Position der Initiatoren zu übernehmen.
+
+affected_tags: NUR aus dieser Liste:
+{tag_list}
+
+werte_relevanz: NUR die Achsen der erkannten Tags, jede in ihrer eigenen
+bipolaren Sprache (NIEMALS ein generisches "progressiv vs. konservativ"):
+{axis_list}
+
+pro_argumente / contra_argumente: je 1-{_MAX_ARGUMENTS} sachliche Argumente.
+
+personal_impact_snippets: NUR Schlüssel aus dieser Zuordnung, und nur für
+Gruppen, die vom erkannten Tag wirklich betroffen sind. Wert IMMER ein
+ganzer Satz. {{}} wenn nichts passt:
+{snippet_list}
+
+Eintrag:
+{facts}
+
+Weiterer Text von der Quelle:
+{detail_text}
+"""
+
+
+def parse_enrichment(raw: Mapping[str, Any]) -> Enrichment:
+    """Validates and normalizes the model's JSON into an `Enrichment`."""
+    if not isinstance(raw.get("is_participation"), bool):
+        raise EnrichmentError("is_participation missing or not a bool")
+    reason = _text(raw.get("reason"))
+    scope = _text(raw.get("scope"))
+    region = _SCOPES.get(scope)
+
+    if not raw["is_participation"]:
+        return Enrichment(is_relevant=False, reason=reason, region=region)
+    if region is None:
+        return Enrichment(
+            is_relevant=False, reason=f"Außerhalb der Abdeckung ({scope or '?'})"
+        )
+
+    title = _text(raw.get("title"))
+    summary = _text(raw.get("summary"))
+    if not title or not summary:
+        raise EnrichmentError("relevant listing without title or summary")
+
+    tags = tuple(t for t in _strings(raw.get("affected_tags")) if t in TAG_AXES)
+    axes = {axis for tag in tags for axis in TAG_AXES[tag]}
+    snippet_keys = {key for tag in tags for key in TAG_BETROFFENHEIT_KEYS.get(tag, [])}
+    return Enrichment(
+        is_relevant=True,
+        reason=reason,
+        region=region,
+        title=title,
+        summary=summary,
+        affected_tags=tags,
+        werte_relevanz={
+            axis: max(-1.0, min(1.0, float(value)))
+            for axis, value in _mapping(raw.get("werte_relevanz")).items()
+            if axis in axes and isinstance(value, int | float)
+        },
+        pro_argumente=_strings(raw.get("pro_argumente"))[:_MAX_ARGUMENTS],
+        contra_argumente=_strings(raw.get("contra_argumente"))[:_MAX_ARGUMENTS],
+        personal_impact_snippets={
+            key: value.strip()
+            for key, value in _mapping(raw.get("personal_impact_snippets")).items()
+            if key in snippet_keys and isinstance(value, str) and value.strip()
+        },
+    )
+
+
+def _text(value: object) -> str:
+    return value.strip() if isinstance(value, str) else ""
+
+
+def _strings(value: object) -> tuple[str, ...]:
+    if not isinstance(value, list):
+        return ()
+    return tuple(
+        item.strip() for item in value if isinstance(item, str) and item.strip()
+    )
+
+
+def _mapping(value: object) -> Mapping[str, object]:
+    return value if isinstance(value, dict) else {}
+
+
+class ListingEnricher:
+    def __init__(self, completer: JsonCompleter) -> None:
+        self._completer = completer
+
+    async def enrich(self, listing: Listing, detail: str | None) -> Enrichment:
+        """Raises on transport or format errors; the caller decides whether
+        to retry (the listing stays pending until enriched)."""
+        raw = await self._completer.complete_json(build_prompt(listing, detail))
+        return parse_enrichment(raw)

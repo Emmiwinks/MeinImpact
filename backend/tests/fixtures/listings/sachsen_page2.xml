@@ -1,0 +1,126 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<partial-response><changes><update id="tabForm:beteiligungList:dataList"><![CDATA[
+<div class="nbp-teaser nbp-bg-expand position-relative">
+            <div class="row">
+                
+                <div class="col-12 order-1">
+                    <div class="row">
+                        <div class="col">
+                            <div class="nbp-teaser-header">
+        <div class="nbp-teaser-taglist">
+            
+            <span class="nbp-teaser-taglist--beteiligungstyp ui-button button-ct-secondary"><span class="nbp-fonticon icomoon-calendar2" aria-hidden="true"></span>Veranstaltung</span>
+                <span class="nbp-teaser-taglist--mandant ui-button button-ct-secondary"><span class="nbp-fonticon icomoon-library" aria-hidden="true"></span>Landeshauptstadt Dresden</span>
+                <span class="nbp-teaser-taglist--thema ui-button button-ct-secondary"><span class="nbp-fonticon icomoon-folder-open" aria-hidden="true"></span>Stadtentwicklung und Ländlicher Raum</span>
+        </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-8 col-sm-9 col-md-10 order-3">
+                    <div class="row">
+                        
+                        <div class="col-md-8 mb-3 mb-md-0">
+                            
+                            <h3 class="nbp-teaser-title mt-0">
+                <a href="/portal/dresden/beteiligung/themen/1069489" class="d-block nbp-cc--on-hover stretched-link" tabindex="0" target="_self">Besichtigungstermin für das Objekt Waldteichstr. 8 am 2. November 2026 (Exposee-Nr. 49622)</a>
+                            </h3>
+                            
+                            <div class="nbp-teaser-text nbp-hyphens"><p>Besichtigung des Objektes Waldteichstr. 8 am 2. November 2026</p>
+
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+        
+
+        <ul class="nbp-beteiligung-status">
+            
+            <li class="nbp-statistik--status"><span class="nbp-fonticon icomoon-circle2 nbp-bt-status-icon nbp-bt-status-ankuendigung" aria-hidden="true"></span><span class="visually-hidden">Status</span>
+        <span>
+            Ankündigung
+        </span>
+            </li>
+            
+            <li class="nbp-statistik--laufzeit"><span class="nbp-fonticon nbp-cu icomoon-calendar-day" title="Termin" aria-hidden="true"></span><span class="visually-hidden">Termin</span>
+            <span><strong>02.11.2026 12:00 Uhr</strong>
+            </span>
+            </li>
+        </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-4 col-sm-3 col-md-2 order-2">
+            <figure class="nbp-teaser-image nbp-image-wrapper--border nbp-image--ar-default">
+                <img src="/portal/download/resources/beteiligung/1069489/teaserbild/5636166_0/45622+-+Waldteichstr.+8+OB1.jpg" alt="" loading="lazy" />
+            </figure>
+                </div>
+            </div>
+        </div>
+
+        
+        <div class="nbp-teaser nbp-bg-expand position-relative">
+            <div class="row">
+                
+                <div class="col-12 order-1">
+                    <div class="row">
+                        <div class="col">
+                            <div class="nbp-teaser-header">
+        <div class="nbp-teaser-taglist">
+            
+            <span class="nbp-teaser-taglist--beteiligungstyp ui-button button-ct-secondary"><span class="nbp-fonticon icomoon-calendar2" aria-hidden="true"></span>Veranstaltung</span>
+                <span class="nbp-teaser-taglist--mandant ui-button button-ct-secondary"><span class="nbp-fonticon icomoon-library" aria-hidden="true"></span>Landeshauptstadt Dresden</span>
+                <span class="nbp-teaser-taglist--thema ui-button button-ct-secondary"><span class="nbp-fonticon icomoon-folder-open" aria-hidden="true"></span>Stadtentwicklung und Ländlicher Raum</span>
+        </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-8 col-sm-9 col-md-10 order-3">
+                    <div class="row">
+                        
+                        <div class="col-md-8 mb-3 mb-md-0">
+                            
+                            <h3 class="nbp-teaser-title mt-0">
+                <a href="/portal/dresden/beteiligung/themen/1069516" class="d-block nbp-cc--on-hover stretched-link" tabindex="0" target="_self">Besichtigungstermin für das Objekt Jakob-Weinheimer-Str. 16 am 5. November 2026 (Exposee-Nr. 46627)</a>
+                            </h3>
+                            
+                            <div class="nbp-teaser-text nbp-hyphens"><p>Besichtigung des Objektes Jakob-Weinheimer-Str. 16 am 5. November 2026</p>
+
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+        
+
+        <ul class="nbp-beteiligung-status">
+            
+            <li class="nbp-statistik--status"><span class="nbp-fonticon icomoon-circle2 nbp-bt-status-icon nbp-bt-status-aktiv" aria-hidden="true"></span><span class="visually-hidden">Status</span>
+        <span>
+            Aktiv
+        </span>
+            </li>
+            
+            <li class="nbp-statistik--laufzeit"><span class="nbp-fonticon nbp-cu icomoon-calendar-day" title="Termin" aria-hidden="true"></span><span class="visually-hidden">Termin</span>
+            <span><strong>05.11.2026 10:00 Uhr</strong>
+            </span>
+            </li>
+        </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-4 col-sm-3 col-md-2 order-2">
+            <figure class="nbp-teaser-image nbp-image-wrapper--border nbp-image--ar-default">
+                <img src="/portal/download/resources/beteiligung/1069516/teaserbild/5636136_0/IMG_8478.jpg" alt="" loading="lazy" />
+            </figure>
+                </div>
+            </div>
+        </div>
+
+        
+        
+]]></update><update id="j_id1:jakarta.faces.ViewState:0"><![CDATA[stub]]></update></changes></partial-response>

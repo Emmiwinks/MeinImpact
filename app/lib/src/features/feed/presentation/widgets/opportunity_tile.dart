@@ -3,12 +3,10 @@ import 'package:flutter/material.dart';
 import '../../data/opportunity_relevance_ranker.dart';
 import 'app_colors.dart';
 
-/// One opportunity on the feed. Real, sourced facts only — no invented
-/// score/effort/state chips (the old engagementState pill had no
-/// replacement after the DIP-to-Tavily pivot, see
-/// project_dip_to_tavily_pivot.md; nothing here pretends otherwise). The
-/// only "extra" signals shown (deadline countdown, top-match emphasis) are
-/// derived straight from real fields already on `Opportunity`/`ranked`.
+/// One opportunity on the feed. Real, sourced facts only, no invented
+/// scores: the registry, the kind of participation, a deadline countdown
+/// from the registry's own end date, and top-match emphasis derived from
+/// the on-device ranking.
 class OpportunityTile extends StatelessWidget {
   const OpportunityTile({
     required this.ranked,
@@ -29,10 +27,9 @@ class OpportunityTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final opportunity = ranked.opportunity;
-    final hook = ranked.matchedSnippet ?? opportunity.plainLanguageSummary;
+    final hook = ranked.matchedSnippet ?? opportunity.summary;
     final source = _sourceStyle(opportunity.sourceOrg);
-    final daysLeft = opportunity.deadline?.difference(DateTime.now()).inDays;
-    final showDeadline = daysLeft != null && daysLeft >= 0;
+    final daysLeft = opportunity.daysLeft(DateTime.now());
 
     return GestureDetector(
       onTap: onTap,
@@ -77,7 +74,8 @@ class OpportunityTile extends StatelessWidget {
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              opportunity.sourceOrg,
+                              '${opportunity.sourceOrg} · '
+                              '${opportunity.kind.label}',
                               style: Theme.of(context)
                                   .textTheme
                                   .labelMedium
@@ -88,7 +86,7 @@ class OpportunityTile extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          if (showDeadline) ...[
+                          if (daysLeft != null) ...[
                             const SizedBox(width: 6),
                             _DeadlineBadge(daysLeft: daysLeft),
                           ],
@@ -120,7 +118,7 @@ class OpportunityTile extends StatelessWidget {
                       ],
                       const SizedBox(height: 8),
                       Text(
-                        opportunity.plainLanguageTitle,
+                        opportunity.title,
                         style:
                             Theme.of(context).textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.w800,
@@ -184,16 +182,15 @@ class _SourceStyle {
   final IconData icon;
 }
 
-// Reuses the app's existing 3-color accent palette (green/blue/amber)
-// instead of introducing new brand colors — keyed to the backend's known
-// source orgs (tavily_opportunity_adapter.py's _SOURCE_ORG_NAMES), with a
-// neutral fallback for anything new.
+// Reuses the app's 3-color accent palette (green/blue/amber), keyed to the
+// backend's registry display names (`catalog.SOURCE_NAMES`), with a neutral
+// fallback for registries added later.
 _SourceStyle _sourceStyle(String sourceOrg) => switch (sourceOrg) {
       'openPetition' => const _SourceStyle(
           AppColors.green,
           Icons.how_to_vote_outlined,
         ),
-      'WeAct/Campact' => const _SourceStyle(
+      'WeAct' => const _SourceStyle(
           AppColors.blueText,
           Icons.campaign_outlined,
         ),
@@ -201,15 +198,9 @@ _SourceStyle _sourceStyle(String sourceOrg) => switch (sourceOrg) {
           AppColors.amberText,
           Icons.forum_outlined,
         ),
-      'Sächsischer Landtag' => const _SourceStyle(
-          AppColors.amberText,
-          Icons.account_balance_outlined,
-        ),
-      'Landeshauptstadt Dresden' ||
-      'Ratsinformationssystem Dresden' =>
-        const _SourceStyle(
+      'EU-Kommission: Ihre Meinung zählt' => const _SourceStyle(
           AppColors.blueText,
-          Icons.location_city_outlined,
+          Icons.account_balance_outlined,
         ),
       _ => const _SourceStyle(AppColors.mutedText, Icons.public_outlined),
     };

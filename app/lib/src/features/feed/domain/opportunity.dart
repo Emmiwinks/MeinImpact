@@ -1,36 +1,58 @@
-/// A civic opportunity from the Tavily-sourced backend pipeline — replaces
-/// `CivicAction`/`Topic`. Unlike the old model, there is no topic/option
-/// grouping: de-duplication already happened server-side (embedding
-/// similarity against `decisionObject`), so one `Opportunity` is already
-/// one deduplicated, standalone thing. The pool response carries
-/// everything needed for both the feed card and its detail popup — no
-/// follow-up request required to open an opportunity.
+/// What a person actually does with an opportunity. Mirrors the backend's
+/// `ActionKind`; unknown wire values map to [other] so a new backend kind
+/// never breaks an older app.
+enum OpportunityKind {
+  petition('petition', 'Petition', 'Petition unterschreiben'),
+  consultation('consultation', 'Konsultation', 'Stellung nehmen'),
+  publicDisplay('public_display', 'Planauslegung', 'Plan ansehen & mitreden'),
+  survey('survey', 'Umfrage', 'An Umfrage teilnehmen'),
+  event('event', 'Veranstaltung', 'Zur Veranstaltung'),
+  notice('notice', 'Bekanntmachung', 'Zur Quelle'),
+  other('other', 'Beteiligung', 'Zur Quelle');
+
+  const OpportunityKind(this.wire, this.label, this.callToAction);
+
+  final String wire;
+  final String label;
+  final String callToAction;
+
+  static OpportunityKind fromWire(String? value) => values.firstWhere(
+        (kind) => kind.wire == value,
+        orElse: () => OpportunityKind.other,
+      );
+}
+
+/// One open way to participate, read from the registry that publishes it
+/// (openPetition, Beteiligungsportal Sachsen, EU "Ihre Meinung zählt",
+/// WeAct). Registry facts (kind, dates, support, source) are exact; title,
+/// summary, tags, werte axes, arguments and snippets come from server-side
+/// enrichment. The pool response carries everything the feed card and the
+/// detail view need.
 class Opportunity {
   const Opportunity({
     required this.id,
     required this.sourceOrg,
-    required this.decisionObject,
-    required this.plainLanguageTitle,
-    required this.plainLanguageSummary,
-    required this.affectedTags,
-    required this.region,
-    required this.werteRelevanz,
     required this.sourceUrl,
-    required this.actionTypes,
+    required this.kind,
+    required this.isAnnounced,
+    required this.region,
+    required this.title,
+    required this.summary,
+    required this.affectedTags,
+    required this.werteRelevanz,
     required this.proArgumente,
     required this.contraArgumente,
     required this.personalImpactSnippets,
-    required this.retrievedAt,
-    this.deadline,
+    required this.firstSeenAt,
+    this.locality,
+    this.organizer,
+    this.opensOn,
+    this.closesOn,
     this.supportCount,
-    this.supportCountAsOf,
-    this.contentPublishedAt,
+    this.supportGoal,
   });
 
   factory Opportunity.fromJson(Map<String, Object?> json) {
-    final deadlineStr = json['deadline'] as String?;
-    final supportAsOfStr = json['support_count_as_of'] as String?;
-    final publishedStr = json['content_published_at'] as String?;
     final werteRaw = json['werte_relevanz'] as Map<String, Object?>? ?? {};
     final snippetsRaw =
         json['personal_impact_snippets'] as Map<String, Object?>? ?? {};
@@ -38,85 +60,70 @@ class Opportunity {
     return Opportunity(
       id: json['id'] as String,
       sourceOrg: json['source_org'] as String,
-      decisionObject: json['decision_object'] as String,
-      plainLanguageTitle: json['plain_language_title'] as String,
-      plainLanguageSummary: json['plain_language_summary'] as String,
-      affectedTags:
-          (json['affected_tags'] as List<Object?>?)?.cast<String>() ?? const [],
-      region: json['region'] as String,
-      werteRelevanz: werteRaw.map((k, v) => MapEntry(k, (v as num).toDouble())),
-      deadline: deadlineStr != null ? DateTime.parse(deadlineStr) : null,
-      supportCount: json['support_count'] as int?,
-      supportCountAsOf:
-          supportAsOfStr != null ? DateTime.parse(supportAsOfStr) : null,
-      contentPublishedAt:
-          publishedStr != null ? DateTime.parse(publishedStr) : null,
-      retrievedAt: DateTime.parse(json['retrieved_at'] as String),
       sourceUrl: json['source_url'] as String,
-      actionTypes:
-          (json['action_types'] as List<Object?>?)?.cast<String>() ?? const [],
-      proArgumente:
-          (json['pro_argumente'] as List<Object?>?)?.cast<String>() ?? const [],
-      contraArgumente:
-          (json['contra_argumente'] as List<Object?>?)?.cast<String>() ??
-              const [],
+      kind: OpportunityKind.fromWire(json['kind'] as String?),
+      isAnnounced: json['status'] == 'announced',
+      region: json['region'] as String,
+      locality: json['locality'] as String?,
+      organizer: json['organizer'] as String?,
+      title: json['title'] as String,
+      summary: json['summary'] as String,
+      affectedTags: _strings(json['affected_tags']),
+      werteRelevanz: werteRaw.map((k, v) => MapEntry(k, (v as num).toDouble())),
+      proArgumente: _strings(json['pro_argumente']),
+      contraArgumente: _strings(json['contra_argumente']),
       personalImpactSnippets:
           snippetsRaw.map((k, v) => MapEntry(k, v as String)),
+      opensOn: _date(json['opens_on']),
+      closesOn: _date(json['closes_on']),
+      supportCount: json['support_count'] as int?,
+      supportGoal: json['support_goal'] as int?,
+      firstSeenAt: DateTime.parse(json['first_seen_at'] as String),
     );
   }
 
   final String id;
-  // Always populated, always shown — see the rebuild plan section 1.
+  // Display name of the publishing registry; always shown.
   final String sourceOrg;
-  // Internal/dedup-oriented canonical phrasing — not shown in the UI (see
-  // plainLanguageTitle/Summary for the user-facing text).
-  final String decisionObject;
-  final String plainLanguageTitle;
-  final String plainLanguageSummary;
-  final List<String> affectedTags;
-  final String region;
-  final Map<String, double> werteRelevanz;
-  final DateTime? deadline;
-  final int? supportCount;
-  final DateTime? supportCountAsOf;
-  final DateTime? contentPublishedAt;
-  // First-seen timestamp — kept for reference, not used for feed sorting
-  // (the pool endpoint already scopes to "the current run" only, see
-  // OpportunityRepository; no recency sort needed on top of that).
-  final DateTime retrievedAt;
   final String sourceUrl;
-  // What kind of participation this specific source offers (usually one
-  // value) — "petition" | "consultation" | "anfrage" | "brief".
-  final List<String> actionTypes;
+  final OpportunityKind kind;
+  // Listed, but participation opens later (see [opensOn]).
+  final bool isAnnounced;
+  // "eu" | "bund" | "sachsen" | "dresden"
+  final String region;
+  // The registry's own place label, e.g. "Leipzig" or "Landeshauptstadt
+  // Dresden".
+  final String? locality;
+  final String? organizer;
+  final String title;
+  final String summary;
+  final List<String> affectedTags;
+  final Map<String, double> werteRelevanz;
   final List<String> proArgumente;
   final List<String> contraArgumente;
   // "field:value" -> sentence, keyed to match
-  // Betroffenheitsprofil.matchingKeys() — see that class's docstring.
+  // Betroffenheitsprofil.matchingKeys().
   final Map<String, String> personalImpactSnippets;
-}
+  final DateTime? opensOn;
+  final DateTime? closesOn;
+  // Informational only, never used for ranking.
+  final int? supportCount;
+  final int? supportGoal;
+  final DateTime firstSeenAt;
 
-/// The primary action button's label and semantics, driven by
-/// `actionTypes.first` — confirmed design: one CTA per opportunity, not
-/// one per action type (rare to have more than one, and there's only one
-/// `sourceUrl` to link to regardless).
-class ActionCta {
-  const ActionCta({required this.label, required this.actionType});
-
-  factory ActionCta.forOpportunity(Opportunity opportunity) {
-    final type = opportunity.actionTypes.isNotEmpty
-        ? opportunity.actionTypes.first
-        : 'petition';
-    return ActionCta(label: _labelFor(type), actionType: type);
+  /// Whole days until participation closes (0 = today), or null when there
+  /// is no end date or it has passed.
+  int? daysLeft(DateTime now) {
+    final closes = closesOn;
+    if (closes == null) return null;
+    final today = DateTime(now.year, now.month, now.day);
+    final days = closes.difference(today).inDays;
+    return days >= 0 ? days : null;
   }
 
-  final String label;
-  final String actionType;
+  static List<String> _strings(Object? value) =>
+      (value as List<Object?>?)?.cast<String>() ?? const [];
 
-  static String _labelFor(String actionType) => switch (actionType) {
-        'petition' => 'Petition unterschreiben',
-        'consultation' => 'Jetzt mitmachen',
-        'anfrage' => 'Zur Anfrage',
-        'brief' => 'Zur Quelle',
-        _ => 'Zur Quelle',
-      };
+  static DateTime? _date(Object? value) =>
+      value is String ? DateTime.parse(value) : null;
 }

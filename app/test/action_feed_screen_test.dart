@@ -15,7 +15,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Petition zum Klimaschutz'), findsOneWidget);
-    expect(find.text('openPetition'), findsOneWidget);
+    // Source registry and kind of participation, straight from the registry.
+    expect(find.text('WeAct · Petition'), findsOneWidget);
 
     // No invented score or time-estimate text anywhere.
     expect(find.textContaining('Bewertung'), findsNothing);
@@ -86,19 +87,19 @@ void main() {
 
 Opportunity _petitionOpportunity() => Opportunity(
       id: 'petition-1',
-      sourceOrg: 'openPetition',
-      decisionObject: 'Klimaschutzgesetz verschärfen',
-      plainLanguageTitle: 'Petition zum Klimaschutz',
-      plainLanguageSummary: 'Eine Petition fordert mehr Klimaschutz.',
-      affectedTags: const ['Umwelt/Natur'],
-      region: 'bund',
-      werteRelevanz: const {},
+      sourceOrg: 'WeAct',
       sourceUrl: 'https://weact.campact.de/petitions/1',
-      actionTypes: const ['petition'],
+      kind: OpportunityKind.petition,
+      isAnnounced: false,
+      region: 'bund',
+      title: 'Petition zum Klimaschutz',
+      summary: 'Eine Petition fordert mehr Klimaschutz.',
+      affectedTags: const ['Umwelt/Natur'],
+      werteRelevanz: const {},
       proArgumente: const [],
       contraArgumente: const [],
       personalImpactSnippets: const {},
-      retrievedAt: DateTime(2026, 9, 27),
+      firstSeenAt: DateTime(2026, 11, 1),
     );
 
 class _PoolRepository implements OpportunityRepository {

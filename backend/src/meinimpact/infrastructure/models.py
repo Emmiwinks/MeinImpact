@@ -5,7 +5,6 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import uuid4
 
-from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     ARRAY,
     Boolean,
@@ -123,21 +122,21 @@ class CivicActionRecord(Base):
 
 
 class OpportunityRecord(Base):
-    """Persistent civic opportunity record — replaces `CivicActionRecord`.
+    """A participation opportunity read from a registry, plus its enrichment.
 
-    Populated by the Tavily-search-based ingestion pipeline (see
-    specs/data/ingestion-pipeline.md "Status" and the project memory
-    `project_dip_to_tavily_pivot.md` / `project_tavily_retrieval_calibration.md`
-    for how this schema was arrived at). One retrieval mechanism, one
-    table — no institutional/campaign split; `source_org` alone identifies
-    where an opportunity came from.
+    Registry facts (`infrastructure/listings`) are refreshed on every run.
+    Enrichment (relevance decision and plain-language framing) is computed
+    once per registry text version, tracked by `enrichment_input_hash`, so
+    unchanged listings never cost another LLM call. A row stays `active`
+    while its registry still lists it.
     """
 
     __tablename__ = "opportunities"
 
     __table_args__ = (
-        # support_count_as_of is required exactly when support_count is
-        # set, never independently.
+        UniqueConstraint(
+            "source_id", "external_id", name="uq_opportunities_registry_entry"
+        ),
         CheckConstraint(
             "(support_count IS NULL) = (support_count_as_of IS NULL)",
             name="chk_support_count_as_of_pairing",
@@ -145,40 +144,57 @@ class OpportunityRecord(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid4,
+        UUID(as_uuid=True), primary_key=True, default=uuid4
     )
-    source_org: Mapped[str] = mapped_column(Text, nullable=False)
-    decision_object: Mapped[str] = mapped_column(Text, nullable=False)
-    plain_language_title: Mapped[str] = mapped_column(Text, nullable=False)
-    plain_language_summary: Mapped[str] = mapped_column(Text, nullable=False)
-    affected_tags: Mapped[list[str]] = mapped_column(
+
+    # Registry facts
+    source_id: Mapped[str] = mapped_column(String(length=60), nullable=False)
+    external_id: Mapped[str] = mapped_column(Text, nullable=False)
+    source_url: Mapped[str] = mapped_column(Text, nullable=False)
+    kind: Mapped[str] = mapped_column(String(length=40), nullable=False)
+    status: Mapped[str] = mapped_column(String(length=20), nullable=False)
+    registry_region: Mapped[str | None] = mapped_column(
+        String(length=20), nullable=True
+    )
+    locality: Mapped[str | None] = mapped_column(Text, nullable=True)
+    organizer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    registry_title: Mapped[str] = mapped_column(Text, nullable=False)
+    registry_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_labels: Mapped[list[str]] = mapped_column(
         ARRAY(Text()), nullable=False, server_default="{}"
     )
-    region: Mapped[str] = mapped_column(String(length=40), nullable=False)
-    werte_relevanz: Mapped[dict[str, float]] = mapped_column(
-        JSONB, nullable=False, server_default="{}"
-    )
-    deadline: Mapped[date | None] = mapped_column(Date, nullable=True)
+    opens_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    closes_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     support_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    support_goal: Mapped[int | None] = mapped_column(Integer, nullable=True)
     support_count_as_of: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    content_published_at: Mapped[date | None] = mapped_column(Date, nullable=True)
-    # Set once at insert, NEVER updated when a later run refreshes this row
-    # (e.g. support_count) — this is the feed sort key ("recently added"),
-    # and re-bumping it on refresh would falsely imply the underlying
-    # opportunity is new again. See specs discussion in
-    # project_tavily_retrieval_calibration.md.
-    retrieved_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
-        nullable=False,
+    first_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
     )
-    source_url: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
-    action_types: Mapped[list[str]] = mapped_column(
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+
+    # Enrichment (all null/empty until enriched)
+    enrichment_input_hash: Mapped[str | None] = mapped_column(
+        String(length=64), nullable=True
+    )
+    enriched_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    is_relevant: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    relevance_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    region: Mapped[str | None] = mapped_column(String(length=20), nullable=True)
+    title: Mapped[str | None] = mapped_column(Text, nullable=True)
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    affected_tags: Mapped[list[str]] = mapped_column(
         ARRAY(Text()), nullable=False, server_default="{}"
+    )
+    werte_relevanz: Mapped[dict[str, float]] = mapped_column(
+        JSONB, nullable=False, server_default="{}"
     )
     pro_argumente: Mapped[list[str]] = mapped_column(
         ARRAY(Text()), nullable=False, server_default="{}"
@@ -189,23 +205,32 @@ class OpportunityRecord(Base):
     personal_impact_snippets: Mapped[dict[str, str]] = mapped_column(
         JSONB, nullable=False, server_default="{}"
     )
-    # mistral-embed, cosine distance, HNSW index (see migration) — used only
-    # for de-duplication against `decision_object`, not for clustering.
-    embedding: Mapped[list[float] | None] = mapped_column(Vector(1024), nullable=True)
-    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
+
+
+class SupportSnapshotRecord(Base):
+    """One observed support count, so momentum can be computed across runs
+    for registries that don't expose it themselves (openPetition)."""
+
+    __tablename__ = "opportunity_support_snapshots"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "opportunity_id", "observed_at", name="uq_support_snapshot_observation"
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    opportunity_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("opportunities.id", ondelete="CASCADE"),
         nullable=False,
     )
-    # Identity of the ingestion run that last touched this row (insert or
-    # refresh) — the pool endpoint serves only rows matching the most
-    # recent run's id ("one run, one feed", see this class's module-level
-    # discussion in project memory `project_dip_to_tavily_pivot.md`).
-    # `updated_at` doubles as the tiebreak to find which run_id is latest.
-    last_seen_run_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), nullable=False
+    observed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
     )
+    support_count: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
 class NewsItemRecord(Base):

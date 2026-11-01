@@ -1,8 +1,8 @@
-"""Civic opportunity API routes — the new Tavily-sourced pool, replacing
-`civic_actions`/`CivicAction`. See `domain/entities.py`'s `Opportunity`
-docstring: no topic/option grouping, one row is already one deduplicated,
-standalone thing, so there's no separate detail endpoint — the pool
-response already carries everything the feed card and its popup need.
+"""Civic opportunity routes: the feed's single data source.
+
+One opportunity is one registry entry (a petition, a consultation, a
+Bauleitplan display...), so the pool response already carries everything
+the feed card and its detail view need. No separate detail endpoint.
 """
 
 from datetime import UTC, datetime
@@ -26,13 +26,12 @@ async def get_opportunity_pool(
         get_opportunity_repository
     ),
 ) -> schemas.OpportunityPoolResponse:
-    """Returns the current ingestion run's opportunities — see
-    `OpportunityRepository.list_current_run` for why this is never an
-    accumulating pool."""
-    opportunities = await opportunity_repository.list_current_run()
+    """Returns every relevant opportunity that is still open today."""
+    now = datetime.now(UTC)
+    opportunities = await opportunity_repository.list_open(now.date())
     return schemas.OpportunityPoolResponse(
         opportunities=[
             schemas.OpportunityResponse.from_domain(o) for o in opportunities
         ],
-        generated_at=datetime.now(UTC),
+        generated_at=now,
     )

@@ -14,7 +14,7 @@ async def db_session() -> AsyncGenerator[AsyncSession]:
     """Real DB session, rolled back after each test to leave no side effects."""
     settings = Settings()
     db = Database(settings.database_url)
-    async with db._session_factory() as session:
+    async with db.session_factory() as session:
         yield session
         await session.rollback()
     await db.close()

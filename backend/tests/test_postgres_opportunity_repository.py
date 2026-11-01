@@ -1,222 +1,187 @@
-"""Tests for the PostgreSQL-backed opportunity repository."""
+"""PostgresOpportunityRepository against the real database.
 
-from datetime import UTC, date, datetime
-from unittest.mock import AsyncMock, MagicMock
-from uuid import uuid4
+Uses the rolled-back `db_session` fixture; the repository never commits by
+itself, so nothing leaks between tests.
+"""
 
-from meinimpact.infrastructure.ai.opportunity_extractor import ExtractedOpportunity
-from meinimpact.infrastructure.models import OpportunityRecord
+import uuid
+from dataclasses import replace
+from datetime import UTC, date, datetime, timedelta
+
+import pytest
+from listing_fakes import NOW, make_listing
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from meinimpact.infrastructure.ai.listing_enricher import Enrichment
+from meinimpact.infrastructure.listings.model import Region
+from meinimpact.infrastructure.models import OpportunityRecord, SupportSnapshotRecord
 from meinimpact.infrastructure.opportunities.postgres_opportunity_repository import (
     PostgresOpportunityRepository,
-    UpsertOutcome,
 )
 
-
-def _extracted(**overrides: object) -> ExtractedOpportunity:
-    base: ExtractedOpportunity = {
-        "decision_object": "Mietendeckel einführen",
-        "plain_language_title": "Soll ein Mietendeckel eingeführt werden?",
-        "plain_language_summary": "Zusammenfassung.",
-        "affected_tags": ["Wohnen/Miete"],
-        "werte_relevanz": {"equality_markets": -0.8},
-        "deadline": None,
-        "support_count": None,
-        "support_count_as_of": None,
-        "content_published_at": None,
-        "pro_argumente": ["Argument 1"],
-        "contra_argumente": ["Gegenargument 1"],
-        "personal_impact_snippets": {},
-        "action_types": ["petition"],
-    }
-    base.update(overrides)  # type: ignore[typeddict-item]
-    return base
+LATER = NOW + timedelta(days=2)
+TODAY = date(2026, 11, 1)
 
 
-def _no_match_result() -> MagicMock:
-    result = MagicMock()
-    result.scalar_one_or_none.return_value = None
-    result.scalars.return_value.first.return_value = None
-    return result
-
-
-def _match_result(record: OpportunityRecord) -> MagicMock:
-    result = MagicMock()
-    result.scalar_one_or_none.return_value = record
-    result.scalars.return_value.first.return_value = record
-    return result
-
-
-def _scalars_all_result(records: list[OpportunityRecord]) -> MagicMock:
-    result = MagicMock()
-    result.scalars.return_value.all.return_value = records
-    return result
-
-
-async def test_upsert_inserts_when_no_existing_match() -> None:
-    session = AsyncMock()
-    session.execute = AsyncMock(side_effect=[_no_match_result(), _no_match_result()])
-    session.add = MagicMock()  # session.add() is synchronous in real SQLAlchemy
-    repo = PostgresOpportunityRepository(session)
-    run_id = uuid4()
-
-    outcome = await repo.upsert(
-        extracted=_extracted(),
-        embedding=[0.1] * 1024,
-        source_org="openPetition",
-        source_url="https://openpetition.de/petition/online/x",
-        region="bund",
-        run_id=run_id,
+def _relevant(region: Region = Region.DRESDEN) -> Enrichment:
+    return Enrichment(
+        is_relevant=True,
+        reason="Petition",
+        region=region,
+        title="Soll die Kita bleiben?",
+        summary="Eine Kita soll schließen.",
+        affected_tags=("Familie/Kinder",),
+        pro_argumente=("Plätze",),
+        personal_impact_snippets={"hat_kinder:true": "Betrifft dich."},
     )
 
-    assert outcome is UpsertOutcome.INSERTED
-    session.add.assert_called_once()
-    added = session.add.call_args.args[0]
-    assert isinstance(added, OpportunityRecord)
-    assert added.decision_object == "Mietendeckel einführen"
-    assert added.source_url == "https://openpetition.de/petition/online/x"
-    assert added.last_seen_run_id == run_id
-    session.commit.assert_awaited_once()
 
-
-async def test_upsert_refreshes_on_exact_url_match() -> None:
-    existing = OpportunityRecord(
-        source_url="https://openpetition.de/petition/online/x",
-        support_count=100,
-        deadline=None,
+async def _record(session: AsyncSession, external_id: str) -> OpportunityRecord:
+    result = await session.execute(
+        select(OpportunityRecord).where(OpportunityRecord.external_id == external_id)
     )
-    session = AsyncMock()
-    session.execute = AsyncMock(side_effect=[_match_result(existing)])
-    repo = PostgresOpportunityRepository(session)
-    run_id = uuid4()
+    return result.scalar_one()
 
-    outcome = await repo.upsert(
-        extracted=_extracted(
-            support_count=200, support_count_as_of=datetime(2026, 9, 27, tzinfo=UTC)
-        ),
-        embedding=[0.1] * 1024,
-        source_org="openPetition",
-        source_url="https://openpetition.de/petition/online/x",
-        region="bund",
-        run_id=run_id,
+
+async def test_sync_inserts_new_listings_as_pending(db_session: AsyncSession) -> None:
+    repository = PostgresOpportunityRepository(db_session)
+
+    result = await repository.sync(
+        [make_listing("a", support_count=10), make_listing("b")],
+        complete_source_ids={"src"},
+        observed_at=NOW,
     )
 
-    assert outcome is UpsertOutcome.REFRESHED
-    session.add.assert_not_called()
-    assert existing.support_count == 200
-    assert existing.last_seen_run_id == run_id
-    session.commit.assert_awaited_once()
+    assert (result.inserted, result.updated, result.deactivated) == (2, 0, 0)
+    assert {p.listing.external_id for p in result.pending} == {"a", "b"}
+    record = await _record(db_session, "a")
+    assert record.active
+    assert record.first_seen_at == NOW
+    assert record.support_count == 10
+    assert record.is_relevant is None
 
 
-async def test_upsert_refreshes_on_embedding_similarity_match_when_url_differs() -> (
-    None
-):
-    existing = OpportunityRecord(
-        source_url="https://weact.campact.de/petitions/other-slug",
-        support_count=None,
-        deadline=None,
+async def test_unchanged_enriched_listing_is_not_pending_again(
+    db_session: AsyncSession,
+) -> None:
+    repository = PostgresOpportunityRepository(db_session)
+    first = await repository.sync(
+        [make_listing("a")], complete_source_ids={"src"}, observed_at=NOW
     )
-    session = AsyncMock()
-    session.execute = AsyncMock(
-        side_effect=[_no_match_result(), _match_result(existing)]
-    )
-    repo = PostgresOpportunityRepository(session)
-
-    outcome = await repo.upsert(
-        extracted=_extracted(),
-        embedding=[0.1] * 1024,
-        source_org="openPetition",
-        source_url="https://openpetition.de/petition/online/new-slug",
-        region="bund",
-        run_id=uuid4(),
+    [pending] = first.pending
+    await repository.save_enrichment(
+        pending.opportunity_id,
+        _relevant(),
+        input_hash=pending.input_hash,
+        enriched_at=NOW,
     )
 
-    assert outcome is UpsertOutcome.REFRESHED
-    session.add.assert_not_called()
-
-
-async def test_refresh_does_not_null_out_support_count_when_new_run_found_none() -> (
-    None
-):
-    existing = OpportunityRecord(
-        source_url="https://openpetition.de/petition/online/x",
-        support_count=100,
-        support_count_as_of=datetime(2026, 1, 1, tzinfo=UTC),
-        deadline=date(2026, 6, 1),
+    again = await repository.sync(
+        [make_listing("a")], complete_source_ids={"src"}, observed_at=LATER
     )
-    session = AsyncMock()
-    session.execute = AsyncMock(side_effect=[_match_result(existing)])
-    repo = PostgresOpportunityRepository(session)
-
-    await repo.upsert(
-        extracted=_extracted(support_count=None, deadline=None),
-        embedding=[0.1] * 1024,
-        source_org="openPetition",
-        source_url="https://openpetition.de/petition/online/x",
-        region="bund",
-        run_id=uuid4(),
+    changed = await repository.sync(
+        [make_listing("a", title="Neuer Titel")],
+        complete_source_ids={"src"},
+        observed_at=LATER,
     )
 
-    # A run that couldn't extract a count/deadline must not erase a
-    # previously-known one.
-    assert existing.support_count == 100
-    assert existing.deadline == date(2026, 6, 1)
+    assert (again.inserted, again.updated, again.pending) == (0, 1, ())
+    assert [p.listing.title for p in changed.pending] == ["Neuer Titel"]
+    record = await _record(db_session, "a")
+    assert record.first_seen_at == NOW
+    assert record.last_seen_at == LATER
 
 
-async def test_refresh_never_touches_retrieved_at() -> None:
-    original_retrieved_at = datetime(2026, 1, 1, tzinfo=UTC)
-    existing = OpportunityRecord(
-        source_url="https://openpetition.de/petition/online/x",
-        retrieved_at=original_retrieved_at,
-    )
-    session = AsyncMock()
-    session.execute = AsyncMock(side_effect=[_match_result(existing)])
-    repo = PostgresOpportunityRepository(session)
-
-    await repo.upsert(
-        extracted=_extracted(support_count=500),
-        embedding=[0.1] * 1024,
-        source_org="openPetition",
-        source_url="https://openpetition.de/petition/online/x",
-        region="bund",
-        run_id=uuid4(),
+async def test_vanished_listings_are_deactivated_only_for_complete_registries(
+    db_session: AsyncSession,
+) -> None:
+    repository = PostgresOpportunityRepository(db_session)
+    await repository.sync(
+        [make_listing("a"), make_listing("b", source_id="other")],
+        complete_source_ids={"src", "other"},
+        observed_at=NOW,
     )
 
-    assert existing.retrieved_at == original_retrieved_at
+    result = await repository.sync([], complete_source_ids={"src"}, observed_at=LATER)
+
+    assert result.deactivated == 1
+    assert not (await _record(db_session, "a")).active
+    assert (await _record(db_session, "b")).active  # "other" was not read fully
 
 
-async def test_list_current_run_returns_empty_when_no_run_has_happened() -> None:
-    session = AsyncMock()
-    no_run = MagicMock()
-    no_run.scalar_one_or_none.return_value = None
-    session.execute = AsyncMock(return_value=no_run)
-    repo = PostgresOpportunityRepository(session)
+async def test_support_counts_are_snapshotted_per_run(db_session: AsyncSession) -> None:
+    repository = PostgresOpportunityRepository(db_session)
+    for observed_at, count in ((NOW, 10), (LATER, 25)):
+        await repository.sync(
+            [make_listing("a", support_count=count)],
+            complete_source_ids={"src"},
+            observed_at=observed_at,
+        )
 
-    result = await repo.list_current_run()
-
-    assert result == []
-
-
-async def test_list_current_run_only_returns_rows_matching_latest_run_id() -> None:
-    latest_run_id = uuid4()
-    matching_record = OpportunityRecord(
-        source_url="https://openpetition.de/petition/online/current",
-        last_seen_run_id=latest_run_id,
-        affected_tags=[],
-        action_types=["petition"],
-        pro_argumente=[],
-        contra_argumente=[],
-        personal_impact_snippets={},
-        werte_relevanz={},
+    record = await _record(db_session, "a")
+    snapshots = await db_session.execute(
+        select(SupportSnapshotRecord.observed_at, SupportSnapshotRecord.support_count)
+        .where(SupportSnapshotRecord.opportunity_id == record.id)
+        .order_by(SupportSnapshotRecord.observed_at)
     )
-    latest_run_lookup = MagicMock()
-    latest_run_lookup.scalar_one_or_none.return_value = latest_run_id
-    rows_result = _scalars_all_result([matching_record])
+    assert snapshots.all() == [(NOW, 10), (LATER, 25)]
+    assert record.support_count == 25
 
-    session = AsyncMock()
-    session.execute = AsyncMock(side_effect=[latest_run_lookup, rows_result])
-    repo = PostgresOpportunityRepository(session)
 
-    result = await repo.list_current_run()
+async def test_list_open_serves_only_relevant_active_unexpired(
+    db_session: AsyncSession,
+) -> None:
+    repository = PostgresOpportunityRepository(db_session)
+    listings = [
+        make_listing("open"),
+        replace(make_listing("expired"), closes_on=date(2026, 10, 31)),
+        replace(make_listing("closing-today"), closes_on=TODAY),
+        make_listing("noise"),
+        make_listing("unenriched"),
+    ]
+    synced = await repository.sync(
+        listings, complete_source_ids={"src"}, observed_at=NOW
+    )
+    for pending in synced.pending:
+        if pending.listing.external_id == "unenriched":
+            continue
+        enrichment = (
+            Enrichment(is_relevant=False, reason="Besichtigung")
+            if pending.listing.external_id == "noise"
+            else _relevant()
+        )
+        await repository.save_enrichment(
+            pending.opportunity_id,
+            enrichment,
+            input_hash=pending.input_hash,
+            enriched_at=NOW,
+        )
 
-    assert len(result) == 1
-    assert result[0].source_url == "https://openpetition.de/petition/online/current"
+    # Scoped to this test's rows: a local dev DB may hold real ingested data.
+    opportunities = [
+        o
+        for o in await repository.list_open(TODAY)
+        if o.source_url.startswith("https://example.org/")
+    ]
+
+    assert sorted(o.source_url.rsplit("/", 1)[-1] for o in opportunities) == [
+        "closing-today",
+        "open",
+    ]
+    opportunity = next(o for o in opportunities if o.source_url.endswith("/open"))
+    assert opportunity.title == "Soll die Kita bleiben?"
+    assert opportunity.region == "dresden"
+    assert opportunity.source_org == "src"  # unknown registry: id as name
+    assert opportunity.personal_impact_snippets == {"hat_kinder:true": "Betrifft dich."}
+
+
+async def test_save_enrichment_for_unknown_id_raises(db_session: AsyncSession) -> None:
+    repository = PostgresOpportunityRepository(db_session)
+    with pytest.raises(LookupError):
+        await repository.save_enrichment(
+            uuid.uuid4(),
+            _relevant(),
+            input_hash="x",
+            enriched_at=datetime.now(UTC),
+        )

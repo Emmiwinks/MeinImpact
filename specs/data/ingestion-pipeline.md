@@ -1,83 +1,93 @@
 # Ingestion Pipeline
 
 ## Purpose
-Defines the background process that fetches, filters, classifies, and
-stores civic actions into the pool. This is the core data engine of
+Defines the background process that reads open participation
+opportunities from the registries that publish them, filters and enriches
+them, and stores them for the feed. This is the core data engine of
 MeinImpact.
 
 ---
 
-## Status (2026-09-27): being redesigned
+## Status (2026-11-01): registry-based, implemented
 
-The previous design — two parallel pipelines (parliamentary, sourced from
-the Bundestag DIP API; petition, partly DIP/partly Tavily) with a DIP-
-derived `engagement_state` (A/B/C/D) rule engine — has been retired. The
-DIP API is no longer used to source the topic pool. Topic discovery will
-instead be based on Tavily search. The full design is not written up yet;
-this document tracks what's been agreed so far and what's still open.
+Earlier designs sourced topics from the Bundestag DIP API, then from Tavily
+search. Both are retired: topics are not actions, and search results were
+stale, unranked and random. The pipeline now reads **action registries
+directly**: places where a participation opportunity is listed with an
+open window and a way to take part.
 
-**What's agreed:**
-- No DIP dependency for topic-pool sourcing. The DIP adapter
-  (`infrastructure/sources/dip_adapter.py`) is preserved, unused, for
-  possible reuse later — nothing in the pipeline calls it.
-- Petition sourcing (previously a mix of DIP and Tavily/Google CSE) is
-  also being redesigned, not just patched to drop its DIP part.
-- The pipeline runs on manual/admin trigger only, not on a daily schedule.
-  No APScheduler cron job for ingestion for now.
-- Built from small, reusable, independently-testable components — not a
-  monolithic script.
-- Whether an engagement-state-like relevance signal (the old A/B/C/D
-  model) is reintroduced, and on what basis, is part of the pending
-  design — nothing here should be assumed carried over.
-- `tavily_media_adapter.py` (the old state-C "quality-media coverage"
-  check) is held, unused, pending review of whether it fits the new
-  design — not deleted, not assumed reusable either.
+### Flow
 
-**What's unaffected by this change** (out of scope for the DIP removal):
-- MdB position sources (Abgeordnetenwatch, DIP Plenarprotokolle, Bundestag
-  RSS — `data/sources-federal.md` Source 6) and the tracking feature's
-  MdB-statement refresh. These never fed the topic pool.
-- AI classification via Mistral as a concept (the specific prompt/schema
-  will likely need revisiting once the new source shape is known, but
-  classify-after-discover is not being questioned here).
+```
+catalog.default_sources   openPetition (Bund/Sachsen/Dresden), Beteiligungsportal
+                          Sachsen, EU "Have your say", WeAct
+collect()                 all sources concurrently, failures isolated per source
+steps.default_steps       in_coverage -> actionable -> not_expired -> dedupe
+store.sync()              mirror into `opportunities`, snapshot support counts,
+                          deactivate entries a fully-read registry no longer lists
+enrich pending            new or changed listings only: detail text (openPetition,
+                          EU) + one Mistral call (relevance + neutral framing)
+store.save_enrichment()   committed per result, so progress survives failures
+```
 
----
+Code: `backend/src/meinimpact/infrastructure/listings/` (sources, HTTP,
+steps), `infrastructure/ai/listing_enricher.py`,
+`infrastructure/pipeline/ingestion.py`, composition in
+`services/ingestion.py`.
 
-## Decisions carried over (still true, source-agnostic)
+### Rules
 
-- **Pipeline is fully server-side.** No device interaction during
-  ingestion. Devices download the resulting pool via the standard feed
-  endpoint.
-- **AI classification runs once per action, result is cached in DB.**
-  Re-classification only occurs if the action is manually flagged or the
-  classification schema changes.
-- **Pipeline is fault-tolerant per source.** A single source failure does
-  not abort the pipeline.
-- **Hard cost ceiling per run.** If AI spend for one pipeline run exceeds
-  the configured ceiling, classification stops and remaining items are
-  marked `pending_classification` for the next run.
+- **Trigger-based only.** `POST /v1/admin/ingestion/run` (starts in the
+  background, one run at a time) or `scripts/run_ingestion.py`. No
+  in-process scheduler.
+- **Polite, rule-abiding crawling.** Every request goes through
+  `PoliteHttpClient`: robots.txt per RFC 9309, per-host Crawl-delay (min.
+  1 s), one honest User-Agent. Registries that disallow crawling
+  (ratsinfo.dresden.de, the Landtag Sachsen calendar) are only used via
+  official APIs (e.g. OParl).
+- **Registry facts are never invented.** Dates, status, support counts and
+  URLs come from the registry. The LLM only decides relevance and writes
+  title, summary, tags, werte axes, arguments and personal-impact
+  snippets; its output is normalized in code against the taxonomy.
+- **Registry status labels are not trusted alone.** Registries list
+  expired items as running; `not_expired` drops anything past its end
+  date.
+- **Identity is the registry entry** (`source_id`, `external_id`). No
+  embedding dedup.
+- **Enrichment runs once per registry text version**
+  (`enrichment_input_hash`); unchanged listings never cost another call.
+  Failed enrichments stay pending and are retried next run.
+- **Deactivation only for complete registries.** If any configured
+  instance of a registry failed this run, none of its entries are
+  deactivated.
+- **Fault-tolerant per source and per listing.**
+
+### Relevance (LLM, per listing)
+
+Kept: petitions, statements on displayed plans (Bauleitplanung),
+consultations, citizen surveys and public dialogues on public decisions,
+understandable for a private person. Dropped: property viewings, job and
+speaker calls, internal administration trainings, award ceremonies,
+professional-only info events, highly technical acts. Scope must be EU,
+Bund, Sachsen or Dresden; other municipalities and other Länder are
+dropped (nationally relevant topics count as Bund).
 
 ---
 
 ## Dependencies
 
-- Reads: `architecture/overview.md`, `architecture/data-flow.md`,
-  `data/sources-federal.md`, `data/database-schema.md`
-- Referenced by: `features/feed.md`, `features/tracking.md`,
-  `technical/monitoring.md`
+- Reads: `architecture/overview.md`, `data/database-schema.md`
+- Referenced by: `features/feed.md`, `technical/monitoring.md`
 
 ---
 
 ## Open Questions
 
-- [ ] Full Tavily-search-based topic discovery design: what gets
-      searched for, how results become candidate topics, how duplicates
-      across searches are handled.
-- [ ] Whether a relevance/priority signal (successor to engagement_state)
-      is needed, and what it would be derived from without DIP.
-- [ ] Whether petition sourcing survives in the new design and in what
-      form.
-- [ ] Whether `tavily_media_adapter.py` gets reused once the new source
-      shape is known.
-- [ ] Target DB schema for the new pipeline's output — see
-      `data/database-schema.md`.
+- [ ] Decision calendars for standing actions (write to MdB/MdL/Stadtrat):
+      Dresden OParl API, Bundestag agenda (PDF or DIP), Landtag Sachsen
+      (robots-disallowed; EDAS or permission).
+- [ ] Bundestag ePetitionen (list needs a JS session token).
+- [ ] Momentum: support snapshots are recorded per run; how (and whether)
+      to surface momentum is undecided.
+- [ ] Hard cost ceiling per run for enrichment.
+- [ ] Sources with the opposite political lean to openPetition/WeAct.

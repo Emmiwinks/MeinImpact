@@ -12,22 +12,18 @@ class RankedOpportunity {
 
   final Opportunity opportunity;
   // The personal_impact_snippet matching the user's Betroffenheitsprofil,
-  // if any — the feed card's hook line, per the confirmed design ("personal
-  // snippet when matched, else plain_language_summary").
+  // if any: the feed card's hook line (else the opportunity's summary).
   final String? matchedSnippet;
   // 0.0-1.0, 0.5 = neutral/no signal (opportunity has no relevant axis, or
   // profile isn't answered enough to have an opinion).
   final double werteAlignment;
 }
 
-/// Orders the current run's opportunities by on-device relevance —
-/// Betroffenheitsprofil tag-match first, then Werteprofil alignment (see
-/// the rebuild plan section 5). Never drops an opportunity — "no
-/// opportunity is hard-excluded by tag or cluster mismatch on the client,
-/// only reordered". No recency component: the pool endpoint already
-/// scopes to exactly the current run, so there's nothing left to sort by
-/// staleness/momentum (see project_dip_to_tavily_pivot.md, "one run, one
-/// feed").
+/// Orders the open opportunities by on-device relevance:
+/// Betroffenheitsprofil match first, then Werteprofil alignment. Never drops
+/// an opportunity, only reorders. No recency or support-count component:
+/// the server only serves opportunities that are still open, and support
+/// counts are informational, never a ranking signal.
 class OpportunityRelevanceRanker {
   const OpportunityRelevanceRanker();
 

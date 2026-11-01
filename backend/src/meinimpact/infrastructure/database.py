@@ -19,14 +19,14 @@ class Database:
             database_url,
             pool_pre_ping=True,
         )
-        self._session_factory = async_sessionmaker(
+        self.session_factory = async_sessionmaker(
             bind=self.engine,
             expire_on_commit=False,
         )
 
     async def session(self) -> AsyncIterator[AsyncSession]:
         """Yields one async database session."""
-        async with self._session_factory() as session:
+        async with self.session_factory() as session:
             yield session
 
     async def close(self) -> None:

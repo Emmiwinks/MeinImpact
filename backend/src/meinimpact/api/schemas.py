@@ -58,14 +58,9 @@ class MdbResponse(BaseModel):
 
 
 class IngestionRunResponse(BaseModel):
-    """Live summary of one manually-triggered ingestion run — not
-    persisted (see `IngestionSummary`'s docstring)."""
+    """Acknowledges a started background ingestion run."""
 
-    fetched: int
-    actionable: int
-    inserted: int
-    refreshed: int
-    errors: list[str]
+    status: str
 
 
 # ── Health ────────────────────────────────────────────────────────────────────
@@ -196,29 +191,30 @@ class ActionPoolResponse(BaseModel):
 
 
 class OpportunityResponse(BaseModel):
-    """One civic opportunity — the unit shown on a feed card and its
-    detail popup. No topic/option grouping (see `Opportunity`'s
-    docstring) — this is the whole thing the device needs for both
-    views, no follow-up request required."""
+    """One open opportunity: everything the feed card and its detail view
+    need, no follow-up request required."""
 
     id: UUID
     source_org: str
-    decision_object: str
-    plain_language_title: str
-    plain_language_summary: str
-    affected_tags: list[str]
-    region: str
-    werte_relevanz: dict[str, float]
-    deadline: date | None
-    support_count: int | None
-    support_count_as_of: datetime | None
-    content_published_at: date | None
-    retrieved_at: datetime
     source_url: str
-    action_types: list[str]
+    kind: str
+    status: str
+    region: str
+    locality: str | None
+    organizer: str | None
+    title: str
+    summary: str
+    affected_tags: list[str]
+    werte_relevanz: dict[str, float]
     pro_argumente: list[str]
     contra_argumente: list[str]
     personal_impact_snippets: dict[str, str]
+    opens_on: date | None
+    closes_on: date | None
+    support_count: int | None
+    support_goal: int | None
+    support_count_as_of: datetime | None
+    first_seen_at: datetime
 
     @classmethod
     def from_domain(cls, opportunity: Opportunity) -> OpportunityResponse:
@@ -226,31 +222,32 @@ class OpportunityResponse(BaseModel):
         return cls(
             id=opportunity.id,
             source_org=opportunity.source_org,
-            decision_object=opportunity.decision_object,
-            plain_language_title=opportunity.plain_language_title,
-            plain_language_summary=opportunity.plain_language_summary,
-            affected_tags=list(opportunity.affected_tags),
-            region=opportunity.region,
-            werte_relevanz=dict(opportunity.werte_relevanz),
-            deadline=opportunity.deadline,
-            support_count=opportunity.support_count,
-            support_count_as_of=opportunity.support_count_as_of,
-            content_published_at=opportunity.content_published_at,
-            retrieved_at=opportunity.retrieved_at,
             source_url=opportunity.source_url,
-            action_types=list(opportunity.action_types),
+            kind=opportunity.kind,
+            status=opportunity.status,
+            region=opportunity.region,
+            locality=opportunity.locality,
+            organizer=opportunity.organizer,
+            title=opportunity.title,
+            summary=opportunity.summary,
+            affected_tags=list(opportunity.affected_tags),
+            werte_relevanz=dict(opportunity.werte_relevanz),
             pro_argumente=list(opportunity.pro_argumente),
             contra_argumente=list(opportunity.contra_argumente),
             personal_impact_snippets=dict(opportunity.personal_impact_snippets),
+            opens_on=opportunity.opens_on,
+            closes_on=opportunity.closes_on,
+            support_count=opportunity.support_count,
+            support_goal=opportunity.support_goal,
+            support_count_as_of=opportunity.support_count_as_of,
+            first_seen_at=opportunity.first_seen_at,
         )
 
 
 class OpportunityPoolResponse(BaseModel):
-    """The current run's opportunities — see
-    `OpportunityRepository.list_current_run`. Ordering is not
-    meaningful server-side; the device sorts by on-device relevance
-    (Betroffenheitsprofil match, then Werteprofil alignment) since the
-    server never sees either profile."""
+    """All open opportunities. Ordering is not meaningful server-side; the
+    device ranks on-device (Betroffenheitsprofil match, then Werteprofil
+    alignment), since the server never sees either profile."""
 
     opportunities: list[OpportunityResponse]
     generated_at: datetime

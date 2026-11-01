@@ -45,9 +45,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             )
         app.state.wks_service = wks
 
-        # Ingestion is trigger-based only (POST /v1/admin/ingestion/run) —
-        # no scheduled job, and none planned; see
-        # project_dip_to_tavily_pivot.md for why.
+        # Ingestion is trigger-based only (POST /v1/admin/ingestion/run or
+        # scripts/run_ingestion.py); nothing is scheduled in-process.
 
         yield
 

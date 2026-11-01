@@ -9,26 +9,26 @@ Opportunity _opportunity({
   List<String> affectedTags = const [],
   Map<String, double> werteRelevanz = const {},
   Map<String, String> personalImpactSnippets = const {},
-  List<String> actionTypes = const ['petition'],
-  DateTime? deadline,
+  OpportunityKind kind = OpportunityKind.petition,
+  DateTime? closesOn,
   int? supportCount,
 }) {
   return Opportunity(
     id: id,
     sourceOrg: 'openPetition',
-    decisionObject: 'Decision $id',
-    plainLanguageTitle: 'Title $id',
-    plainLanguageSummary: 'Summary $id',
-    affectedTags: affectedTags,
-    region: 'bund',
-    werteRelevanz: werteRelevanz,
     sourceUrl: 'https://example.org/$id',
-    actionTypes: actionTypes,
+    kind: kind,
+    isAnnounced: false,
+    region: 'bund',
+    title: 'Title $id',
+    summary: 'Summary $id',
+    affectedTags: affectedTags,
+    werteRelevanz: werteRelevanz,
     proArgumente: const [],
     contraArgumente: const [],
     personalImpactSnippets: personalImpactSnippets,
-    retrievedAt: DateTime(2026, 9, 27),
-    deadline: deadline,
+    firstSeenAt: DateTime(2026, 11, 1),
+    closesOn: closesOn,
     supportCount: supportCount,
   );
 }
@@ -38,82 +38,103 @@ void main() {
     test('maps the full backend shape', () {
       final opportunity = Opportunity.fromJson({
         'id': 'opp-1',
-        'source_org': 'openPetition',
-        'decision_object': 'Mietendeckel einführen',
-        'plain_language_title': 'Soll ein Mietendeckel eingeführt werden?',
-        'plain_language_summary': 'Zusammenfassung.',
+        'source_org': 'Beteiligungsportal Sachsen',
+        'source_url': 'https://buergerbeteiligung.sachsen.de/portal/x',
+        'kind': 'public_display',
+        'status': 'announced',
+        'region': 'dresden',
+        'locality': 'Landeshauptstadt Dresden',
+        'organizer': 'Landeshauptstadt Dresden',
+        'title': 'Soll am Alten Leipziger Bahnhof gebaut werden?',
+        'summary': 'Zusammenfassung.',
         'affected_tags': ['Wohnen/Miete'],
-        'region': 'bund',
         'werte_relevanz': {'equality_markets': -0.8},
-        'deadline': '2026-12-01',
-        'support_count': 12345,
-        'support_count_as_of': '2026-09-27T00:00:00Z',
-        'content_published_at': null,
-        'retrieved_at': '2026-09-27T10:00:00Z',
-        'source_url': 'https://openpetition.de/petition/online/x',
-        'action_types': ['petition'],
         'pro_argumente': ['Argument 1'],
         'contra_argumente': ['Gegenargument 1'],
         'personal_impact_snippets': {
           'wohnsituation:mieter': 'Betrifft dich direkt.',
         },
+        'opens_on': '2026-11-02',
+        'closes_on': '2026-12-04',
+        'support_count': 3,
+        'support_goal': null,
+        'support_count_as_of': '2026-11-01T12:00:00Z',
+        'first_seen_at': '2026-11-01T12:00:00Z',
       });
 
-      expect(opportunity.id, 'opp-1');
-      expect(opportunity.sourceOrg, 'openPetition');
+      expect(opportunity.kind, OpportunityKind.publicDisplay);
+      expect(opportunity.isAnnounced, isTrue);
+      expect(opportunity.region, 'dresden');
+      expect(opportunity.organizer, 'Landeshauptstadt Dresden');
       expect(opportunity.affectedTags, ['Wohnen/Miete']);
       expect(opportunity.werteRelevanz, {'equality_markets': -0.8});
-      expect(opportunity.deadline, DateTime.parse('2026-12-01'));
-      expect(opportunity.supportCount, 12345);
+      expect(opportunity.opensOn, DateTime.parse('2026-11-02'));
+      expect(opportunity.closesOn, DateTime.parse('2026-12-04'));
+      expect(opportunity.supportCount, 3);
       expect(
         opportunity.personalImpactSnippets['wohnsituation:mieter'],
         'Betrifft dich direkt.',
       );
     });
 
-    test('handles absent optional fields without throwing', () {
+    test('handles absent optional fields and unknown kinds', () {
       final opportunity = Opportunity.fromJson({
         'id': 'opp-2',
-        'source_org': 'WeAct/Campact',
-        'decision_object': 'x',
-        'plain_language_title': 'x',
-        'plain_language_summary': 'x',
-        'region': 'bund',
-        'retrieved_at': '2026-09-27T10:00:00Z',
+        'source_org': 'WeAct',
         'source_url': 'https://example.org',
+        'kind': 'something_new',
+        'status': 'open',
+        'region': 'bund',
+        'title': 'x',
+        'summary': 'x',
+        'first_seen_at': '2026-11-01T12:00:00Z',
       });
 
+      expect(opportunity.kind, OpportunityKind.other);
+      expect(opportunity.isAnnounced, isFalse);
       expect(opportunity.affectedTags, isEmpty);
       expect(opportunity.werteRelevanz, isEmpty);
-      expect(opportunity.deadline, isNull);
+      expect(opportunity.closesOn, isNull);
       expect(opportunity.supportCount, isNull);
       expect(opportunity.personalImpactSnippets, isEmpty);
     });
   });
 
-  group('ActionCta.forOpportunity', () {
-    test('labels a petition', () {
-      final cta = ActionCta.forOpportunity(
-        _opportunity(actionTypes: const ['petition']),
-      );
-      expect(cta.label, 'Petition unterschreiben');
+  group('Opportunity.daysLeft', () {
+    final now = DateTime(2026, 11, 1, 18, 30);
+
+    test('counts whole calendar days, 0 on the last day', () {
+      expect(_opportunity(closesOn: DateTime(2026, 11, 4)).daysLeft(now), 3);
+      expect(_opportunity(closesOn: DateTime(2026, 11, 1)).daysLeft(now), 0);
     });
 
-    test('labels a consultation', () {
-      final cta = ActionCta.forOpportunity(
-        _opportunity(actionTypes: const ['consultation']),
+    test('is null without an end date or after it', () {
+      expect(_opportunity().daysLeft(now), isNull);
+      expect(
+        _opportunity(closesOn: DateTime(2026, 10, 31)).daysLeft(now),
+        isNull,
       );
-      expect(cta.label, 'Jetzt mitmachen');
-    });
-
-    test('falls back to a generic label with no action types', () {
-      final cta = ActionCta.forOpportunity(
-        _opportunity(actionTypes: const []),
-      );
-      expect(cta.label, isNotEmpty);
     });
   });
 
+  group('OpportunityKind', () {
+    test('maps every backend kind and labels its call to action', () {
+      expect(
+        OpportunityKind.fromWire('petition').callToAction,
+        'Petition unterschreiben',
+      );
+      expect(
+        OpportunityKind.fromWire('consultation').callToAction,
+        'Stellung nehmen',
+      );
+      expect(
+        OpportunityKind.fromWire('public_display'),
+        OpportunityKind.publicDisplay,
+      );
+      expect(OpportunityKind.fromWire('survey'), OpportunityKind.survey);
+      expect(OpportunityKind.fromWire(null), OpportunityKind.other);
+    });
+  });
   group('Betroffenheitsprofil.matchingKeys', () {
     test('is empty for an unanswered profile', () {
       expect(const Betroffenheitsprofil().matchingKeys(), isEmpty);
