@@ -17,6 +17,8 @@ from meinimpact.infrastructure.ai.listing_enricher import Enrichment
 from meinimpact.infrastructure.listings.model import Region
 from meinimpact.infrastructure.models import OpportunityRecord, SupportSnapshotRecord
 from meinimpact.infrastructure.opportunities.postgres_opportunity_repository import (
+    EXPERT_ONLY_MAX_ACCESSIBILITY,
+    EXPERT_ONLY_MAX_EVERYDAY_RELEVANCE,
     PostgresOpportunityRepository,
 )
 
@@ -24,11 +26,18 @@ LATER = NOW + timedelta(days=2)
 TODAY = date(2026, 11, 1)
 
 
-def _relevant(region: Region = Region.DRESDEN) -> Enrichment:
+def _relevant(
+    region: Region = Region.DRESDEN,
+    *,
+    everyday_relevance: int = 4,
+    accessibility: int = 5,
+) -> Enrichment:
     return Enrichment(
         is_relevant=True,
         reason="Petition",
         region=region,
+        everyday_relevance=everyday_relevance,
+        accessibility=accessibility,
         title="Soll die Kita bleiben?",
         summary="Eine Kita soll schließen.",
         affected_tags=("Familie/Kinder",),
@@ -129,7 +138,7 @@ async def test_support_counts_are_snapshotted_per_run(db_session: AsyncSession) 
     assert record.support_count == 25
 
 
-async def test_list_open_serves_only_relevant_active_unexpired(
+async def test_list_open_serves_relevant_active_unexpired_except_expert_only(
     db_session: AsyncSession,
 ) -> None:
     repository = PostgresOpportunityRepository(db_session)
@@ -138,19 +147,26 @@ async def test_list_open_serves_only_relevant_active_unexpired(
         replace(make_listing("expired"), closes_on=date(2026, 10, 31)),
         replace(make_listing("closing-today"), closes_on=TODAY),
         make_listing("noise"),
+        make_listing("niche"),
+        make_listing("expert-only"),
         make_listing("unenriched"),
     ]
     synced = await repository.sync(
         listings, complete_source_ids={"src"}, observed_at=NOW
     )
+    special = {
+        "noise": Enrichment(is_relevant=False, reason="Besichtigung"),
+        # little everyday relevance, but understandable: still served
+        "niche": _relevant(everyday_relevance=1, accessibility=3),
+        "expert-only": _relevant(
+            everyday_relevance=EXPERT_ONLY_MAX_EVERYDAY_RELEVANCE,
+            accessibility=EXPERT_ONLY_MAX_ACCESSIBILITY,
+        ),
+    }
     for pending in synced.pending:
         if pending.listing.external_id == "unenriched":
             continue
-        enrichment = (
-            Enrichment(is_relevant=False, reason="Besichtigung")
-            if pending.listing.external_id == "noise"
-            else _relevant()
-        )
+        enrichment = special.get(pending.listing.external_id, _relevant())
         await repository.save_enrichment(
             pending.opportunity_id,
             enrichment,
@@ -167,6 +183,7 @@ async def test_list_open_serves_only_relevant_active_unexpired(
 
     assert sorted(o.source_url.rsplit("/", 1)[-1] for o in opportunities) == [
         "closing-today",
+        "niche",
         "open",
     ]
     opportunity = next(o for o in opportunities if o.source_url.endswith("/open"))

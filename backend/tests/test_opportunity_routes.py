@@ -27,6 +27,8 @@ _OPPORTUNITY = Opportunity(
     pro_argumente=("Betreuungsplätze",),
     contra_argumente=("Kosten",),
     personal_impact_snippets={"hat_kinder:true": "Betrifft deine Kita-Wahl."},
+    everyday_relevance=5,
+    accessibility=4,
     opens_on=None,
     closes_on=date(2027, 1, 3),
     support_count=445,
@@ -76,6 +78,7 @@ def test_pool_serves_open_opportunities_for_today() -> None:
     assert item["kind"] == "petition"
     assert item["closes_on"] == "2027-01-03"
     assert item["support_count"] == 445
+    assert (item["everyday_relevance"], item["accessibility"]) == (5, 4)
     assert item["personal_impact_snippets"] == {
         "hat_kinder:true": "Betrifft deine Kita-Wahl."
     }

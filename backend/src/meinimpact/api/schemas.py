@@ -209,6 +209,8 @@ class OpportunityResponse(BaseModel):
     pro_argumente: list[str]
     contra_argumente: list[str]
     personal_impact_snippets: dict[str, str]
+    everyday_relevance: int | None
+    accessibility: int | None
     opens_on: date | None
     closes_on: date | None
     support_count: int | None
@@ -235,6 +237,8 @@ class OpportunityResponse(BaseModel):
             pro_argumente=list(opportunity.pro_argumente),
             contra_argumente=list(opportunity.contra_argumente),
             personal_impact_snippets=dict(opportunity.personal_impact_snippets),
+            everyday_relevance=opportunity.everyday_relevance,
+            accessibility=opportunity.accessibility,
             opens_on=opportunity.opens_on,
             closes_on=opportunity.closes_on,
             support_count=opportunity.support_count,

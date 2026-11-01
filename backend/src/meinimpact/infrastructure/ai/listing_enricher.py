@@ -1,19 +1,27 @@
 """Turns a registry listing into what the app shows, and decides relevance.
 
-One LLM call per listing answers two questions:
+One LLM call per listing answers three questions:
 1. Is this a real way for citizens to influence a public decision, at a
    level the app covers? Registries also list property viewings, staff
    trainings, award ceremonies and highly technical EU acts (all seen
    live); those are filtered here.
-2. If so: neutral plain-language framing, topic tags, werte axes, pro/contra
-   and personal-impact snippets.
+2. How much would an average person care, and how quickly could they grasp
+   it? Two 1-5 scores. They are stored, not applied here: the feed query
+   withholds only expert-only items and the app ranks by the scores, so
+   tuning either needs no new LLM calls.
+3. Engaging, neutral plain-language framing, topic tags, werte axes,
+   pro/contra and personal-impact snippets.
 
 Registry facts (dates, counts, URL) never come from the model; they stay
 with the listing. The model's structured output is normalized in code:
 tags outside the taxonomy, axes not belonging to the tags and snippet keys
 outside the Betroffenheitsprofil are dropped, never trusted.
+
+`ENRICHMENT_VERSION` is part of the enrichment input hash: bump it whenever
+the prompt or parsing changes, and the next run re-enriches every listing.
 """
 
+import hashlib
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
@@ -26,8 +34,11 @@ from meinimpact.infrastructure.ai.taxonomy import (
 )
 from meinimpact.infrastructure.listings.model import Listing, Region
 
+ENRICHMENT_VERSION = "2"
+
 _MAX_DETAIL_CHARS = 4000
 _MAX_ARGUMENTS = 3
+_SCORE_RANGE = range(1, 6)
 
 _SCOPES: Mapping[str, Region | None] = {
     "eu": Region.EU,
@@ -48,6 +59,10 @@ class Enrichment:
     is_relevant: bool
     reason: str
     region: Region | None = None
+    # 1-5: how directly it touches an average person's everyday life
+    everyday_relevance: int | None = None
+    # 1-5: how quickly a layperson grasps what it is about
+    accessibility: int | None = None
     title: str = ""
     summary: str = ""
     affected_tags: tuple[str, ...] = ()
@@ -55,6 +70,15 @@ class Enrichment:
     pro_argumente: tuple[str, ...] = ()
     contra_argumente: tuple[str, ...] = ()
     personal_impact_snippets: Mapping[str, str] = field(default_factory=dict)
+
+
+def enrichment_input_hash(listing: Listing) -> str:
+    """Fingerprint of everything an enrichment depends on: the registry
+    text and the enrichment version (prompt + parsing)."""
+    text = "\n".join(
+        (ENRICHMENT_VERSION, listing.kind, listing.title, listing.summary or "")
+    )
+    return hashlib.sha256(text.encode()).hexdigest()
 
 
 def build_prompt(listing: Listing, detail: str | None) -> str:
@@ -82,15 +106,19 @@ def build_prompt(listing: Listing, detail: str | None) -> str:
 
     return f"""Du arbeitest für eine neutrale deutsche Civic-Tech-App. Sie zeigt
 Menschen in Dresden, Sachsen und Deutschland konkrete Möglichkeiten, auf
-öffentliche Entscheidungen Einfluss zu nehmen. Bewerte den Eintrag unten
-und antworte NUR mit JSON in genau dieser Struktur:
+öffentliche Entscheidungen Einfluss zu nehmen. Die App soll sich leicht und
+motivierend anfühlen, nicht wie Behördenpost: jede Karte muss in wenigen
+Sekunden verständlich sein und Lust machen, mitzumachen. Bewerte den
+Eintrag unten und antworte NUR mit JSON in genau dieser Struktur:
 
 {{
   "is_participation": <bool>,
   "reason": "<ein kurzer Satz, warum (nicht)>",
   "scope": "eu" | "bund" | "sachsen" | "dresden" | "andere_kommune" | "andere_region",
-  "title": "<neutrale Frage, keine Kampagnensprache>",
-  "summary": "<2-3 neutrale, allgemeinverständliche Sätze>",
+  "alltagsbezug": <1-5>,
+  "zugaenglichkeit": <1-5>,
+  "title": "<kurze, neutrale Frage>",
+  "summary": "<2 kurze Sätze in einfacher Sprache>",
   "affected_tags": ["<tag>", ...],
   "werte_relevanz": {{"<achse>": <-1.0 bis 1.0>}},
   "pro_argumente": ["<arg>", "<arg>"],
@@ -120,7 +148,32 @@ relevant, auch wenn es anderswo angestoßen wurde), "eu", "andere_kommune"
 (nur eine andere sächsische Stadt/Gemeinde/einen Landkreis), "andere_region"
 (nur ein anderes Bundesland oder eine Stadt außerhalb Sachsens).
 
-title und summary: neutral, ohne die Position der Initiatoren zu übernehmen.
+alltagsbezug = wie direkt das den Alltag eines durchschnittlichen Menschen
+in Dresden/Sachsen berührt:
+5 = trifft viele Menschen spürbar (Miete, Kita/Schule, Bus und Bahn,
+    Rente, Gesundheit, Löhne, die eigene Straße oder das eigene Viertel)
+3 = spürbar für eine klar erkennbare Gruppe (z.B. Eltern, Studierende,
+    Pflegende, ein Stadtteil)
+1 = betrifft fast nur Fachleute, Behörden oder einzelne Branchen (z.B.
+    Abgasberechnung für Anhängertypen, Chemikalien-Einstufungen,
+    Verwaltungszusammenarbeit von Steuerbehörden)
+zugaenglichkeit = wie schnell ein Laie versteht, worum es geht:
+5 = in einem Satz ohne Vorwissen klar
+3 = mit kurzer Erklärung verständlich
+1 = nur mit Fachwissen verständlich
+Bewerte ehrlich und streng; die meisten EU-Durchführungsrechtsakte liegen
+bei 1-2.
+
+title: eine kurze Frage (höchstens 90 Zeichen), neutral und ohne die
+Position der Initiatoren, aber neugierig machend und alltagsnah. Wähle die
+Frageform, die am natürlichsten klingt, und variiere sie, z.B.:
+"Wie geht es weiter mit ...?", "Braucht Dresden ...?", "Was passiert mit
+...?", "Mehr ... oder ...?", "Darf ...?", "Wer zahlt für ...?", "Bleibt
+...?", "Soll ...?". Beginne NICHT standardmäßig mit "Soll". Keine
+Fachbegriffe, Aktenzeichen oder Plannummern im Titel.
+summary: 2 kurze Sätze in einfacher Sprache (etwa Niveau B1): worum geht
+es, und wen betrifft es konkret. Fachbegriffe nur mit Erklärung. Neutral,
+ohne die Position der Initiatoren zu übernehmen.
 
 affected_tags: NUR aus dieser Liste:
 {tag_list}
@@ -129,7 +182,8 @@ werte_relevanz: NUR die Achsen der erkannten Tags, jede in ihrer eigenen
 bipolaren Sprache (NIEMALS ein generisches "progressiv vs. konservativ"):
 {axis_list}
 
-pro_argumente / contra_argumente: je 1-{_MAX_ARGUMENTS} sachliche Argumente.
+pro_argumente / contra_argumente: je 1-{_MAX_ARGUMENTS} sachliche Argumente,
+jedes ein kurzer Satz.
 
 personal_impact_snippets: NUR Schlüssel aus dieser Zuordnung, und nur für
 Gruppen, die vom erkannten Tag wirklich betroffen sind. Wert IMMER ein
@@ -163,6 +217,10 @@ def parse_enrichment(raw: Mapping[str, Any]) -> Enrichment:
     summary = _text(raw.get("summary"))
     if not title or not summary:
         raise EnrichmentError("relevant listing without title or summary")
+    everyday_relevance = _score(raw.get("alltagsbezug"))
+    accessibility = _score(raw.get("zugaenglichkeit"))
+    if everyday_relevance is None or accessibility is None:
+        raise EnrichmentError("relevant listing without valid 1-5 scores")
 
     tags = tuple(t for t in _strings(raw.get("affected_tags")) if t in TAG_AXES)
     axes = {axis for tag in tags for axis in TAG_AXES[tag]}
@@ -171,6 +229,8 @@ def parse_enrichment(raw: Mapping[str, Any]) -> Enrichment:
         is_relevant=True,
         reason=reason,
         region=region,
+        everyday_relevance=everyday_relevance,
+        accessibility=accessibility,
         title=title,
         summary=summary,
         affected_tags=tags,
@@ -187,6 +247,13 @@ def parse_enrichment(raw: Mapping[str, Any]) -> Enrichment:
             if key in snippet_keys and isinstance(value, str) and value.strip()
         },
     )
+
+
+def _score(value: object) -> int | None:
+    """A 1-5 integer score; anything else (incl. bools and floats) is None."""
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value if value in _SCORE_RANGE else None
+    return None
 
 
 def _text(value: object) -> str:

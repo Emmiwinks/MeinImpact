@@ -50,6 +50,8 @@ class Opportunity {
     this.closesOn,
     this.supportCount,
     this.supportGoal,
+    this.everydayRelevance,
+    this.accessibility,
   });
 
   factory Opportunity.fromJson(Map<String, Object?> json) {
@@ -78,6 +80,8 @@ class Opportunity {
       closesOn: _date(json['closes_on']),
       supportCount: json['support_count'] as int?,
       supportGoal: json['support_goal'] as int?,
+      everydayRelevance: json['everyday_relevance'] as int?,
+      accessibility: json['accessibility'] as int?,
       firstSeenAt: DateTime.parse(json['first_seen_at'] as String),
     );
   }
@@ -109,7 +113,19 @@ class Opportunity {
   // Informational only, never used for ranking.
   final int? supportCount;
   final int? supportGoal;
+  // 1-5 each, from server-side enrichment: how directly this touches
+  // everyday life, and how quickly a layperson grasps it.
+  final int? everydayRelevance;
+  final int? accessibility;
   final DateTime firstSeenAt;
+
+  /// 0.0-1.0: how easy and close to everyday life this card is. Unscored
+  /// opportunities count as average (0.5).
+  double get appeal {
+    final everyday = everydayRelevance ?? 3;
+    final easy = accessibility ?? 3;
+    return (everyday + easy - 2) / 8;
+  }
 
   /// Whole days until participation closes (0 = today), or null when there
   /// is no end date or it has passed.

@@ -6,12 +6,14 @@ from datetime import datetime
 
 from listing_fakes import NOW, BrokenSource, StaticSource, make_listing
 
-from meinimpact.infrastructure.ai.listing_enricher import Enrichment
+from meinimpact.infrastructure.ai.listing_enricher import (
+    Enrichment,
+    enrichment_input_hash,
+)
 from meinimpact.infrastructure.listings.model import Listing, Region
 from meinimpact.infrastructure.opportunities.postgres_opportunity_repository import (
     PendingEnrichment,
     SyncResult,
-    enrichment_input_hash,
 )
 from meinimpact.infrastructure.pipeline.ingestion import run_ingestion
 

@@ -12,6 +12,8 @@ Opportunity _opportunity({
   OpportunityKind kind = OpportunityKind.petition,
   DateTime? closesOn,
   int? supportCount,
+  int? everyday,
+  int? accessible,
 }) {
   return Opportunity(
     id: id,
@@ -30,6 +32,8 @@ Opportunity _opportunity({
     firstSeenAt: DateTime(2026, 11, 1),
     closesOn: closesOn,
     supportCount: supportCount,
+    everydayRelevance: everyday,
+    accessibility: accessible,
   );
 }
 
@@ -257,6 +261,33 @@ void main() {
       expect(ranked.first.opportunity.id, 'aligned');
       expect(ranked.first.werteAlignment, greaterThan(0.5));
       expect(ranked.last.werteAlignment, lessThan(0.5));
+    });
+
+    test('easy everyday cards rank above niche ones, after the match', () {
+      final niche = _opportunity(id: 'niche', everyday: 1, accessible: 3);
+      final everyday = _opportunity(id: 'everyday', everyday: 5, accessible: 5);
+      final matchedNiche = _opportunity(
+        id: 'matched-niche',
+        everyday: 2,
+        accessible: 2,
+        personalImpactSnippets: const {'hat_kinder:true': 'Betrifft dich.'},
+      );
+      const profile = UserProfile(
+        betroffenheitsprofil: Betroffenheitsprofil(hatKinder: true),
+      );
+
+      final ranked = ranker.rank([niche, everyday, matchedNiche], profile);
+
+      expect(
+        ranked.map((r) => r.opportunity.id),
+        ['matched-niche', 'everyday', 'niche'],
+      );
+    });
+
+    test('unscored opportunities count as average appeal', () {
+      expect(_opportunity().appeal, 0.5);
+      expect(_opportunity(everyday: 5, accessible: 5).appeal, 1.0);
+      expect(_opportunity(everyday: 1, accessible: 1).appeal, 0.0);
     });
 
     test('werte alignment stays neutral when profile has under 4 answers', () {

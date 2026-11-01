@@ -19,11 +19,14 @@ class RankedOpportunity {
   final double werteAlignment;
 }
 
-/// Orders the open opportunities by on-device relevance:
-/// Betroffenheitsprofil match first, then Werteprofil alignment. Never drops
-/// an opportunity, only reorders. No recency or support-count component:
-/// the server only serves opportunities that are still open, and support
-/// counts are informational, never a ranking signal.
+/// Orders the open opportunities by on-device relevance, in three tiers:
+/// 1. Betroffenheitsprofil match (it concerns me),
+/// 2. appeal: easy, everyday cards before niche or demanding ones, so the
+///    feed starts with quick wins,
+/// 3. Werteprofil alignment.
+/// Never drops an opportunity, only reorders. No recency or support-count
+/// component: the server only serves opportunities that are still open,
+/// and support counts are informational, never a ranking signal.
 class OpportunityRelevanceRanker {
   const OpportunityRelevanceRanker();
 
@@ -37,6 +40,8 @@ class OpportunityRelevanceRanker {
     ranked.sort((a, b) {
       final byMatch = _matchRank(b).compareTo(_matchRank(a));
       if (byMatch != 0) return byMatch;
+      final byAppeal = b.opportunity.appeal.compareTo(a.opportunity.appeal);
+      if (byAppeal != 0) return byAppeal;
       return b.werteAlignment.compareTo(a.werteAlignment);
     });
     return ranked;

@@ -188,6 +188,8 @@ class OpportunityRecord(Base):
     is_relevant: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     relevance_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     region: Mapped[str | None] = mapped_column(String(length=20), nullable=True)
+    everyday_relevance: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    accessibility: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     title: Mapped[str | None] = mapped_column(Text, nullable=True)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     affected_tags: Mapped[list[str]] = mapped_column(

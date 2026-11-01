@@ -80,6 +80,9 @@ class Opportunity:
     pro_argumente: tuple[str, ...]
     contra_argumente: tuple[str, ...]
     personal_impact_snippets: dict[str, str]
+    # 1-5 enrichment scores; the app ranks easy, everyday cards first
+    everyday_relevance: int | None
+    accessibility: int | None
     opens_on: date | None
     closes_on: date | None
     support_count: int | None

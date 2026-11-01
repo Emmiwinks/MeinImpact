@@ -6,10 +6,12 @@ from typing import Any
 import pytest
 from listing_fakes import make_listing
 
+from meinimpact.infrastructure.ai import listing_enricher
 from meinimpact.infrastructure.ai.listing_enricher import (
     EnrichmentError,
     ListingEnricher,
     build_prompt,
+    enrichment_input_hash,
     parse_enrichment,
 )
 from meinimpact.infrastructure.listings.model import Region
@@ -20,6 +22,8 @@ def _relevant(**overrides: Any) -> dict[str, Any]:
         "is_participation": True,
         "reason": "Bebauungsplan liegt öffentlich aus.",
         "scope": "dresden",
+        "alltagsbezug": 4,
+        "zugaenglichkeit": 5,
         "title": "Soll am Alten Leipziger Bahnhof ein neues Quartier entstehen?",
         "summary": "Die Stadt legt den Plan aus. Bürger können Stellung nehmen.",
         "affected_tags": ["Wohnen/Miete"],
@@ -59,6 +63,7 @@ def test_relevant_listing_is_parsed() -> None:
 
     assert enrichment.is_relevant
     assert enrichment.region is Region.DRESDEN
+    assert (enrichment.everyday_relevance, enrichment.accessibility) == (4, 5)
     assert enrichment.title.startswith("Soll am Alten")
     assert enrichment.affected_tags == ("Wohnen/Miete",)
     assert enrichment.werte_relevanz == {"equality_markets": -0.4}
@@ -131,11 +136,42 @@ def test_untagged_listing_has_no_axes_or_snippets() -> None:
         {"is_participation": "ja"},
         _relevant(title=""),
         _relevant(summary=None),
+        _relevant(alltagsbezug=None),
+        _relevant(alltagsbezug=0),
+        _relevant(zugaenglichkeit=6),
+        _relevant(zugaenglichkeit="4"),
+        _relevant(zugaenglichkeit=4.5),
+        _relevant(alltagsbezug=True),
     ],
 )
 def test_unusable_answers_raise(raw: dict[str, Any]) -> None:
     with pytest.raises(EnrichmentError):
         parse_enrichment(raw)
+
+
+def test_scores_are_not_required_for_non_participation() -> None:
+    enrichment = parse_enrichment({"is_participation": False, "reason": "x"})
+
+    assert enrichment.everyday_relevance is None
+
+
+def test_input_hash_tracks_registry_text_and_enrichment_version(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    listing = make_listing("a", title="Kita erhalten")
+    original = enrichment_input_hash(listing)
+
+    assert enrichment_input_hash(listing) == original
+    assert enrichment_input_hash(replace(listing, title="Kita retten")) != original
+    monkeypatch.setattr(listing_enricher, "ENRICHMENT_VERSION", "next")
+    assert enrichment_input_hash(listing) != original
+
+
+def test_prompt_asks_for_varied_question_titles() -> None:
+    prompt = build_prompt(make_listing(), None)
+
+    assert 'Beginne NICHT standardmäßig mit "Soll"' in prompt
+    assert '"alltagsbezug": <1-5>' in prompt
 
 
 class FakeCompleter:

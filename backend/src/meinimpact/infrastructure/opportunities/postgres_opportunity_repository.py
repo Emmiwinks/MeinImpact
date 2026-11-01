@@ -8,12 +8,11 @@ Write side, used by the ingestion pipeline:
   ones and those whose registry text changed.
 - `save_enrichment()` stores one enrichment result.
 
-Read side: `list_open()` serves the feed.
+Read side: `list_open()` serves the feed, applying the feed policy below.
 
 The repository never commits; the caller owns the transaction boundaries.
 """
 
-import hashlib
 import uuid
 from collections.abc import Collection, Sequence
 from dataclasses import dataclass
@@ -23,10 +22,20 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from meinimpact.domain.entities import Opportunity
-from meinimpact.infrastructure.ai.listing_enricher import Enrichment
+from meinimpact.infrastructure.ai.listing_enricher import (
+    Enrichment,
+    enrichment_input_hash,
+)
 from meinimpact.infrastructure.listings.catalog import SOURCE_NAMES
 from meinimpact.infrastructure.listings.model import Listing
 from meinimpact.infrastructure.models import OpportunityRecord, SupportSnapshotRecord
+
+# Feed policy: only expert-only items are withheld, i.e. both hardly any
+# everyday relevance AND hard to grasp (e.g. EU rules on trailer CO2
+# accounting). Everything else is served; the app ranks by these scores.
+# Applied at read time, so tuning needs no re-enrichment.
+EXPERT_ONLY_MAX_EVERYDAY_RELEVANCE = 1
+EXPERT_ONLY_MAX_ACCESSIBILITY = 2
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,12 +51,6 @@ class SyncResult:
     updated: int
     deactivated: int
     pending: tuple[PendingEnrichment, ...]
-
-
-def enrichment_input_hash(listing: Listing) -> str:
-    """Fingerprint of the registry text enrichment is based on."""
-    text = "\n".join((listing.kind, listing.title, listing.summary or ""))
-    return hashlib.sha256(text.encode()).hexdigest()
 
 
 class PostgresOpportunityRepository:
@@ -124,6 +127,8 @@ class PostgresOpportunityRepository:
         record.is_relevant = enrichment.is_relevant
         record.relevance_reason = enrichment.reason
         record.region = enrichment.region.value if enrichment.region else None
+        record.everyday_relevance = enrichment.everyday_relevance
+        record.accessibility = enrichment.accessibility
         record.title = enrichment.title or None
         record.summary = enrichment.summary or None
         record.affected_tags = list(enrichment.affected_tags)
@@ -140,6 +145,11 @@ class PostgresOpportunityRepository:
                 OpportunityRecord.active.is_(True),
                 OpportunityRecord.is_relevant.is_(True),
                 OpportunityRecord.region.is_not(None),
+                or_(
+                    OpportunityRecord.everyday_relevance
+                    > EXPERT_ONLY_MAX_EVERYDAY_RELEVANCE,
+                    OpportunityRecord.accessibility > EXPERT_ONLY_MAX_ACCESSIBILITY,
+                ),
                 or_(
                     OpportunityRecord.closes_on.is_(None),
                     OpportunityRecord.closes_on >= today,
@@ -213,6 +223,8 @@ def _to_domain(record: OpportunityRecord) -> Opportunity:
         pro_argumente=tuple(record.pro_argumente),
         contra_argumente=tuple(record.contra_argumente),
         personal_impact_snippets=dict(record.personal_impact_snippets),
+        everyday_relevance=record.everyday_relevance,
+        accessibility=record.accessibility,
         opens_on=record.opens_on,
         closes_on=record.closes_on,
         support_count=record.support_count,
