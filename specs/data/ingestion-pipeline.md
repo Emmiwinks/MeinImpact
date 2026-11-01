@@ -62,6 +62,25 @@ steps), `infrastructure/ai/listing_enricher.py`,
   deactivated.
 - **Fault-tolerant per source and per listing.**
 
+### Appeal scores, districts, free topics (since 2026-11-02)
+
+- **Scores:** every relevant listing gets `everyday_relevance` and
+  `accessibility` (1-5). The feed withholds only expert-only items (both
+  very low, `EXPERT_ONLY_MAX_*` in the repository); the app ranks the rest:
+  personal match, then appeal, then werte alignment.
+- **Titles:** varied question forms (not mostly "Soll ..."), summaries in
+  plain language.
+- **Districts:** per city, from Wikidata (`scripts/sync_districts.py` ->
+  committed `infrastructure/geo/data/<city>.json`; Dresden: 123 Ortsteile).
+  Matched deterministically in the registry and detail text only; the LLM
+  is not asked (it mapped streets to wrong districts in a live run). Empty =
+  whole city. A new city is one `CityConfig` plus a sync run. Street-level
+  inference would need geodata (geocoding), not model guesses.
+- **Free topic:** the LLM's own topic label next to the fixed tags;
+  `scripts/topic_report.py` shows where the taxonomy force-fits.
+- **`ENRICHMENT_VERSION`** is part of the enrichment input hash: bumping it
+  re-enriches everything on the next run.
+
 ### Relevance (LLM, per listing)
 
 Kept: petitions, statements on displayed plans (Bauleitplanung),

@@ -190,6 +190,12 @@ class OpportunityRecord(Base):
     region: Mapped[str | None] = mapped_column(String(length=20), nullable=True)
     everyday_relevance: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     accessibility: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    # City districts concerned (names from geo/data), [] = whole city/region
+    districts: Mapped[list[str]] = mapped_column(
+        ARRAY(Text()), nullable=False, server_default="{}"
+    )
+    # Free topic label, for taxonomy maintenance (scripts/topic_report.py)
+    free_topic: Mapped[str | None] = mapped_column(Text, nullable=True)
     title: Mapped[str | None] = mapped_column(Text, nullable=True)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     affected_tags: Mapped[list[str]] = mapped_column(

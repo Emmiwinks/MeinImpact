@@ -1,6 +1,6 @@
 """Turns a registry listing into what the app shows, and decides relevance.
 
-One LLM call per listing answers three questions:
+One LLM call per listing covers the first four points:
 1. Is this a real way for citizens to influence a public decision, at a
    level the app covers? Registries also list property viewings, staff
    trainings, award ceremonies and highly technical EU acts (all seen
@@ -11,6 +11,13 @@ One LLM call per listing answers three questions:
    tuning either needs no new LLM calls.
 3. Engaging, neutral plain-language framing, topic tags, werte axes,
    pro/contra and personal-impact snippets.
+4. A free-text topic label next to the fixed tags, so gaps in the taxonomy
+   become visible (`scripts/topic_report.py`) instead of being force-fit.
+5. The city districts concerned, for cities with district data: only names
+   found deterministically in the registry and detail text. The model is
+   not asked: in a live run it mapped streets to the wrong districts
+   (Postplatz -> Innere Neustadt), and a wrong district is worse than none.
+   Street-level inference needs real geodata, not model guesses.
 
 Registry facts (dates, counts, URL) never come from the model; they stay
 with the listing. The model's structured output is normalized in code:
@@ -23,7 +30,7 @@ the prompt or parsing changes, and the next run re-enriches every listing.
 
 import hashlib
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from meinimpact.infrastructure.ai.mistral_json import JsonCompleter
@@ -32,9 +39,10 @@ from meinimpact.infrastructure.ai.taxonomy import (
     TAG_AXES,
     TAG_BETROFFENHEIT_KEYS,
 )
+from meinimpact.infrastructure.geo.districts import DistrictMatcher
 from meinimpact.infrastructure.listings.model import Listing, Region
 
-ENRICHMENT_VERSION = "2"
+ENRICHMENT_VERSION = "4"
 
 _MAX_DETAIL_CHARS = 4000
 _MAX_ARGUMENTS = 3
@@ -70,6 +78,10 @@ class Enrichment:
     pro_argumente: tuple[str, ...] = ()
     contra_argumente: tuple[str, ...] = ()
     personal_impact_snippets: Mapping[str, str] = field(default_factory=dict)
+    # Free label next to the fixed tags, for taxonomy maintenance only
+    free_topic: str = ""
+    # Set by `ListingEnricher` from the registry text, never by the model
+    districts: tuple[str, ...] = ()
 
 
 def enrichment_input_hash(listing: Listing) -> str:
@@ -119,6 +131,7 @@ Eintrag unten und antworte NUR mit JSON in genau dieser Struktur:
   "zugaenglichkeit": <1-5>,
   "title": "<kurze, neutrale Frage>",
   "summary": "<2 kurze Sätze in einfacher Sprache>",
+  "thema": "<1-4 Wörter: das konkrete Thema in eigenen Worten>",
   "affected_tags": ["<tag>", ...],
   "werte_relevanz": {{"<achse>": <-1.0 bis 1.0>}},
   "pro_argumente": ["<arg>", "<arg>"],
@@ -174,6 +187,10 @@ Fachbegriffe, Aktenzeichen oder Plannummern im Titel.
 summary: 2 kurze Sätze in einfacher Sprache (etwa Niveau B1): worum geht
 es, und wen betrifft es konkret. Fachbegriffe nur mit Erklärung. Neutral,
 ohne die Position der Initiatoren zu übernehmen.
+
+thema: das konkrete Thema frei benannt, unabhängig von der Tag-Liste unten
+(z.B. "Tierschutz", "Menstruationsprodukte", "Kita-Schließung"). Erfinde
+nichts dazu; wenn ein Tag gut passt, darf thema trotzdem genauer sein.
 
 affected_tags: NUR aus dieser Liste:
 {tag_list}
@@ -246,6 +263,7 @@ def parse_enrichment(raw: Mapping[str, Any]) -> Enrichment:
             for key, value in _mapping(raw.get("personal_impact_snippets")).items()
             if key in snippet_keys and isinstance(value, str) and value.strip()
         },
+        free_topic=_text(raw.get("thema")),
     )
 
 
@@ -273,11 +291,31 @@ def _mapping(value: object) -> Mapping[str, object]:
 
 
 class ListingEnricher:
-    def __init__(self, completer: JsonCompleter) -> None:
+    """`district_matchers` maps a region to its city's districts (Dresden
+    today); regions without one never get districts."""
+
+    def __init__(
+        self,
+        completer: JsonCompleter,
+        district_matchers: Mapping[Region, DistrictMatcher] | None = None,
+    ) -> None:
         self._completer = completer
+        self._district_matchers = district_matchers or {}
 
     async def enrich(self, listing: Listing, detail: str | None) -> Enrichment:
         """Raises on transport or format errors; the caller decides whether
         to retry (the listing stays pending until enriched)."""
         raw = await self._completer.complete_json(build_prompt(listing, detail))
-        return parse_enrichment(raw)
+        enrichment = parse_enrichment(raw)
+
+        matcher = (
+            self._district_matchers.get(enrichment.region)
+            if enrichment.region
+            else None
+        )
+        if matcher is None or not enrichment.is_relevant:
+            return enrichment
+        text = "\n".join(
+            part for part in (listing.title, listing.summary, detail) if part
+        )
+        return replace(enrichment, districts=matcher.find(text))

@@ -9,11 +9,13 @@ from meinimpact.core.config import Settings
 from meinimpact.infrastructure.ai.listing_enricher import ListingEnricher
 from meinimpact.infrastructure.ai.mistral_json import MistralJsonCompleter
 from meinimpact.infrastructure.database import Database
+from meinimpact.infrastructure.geo.districts import CITIES, DistrictMatcher
 from meinimpact.infrastructure.listings.catalog import (
     default_detail_readers,
     default_sources,
 )
 from meinimpact.infrastructure.listings.http import PoliteHttpClient
+from meinimpact.infrastructure.listings.model import Region
 from meinimpact.infrastructure.opportunities.postgres_opportunity_repository import (
     PostgresOpportunityRepository,
 )
@@ -46,7 +48,10 @@ async def run_configured_ingestion(settings: Settings) -> IngestionSummary:
             return await run_ingestion(
                 sources=default_sources(http),
                 detail_readers=default_detail_readers(http),
-                enricher=ListingEnricher(completer),
+                enricher=ListingEnricher(
+                    completer,
+                    {Region.DRESDEN: DistrictMatcher.for_city(CITIES["dresden"])},
+                ),
                 store=PostgresOpportunityRepository(session),
             )
     finally:

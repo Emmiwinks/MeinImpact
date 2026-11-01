@@ -58,6 +58,8 @@ class OpportunityDetailDialog extends StatelessWidget {
                         MetaChip(label: opportunity.sourceOrg),
                         MetaChip(label: opportunity.kind.label),
                         if (place != null) MetaChip(label: place),
+                        for (final district in opportunity.districts)
+                          MetaChip(label: district),
                       ],
                     ),
                     const SizedBox(height: 10),

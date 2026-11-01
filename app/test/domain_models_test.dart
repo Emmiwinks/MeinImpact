@@ -58,6 +58,7 @@ void main() {
         'personal_impact_snippets': {
           'wohnsituation:mieter': 'Betrifft dich direkt.',
         },
+        'districts': ['Mockritz'],
         'opens_on': '2026-11-02',
         'closes_on': '2026-12-04',
         'support_count': 3,
@@ -70,6 +71,7 @@ void main() {
       expect(opportunity.isAnnounced, isTrue);
       expect(opportunity.region, 'dresden');
       expect(opportunity.organizer, 'Landeshauptstadt Dresden');
+      expect(opportunity.districts, ['Mockritz']);
       expect(opportunity.affectedTags, ['Wohnen/Miete']);
       expect(opportunity.werteRelevanz, {'equality_markets': -0.8});
       expect(opportunity.opensOn, DateTime.parse('2026-11-02'));
@@ -96,6 +98,7 @@ void main() {
 
       expect(opportunity.kind, OpportunityKind.other);
       expect(opportunity.isAnnounced, isFalse);
+      expect(opportunity.districts, isEmpty);
       expect(opportunity.affectedTags, isEmpty);
       expect(opportunity.werteRelevanz, isEmpty);
       expect(opportunity.closesOn, isNull);

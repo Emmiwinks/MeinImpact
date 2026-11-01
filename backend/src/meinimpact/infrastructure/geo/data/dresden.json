@@ -1,0 +1,502 @@
+{
+  "city": "Dresden",
+  "wikidata_id": "Q1731",
+  "district_types": [
+    "Q253019"
+  ],
+  "synced_at": "2026-11-01",
+  "districts": [
+    {
+      "name": "Albertstadt",
+      "wikidata_id": "Q8893"
+    },
+    {
+      "name": "Alt-Leuteritz",
+      "wikidata_id": "Q432952"
+    },
+    {
+      "name": "Altfranken",
+      "wikidata_id": "Q8888"
+    },
+    {
+      "name": "Blasewitz",
+      "wikidata_id": "Q8897"
+    },
+    {
+      "name": "Borsberg",
+      "wikidata_id": "Q894174"
+    },
+    {
+      "name": "Brabschütz",
+      "wikidata_id": "Q896514"
+    },
+    {
+      "name": "Briesnitz",
+      "wikidata_id": "Q915219"
+    },
+    {
+      "name": "Burgstädtel",
+      "wikidata_id": "Q1016036"
+    },
+    {
+      "name": "Bühlau",
+      "wikidata_id": "Q13427151"
+    },
+    {
+      "name": "Coschütz",
+      "wikidata_id": "Q8898"
+    },
+    {
+      "name": "Cossebaude",
+      "wikidata_id": "Q1117549"
+    },
+    {
+      "name": "Cotta",
+      "wikidata_id": "Q8899"
+    },
+    {
+      "name": "Cunnersdorf",
+      "wikidata_id": "Q1143995"
+    },
+    {
+      "name": "Dobritz",
+      "wikidata_id": "Q1233447"
+    },
+    {
+      "name": "Dölzschen",
+      "wikidata_id": "Q8904"
+    },
+    {
+      "name": "Eichbusch",
+      "wikidata_id": "Q1301291"
+    },
+    {
+      "name": "Eschdorf",
+      "wikidata_id": "Q8960"
+    },
+    {
+      "name": "Friedersdorf",
+      "wikidata_id": "Q1457133"
+    },
+    {
+      "name": "Gittersee",
+      "wikidata_id": "Q8912"
+    },
+    {
+      "name": "Gohlis",
+      "wikidata_id": "Q1534373"
+    },
+    {
+      "name": "Gomlitz",
+      "wikidata_id": "Q1536869"
+    },
+    {
+      "name": "Gompitz",
+      "wikidata_id": "Q1536934"
+    },
+    {
+      "name": "Gorbitz",
+      "wikidata_id": "Q8915"
+    },
+    {
+      "name": "Gostritz",
+      "wikidata_id": "Q1538647"
+    },
+    {
+      "name": "Großzschachwitz",
+      "wikidata_id": "Q8917"
+    },
+    {
+      "name": "Gruna",
+      "wikidata_id": "Q1550409"
+    },
+    {
+      "name": "Gönnsdorf",
+      "wikidata_id": "Q1559387"
+    },
+    {
+      "name": "Helfenberg",
+      "wikidata_id": "Q1602090"
+    },
+    {
+      "name": "Hellerau",
+      "wikidata_id": "Q8920"
+    },
+    {
+      "name": "Hellerberge",
+      "wikidata_id": "Q123295605"
+    },
+    {
+      "name": "Hosterwitz",
+      "wikidata_id": "Q1630590"
+    },
+    {
+      "name": "Innere Neustadt",
+      "wikidata_id": "Q8924"
+    },
+    {
+      "name": "Johannstadt-Nord",
+      "wikidata_id": "Q123181362"
+    },
+    {
+      "name": "Johannstadt-Süd",
+      "wikidata_id": "Q123181367"
+    },
+    {
+      "name": "Kaditz",
+      "wikidata_id": "Q1720959"
+    },
+    {
+      "name": "Kaitz",
+      "wikidata_id": "Q1721801"
+    },
+    {
+      "name": "Kauscha",
+      "wikidata_id": "Q1737172"
+    },
+    {
+      "name": "Kemnitz",
+      "wikidata_id": "Q1738517"
+    },
+    {
+      "name": "Kleinpestitz",
+      "wikidata_id": "Q8925"
+    },
+    {
+      "name": "Kleinzschachwitz",
+      "wikidata_id": "Q8926"
+    },
+    {
+      "name": "Klotzsche",
+      "wikidata_id": "Q8931"
+    },
+    {
+      "name": "Krieschendorf",
+      "wikidata_id": "Q1773752"
+    },
+    {
+      "name": "Langebrück",
+      "wikidata_id": "Q1804939"
+    },
+    {
+      "name": "Laubegast",
+      "wikidata_id": "Q8933"
+    },
+    {
+      "name": "Lausa",
+      "wikidata_id": "Q1713713"
+    },
+    {
+      "name": "Leipziger Vorstadt",
+      "wikidata_id": "Q1815646"
+    },
+    {
+      "name": "Leuben",
+      "wikidata_id": "Q8936"
+    },
+    {
+      "name": "Leubnitz",
+      "wikidata_id": "Q94725580"
+    },
+    {
+      "name": "Leubnitz-Neuostra",
+      "wikidata_id": "Q8938"
+    },
+    {
+      "name": "Leutewitz",
+      "wikidata_id": "Q1821636"
+    },
+    {
+      "name": "Lockwitz",
+      "wikidata_id": "Q1867643"
+    },
+    {
+      "name": "Loschwitz",
+      "wikidata_id": "Q8939"
+    },
+    {
+      "name": "Luga",
+      "wikidata_id": "Q1688946"
+    },
+    {
+      "name": "Löbtau",
+      "wikidata_id": "Q1879617"
+    },
+    {
+      "name": "Malschendorf",
+      "wikidata_id": "Q1605903"
+    },
+    {
+      "name": "Marsdorf",
+      "wikidata_id": "Q1902666"
+    },
+    {
+      "name": "Merbitz",
+      "wikidata_id": "Q1921127"
+    },
+    {
+      "name": "Meußlitz",
+      "wikidata_id": "Q8941"
+    },
+    {
+      "name": "Mickten",
+      "wikidata_id": "Q8942"
+    },
+    {
+      "name": "Mobschatz",
+      "wikidata_id": "Q1941602"
+    },
+    {
+      "name": "Mockritz",
+      "wikidata_id": "Q8943"
+    },
+    {
+      "name": "Naußlitz",
+      "wikidata_id": "Q1972162"
+    },
+    {
+      "name": "Neu-Leuteritz",
+      "wikidata_id": "Q1979106"
+    },
+    {
+      "name": "Neudorf",
+      "wikidata_id": "Q15122699"
+    },
+    {
+      "name": "Neunimptsch",
+      "wikidata_id": "Q1981045"
+    },
+    {
+      "name": "Nickern",
+      "wikidata_id": "Q1805968"
+    },
+    {
+      "name": "Niederpoyritz",
+      "wikidata_id": "Q1425961"
+    },
+    {
+      "name": "Niedersedlitz",
+      "wikidata_id": "Q1988463"
+    },
+    {
+      "name": "Niederwartha",
+      "wikidata_id": "Q8964"
+    },
+    {
+      "name": "Oberpoyritz",
+      "wikidata_id": "Q2010639"
+    },
+    {
+      "name": "Oberwartha",
+      "wikidata_id": "Q1674903"
+    },
+    {
+      "name": "Ockerwitz",
+      "wikidata_id": "Q2013740"
+    },
+    {
+      "name": "Omsewitz",
+      "wikidata_id": "Q8944"
+    },
+    {
+      "name": "Pappritz",
+      "wikidata_id": "Q8966"
+    },
+    {
+      "name": "Pennrich",
+      "wikidata_id": "Q8967"
+    },
+    {
+      "name": "Pieschen",
+      "wikidata_id": "Q8945"
+    },
+    {
+      "name": "Pillnitz",
+      "wikidata_id": "Q8946"
+    },
+    {
+      "name": "Plauen",
+      "wikidata_id": "Q8949"
+    },
+    {
+      "name": "Podemus",
+      "wikidata_id": "Q2100231"
+    },
+    {
+      "name": "Prohlis",
+      "wikidata_id": "Q2112285"
+    },
+    {
+      "name": "Quohren",
+      "wikidata_id": "Q2123609"
+    },
+    {
+      "name": "Reick",
+      "wikidata_id": "Q2139856"
+    },
+    {
+      "name": "Reitzendorf",
+      "wikidata_id": "Q2142233"
+    },
+    {
+      "name": "Rennersdorf",
+      "wikidata_id": "Q1448972"
+    },
+    {
+      "name": "Rochwitz",
+      "wikidata_id": "Q2160346"
+    },
+    {
+      "name": "Rockau",
+      "wikidata_id": "Q1697072"
+    },
+    {
+      "name": "Roitzsch",
+      "wikidata_id": "Q2162510"
+    },
+    {
+      "name": "Rosinendörfchen",
+      "wikidata_id": "Q2167437"
+    },
+    {
+      "name": "Rossendorf",
+      "wikidata_id": "Q2167680"
+    },
+    {
+      "name": "Roßthal",
+      "wikidata_id": "Q2171376"
+    },
+    {
+      "name": "Räcknitz",
+      "wikidata_id": "Q1252764"
+    },
+    {
+      "name": "Rähnitz",
+      "wikidata_id": "Q1563739"
+    },
+    {
+      "name": "Schullwitz",
+      "wikidata_id": "Q2251323"
+    },
+    {
+      "name": "Schönborn",
+      "wikidata_id": "Q2258794"
+    },
+    {
+      "name": "Schönfeld",
+      "wikidata_id": "Q1287867"
+    },
+    {
+      "name": "Seevorstadt",
+      "wikidata_id": "Q8952"
+    },
+    {
+      "name": "Sporbitz",
+      "wikidata_id": "Q2312167"
+    },
+    {
+      "name": "Steinbach",
+      "wikidata_id": "Q1668480"
+    },
+    {
+      "name": "Stetzsch",
+      "wikidata_id": "Q2346357"
+    },
+    {
+      "name": "Strehlen",
+      "wikidata_id": "Q1336962"
+    },
+    {
+      "name": "Striesen",
+      "wikidata_id": "Q8954"
+    },
+    {
+      "name": "Söbrigen",
+      "wikidata_id": "Q2379589"
+    },
+    {
+      "name": "Südvorstadt",
+      "wikidata_id": "Q2381672"
+    },
+    {
+      "name": "Südvorstadt-Ost",
+      "wikidata_id": "Q123181377"
+    },
+    {
+      "name": "Südvorstadt-West",
+      "wikidata_id": "Q123181380"
+    },
+    {
+      "name": "Tolkewitz",
+      "wikidata_id": "Q2439280"
+    },
+    {
+      "name": "Torna",
+      "wikidata_id": "Q2444201"
+    },
+    {
+      "name": "Trachau",
+      "wikidata_id": "Q1805303"
+    },
+    {
+      "name": "Trachenberge",
+      "wikidata_id": "Q2447490"
+    },
+    {
+      "name": "Unkersdorf",
+      "wikidata_id": "Q110653"
+    },
+    {
+      "name": "Wachwitz",
+      "wikidata_id": "Q2538540"
+    },
+    {
+      "name": "Weixdorf",
+      "wikidata_id": "Q2556719"
+    },
+    {
+      "name": "Weißer Hirsch",
+      "wikidata_id": "Q8956"
+    },
+    {
+      "name": "Weißig",
+      "wikidata_id": "Q1760584"
+    },
+    {
+      "name": "Wilschdorf",
+      "wikidata_id": "Q2582505"
+    },
+    {
+      "name": "Wilsdruffer Vorstadt",
+      "wikidata_id": "Q1286088"
+    },
+    {
+      "name": "Wölfnitz",
+      "wikidata_id": "Q2596418"
+    },
+    {
+      "name": "Zaschendorf",
+      "wikidata_id": "Q148183"
+    },
+    {
+      "name": "Zschertnitz",
+      "wikidata_id": "Q8957"
+    },
+    {
+      "name": "Zschieren",
+      "wikidata_id": "Q227251"
+    },
+    {
+      "name": "Zöllmen",
+      "wikidata_id": "Q247778"
+    },
+    {
+      "name": "Äußere Neustadt",
+      "wikidata_id": "Q8894"
+    },
+    {
+      "name": "Übigau",
+      "wikidata_id": "Q8955"
+    }
+  ]
+}

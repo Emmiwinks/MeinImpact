@@ -14,6 +14,7 @@ from meinimpact.infrastructure.ai.listing_enricher import (
     enrichment_input_hash,
     parse_enrichment,
 )
+from meinimpact.infrastructure.geo.districts import District, DistrictMatcher
 from meinimpact.infrastructure.listings.model import Region
 
 
@@ -182,6 +183,40 @@ class FakeCompleter:
     async def complete_json(self, prompt: str) -> dict[str, Any]:
         self.prompts.append(prompt)
         return self.answer
+
+
+def test_free_topic_is_kept_next_to_the_fixed_tags() -> None:
+    enrichment = parse_enrichment(_relevant(thema="Menstruationsprodukte"))
+
+    assert enrichment.free_topic == "Menstruationsprodukte"
+
+
+_DRESDEN = DistrictMatcher(
+    "Dresden", [District("Mockritz", "Q1"), District("Plauen", "Q2")]
+)
+
+
+async def test_districts_come_only_from_the_registry_text() -> None:
+    # A model answer naming districts is ignored: only text matches count.
+    completer = FakeCompleter(_relevant(stadtteile=["Mockritz"]))
+    enricher = ListingEnricher(completer, {Region.DRESDEN: _DRESDEN})
+    listing = make_listing(
+        "bp", region=Region.DRESDEN, title="Bebauungsplan Dresden-Plauen"
+    )
+
+    enrichment = await enricher.enrich(listing, "Zweiter Abschnitt in Plauen")
+
+    assert enrichment.districts == ("Plauen",)
+    assert "stadtteile" not in completer.prompts[0]
+
+
+async def test_no_districts_outside_cities_with_district_data() -> None:
+    completer = FakeCompleter(_relevant(scope="sachsen"))
+    enricher = ListingEnricher(completer, {Region.DRESDEN: _DRESDEN})
+
+    enrichment = await enricher.enrich(make_listing("x"), "Dresden-Plauen")
+
+    assert enrichment.districts == ()
 
 
 async def test_enricher_sends_the_prompt_and_parses_the_answer() -> None:

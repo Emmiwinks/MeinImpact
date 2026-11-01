@@ -83,6 +83,8 @@ class Opportunity:
     # 1-5 enrichment scores; the app ranks easy, everyday cards first
     everyday_relevance: int | None
     accessibility: int | None
+    # City districts concerned; empty = the whole city or region
+    districts: tuple[str, ...]
     opens_on: date | None
     closes_on: date | None
     support_count: int | None

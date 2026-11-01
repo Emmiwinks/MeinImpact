@@ -44,6 +44,7 @@ class Opportunity {
     required this.contraArgumente,
     required this.personalImpactSnippets,
     required this.firstSeenAt,
+    this.districts = const [],
     this.locality,
     this.organizer,
     this.opensOn,
@@ -82,6 +83,7 @@ class Opportunity {
       supportGoal: json['support_goal'] as int?,
       everydayRelevance: json['everyday_relevance'] as int?,
       accessibility: json['accessibility'] as int?,
+      districts: _strings(json['districts']),
       firstSeenAt: DateTime.parse(json['first_seen_at'] as String),
     );
   }
@@ -98,6 +100,9 @@ class Opportunity {
   // The registry's own place label, e.g. "Leipzig" or "Landeshauptstadt
   // Dresden".
   final String? locality;
+  // City districts concerned (Dresden today), from the official district
+  // list; empty means the whole city or region.
+  final List<String> districts;
   final String? organizer;
   final String title;
   final String summary;

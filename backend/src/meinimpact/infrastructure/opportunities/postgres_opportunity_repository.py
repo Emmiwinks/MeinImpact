@@ -129,6 +129,8 @@ class PostgresOpportunityRepository:
         record.region = enrichment.region.value if enrichment.region else None
         record.everyday_relevance = enrichment.everyday_relevance
         record.accessibility = enrichment.accessibility
+        record.free_topic = enrichment.free_topic or None
+        record.districts = list(enrichment.districts)
         record.title = enrichment.title or None
         record.summary = enrichment.summary or None
         record.affected_tags = list(enrichment.affected_tags)
@@ -177,6 +179,7 @@ def _new_record(listing: Listing, observed_at: datetime) -> OpportunityRecord:
         external_id=listing.external_id,
         first_seen_at=observed_at,
         affected_tags=[],
+        districts=[],
         werte_relevanz={},
         pro_argumente=[],
         contra_argumente=[],
@@ -225,6 +228,7 @@ def _to_domain(record: OpportunityRecord) -> Opportunity:
         personal_impact_snippets=dict(record.personal_impact_snippets),
         everyday_relevance=record.everyday_relevance,
         accessibility=record.accessibility,
+        districts=tuple(record.districts),
         opens_on=record.opens_on,
         closes_on=record.closes_on,
         support_count=record.support_count,
