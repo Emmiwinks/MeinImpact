@@ -20,7 +20,15 @@ class UserProfileStore {
   /// read is moved aside and null is returned, so startup never fails on it
   /// (it runs before `runApp`; a throw there leaves a blank screen).
   Future<UserProfile?> load() async {
-    final raw = await _storage.read(key: _key);
+    final String? raw;
+    try {
+      raw = await _storage.read(key: _key);
+    } catch (error) {
+      // On web the value is encrypted with a key kept in the browser; when
+      // the two no longer match, reading throws before any parsing.
+      debugPrint('Saved profile could not be read: $error');
+      return null;
+    }
     if (raw == null) return null;
     try {
       return UserProfile.fromJson(jsonDecode(raw) as Map<String, Object?>);
