@@ -196,6 +196,7 @@ class OpportunityRecord(Base):
     )
     # Free topic label, for taxonomy maintenance (scripts/topic_report.py)
     free_topic: Mapped[str | None] = mapped_column(Text, nullable=True)
+    topic_candidate: Mapped[str | None] = mapped_column(Text, nullable=True)
     title: Mapped[str | None] = mapped_column(Text, nullable=True)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     affected_tags: Mapped[list[str]] = mapped_column(

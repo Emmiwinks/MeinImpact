@@ -130,6 +130,7 @@ class PostgresOpportunityRepository:
         record.everyday_relevance = enrichment.everyday_relevance
         record.accessibility = enrichment.accessibility
         record.free_topic = enrichment.free_topic or None
+        record.topic_candidate = enrichment.topic_candidate or None
         record.districts = list(enrichment.districts)
         record.title = enrichment.title or None
         record.summary = enrichment.summary or None

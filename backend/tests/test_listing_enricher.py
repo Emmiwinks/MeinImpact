@@ -14,6 +14,13 @@ from meinimpact.infrastructure.ai.listing_enricher import (
     enrichment_input_hash,
     parse_enrichment,
 )
+from meinimpact.infrastructure.ai.taxonomy import (
+    AXIS_LANGUAGE,
+    CANDIDATE_TOPICS,
+    TAG_AXES,
+    TAG_BETROFFENHEIT_KEYS,
+    TAG_HINTS,
+)
 from meinimpact.infrastructure.geo.districts import District, DistrictMatcher
 from meinimpact.infrastructure.listings.model import Region
 
@@ -53,6 +60,22 @@ def test_prompt_contains_registry_facts_and_truncated_detail() -> None:
     assert "Art laut Quelle: Bebauungsplan, Öffentliche Auslegung" in prompt
     assert "A" * 4000 in prompt
     assert "A" * 4001 not in prompt
+
+
+def test_prompt_lists_every_tag_and_candidate_topic() -> None:
+    prompt = build_prompt(make_listing(), None)
+
+    for tag in TAG_AXES:
+        assert f"- {tag}" in prompt
+    for topic in CANDIDATE_TOPICS:
+        assert f"- {topic}" in prompt
+
+
+def test_taxonomy_tables_agree_with_each_other() -> None:
+    assert set(TAG_BETROFFENHEIT_KEYS) <= set(TAG_AXES)
+    assert {axis for axes in TAG_AXES.values() for axis in axes} <= set(AXIS_LANGUAGE)
+    assert not set(CANDIDATE_TOPICS) & set(TAG_AXES)
+    assert set(TAG_HINTS) <= set(TAG_AXES)
 
 
 def test_prompt_without_detail_says_so() -> None:
@@ -189,6 +212,15 @@ def test_free_topic_is_kept_next_to_the_fixed_tags() -> None:
     enrichment = parse_enrichment(_relevant(thema="Menstruationsprodukte"))
 
     assert enrichment.free_topic == "Menstruationsprodukte"
+
+
+def test_candidate_topic_is_kept_only_from_the_candidate_list() -> None:
+    assert (
+        parse_enrichment(_relevant(kandidat="Verbraucher/Preise")).topic_candidate
+        == "Verbraucher/Preise"
+    )
+    assert parse_enrichment(_relevant(kandidat="Erfunden")).topic_candidate == ""
+    assert parse_enrichment(_relevant()).topic_candidate == ""
 
 
 _DRESDEN = DistrictMatcher(

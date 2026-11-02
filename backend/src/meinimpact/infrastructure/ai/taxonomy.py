@@ -2,8 +2,11 @@
 
 Tags are grounded in Politbarometer "wichtigste Probleme", cross-checked
 against Sachsen-Monitor and the Kommunale Bürgerumfrage Dresden.
-Demokratieverteidigung was added from Sachsen-Monitor 2023's "Bekämpfung des
-Rechtsextremismus" category.
+Demokratie/Mitbestimmung started as Demokratieverteidigung from
+Sachsen-Monitor 2023's "Bekämpfung des Rechtsextremismus" category and was
+widened after the free-topic review showed transparency and direct-democracy
+items filed under it. Stadtentwicklung/Bauen and Gleichstellung/Inklusion
+came from the same review (2026-11-02).
 
 `TAG_BETROFFENHEIT_KEYS` must stay in lockstep with the app's
 `Betroffenheitsprofil.matchingKeys()`: renamed keys silently stop matching.
@@ -21,11 +24,41 @@ TAG_AXES: dict[str, list[str]] = {
     "Sicherheit": ["liberty_authority"],
     "Migration/Integration": ["nation_globe"],
     "Außenpolitik/Verteidigung": ["liberty_authority"],
-    "Demokratieverteidigung": ["liberty_authority"],
+    "Demokratie/Mitbestimmung": ["liberty_authority"],
+    "Stadtentwicklung/Bauen": ["tradition_progress"],
     "Gesundheit/Pflege": [],
     "Familie/Kinder": [],
     "Umwelt/Natur": [],
     "Selbstständigkeit/Unternehmertum": [],
+    "Gleichstellung/Inklusion": [],
+}
+
+# One-line scope for tags the model over-applies without it (the first
+# review run filed energy grid and mining items under Stadtentwicklung/Bauen).
+TAG_HINTS: dict[str, str] = {
+    "Stadtentwicklung/Bauen": (
+        "nur Bauleitplanung und Stadtgestaltung: Bebauungspläne, Quartiere, "
+        "Gewerbegebiete, Wohnungsbau, öffentliche Räume. NICHT Energie-, "
+        "Bergbau- oder Waldthemen und nicht Kitas/Schulen als Einrichtung"
+    ),
+    "Gleichstellung/Inklusion": (
+        "Diskriminierung, Gleichberechtigung, Barrierefreiheit, Teilhabe"
+    ),
+    "Demokratie/Mitbestimmung": (
+        "Transparenz, Bürgerbeteiligung, direkte Demokratie, Schutz der "
+        "Demokratie vor Extremismus"
+    ),
+}
+
+# Topics seen in the free labels but too thin for a tag yet, with their scope.
+# The model names one when it fits; `scripts/topic_report.py` counts them, and
+# a candidate that keeps growing becomes a tag.
+CANDIDATE_TOPICS: dict[str, str] = {
+    "Verbraucher/Preise": (
+        "Verbraucherschutz und Preise für Waren/Energie/Sprit; NICHT Löhne, "
+        "Mieten oder Sozialleistungen"
+    ),
+    "Kultur/Freizeit/Ehrenamt": "Sport, Kultur, Freizeitangebote, Ehrenamt",
 }
 
 # Each axis in its own bipolar language, never a generic left/right label.
@@ -55,5 +88,6 @@ TAG_BETROFFENHEIT_KEYS: dict[str, list[str]] = {
     "Migration/Integration": ["migrationshintergrund:true"],
     "Gesundheit/Pflege": ["pflege_betroffen:true"],
     "Familie/Kinder": ["hat_kinder:true"],
+    "Stadtentwicklung/Bauen": ["wohnsituation:mieter", "wohnsituation:eigentuemer"],
     "Selbstständigkeit/Unternehmertum": ["erwerbsstatus:selbststaendig"],
 }

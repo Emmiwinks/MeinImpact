@@ -36,13 +36,15 @@ from typing import Any
 from meinimpact.infrastructure.ai.mistral_json import JsonCompleter
 from meinimpact.infrastructure.ai.taxonomy import (
     AXIS_LANGUAGE,
+    CANDIDATE_TOPICS,
     TAG_AXES,
     TAG_BETROFFENHEIT_KEYS,
+    TAG_HINTS,
 )
 from meinimpact.infrastructure.geo.districts import DistrictMatcher
 from meinimpact.infrastructure.listings.model import Listing, Region
 
-ENRICHMENT_VERSION = "4"
+ENRICHMENT_VERSION = "6"
 
 _MAX_DETAIL_CHARS = 4000
 _MAX_ARGUMENTS = 3
@@ -80,6 +82,8 @@ class Enrichment:
     personal_impact_snippets: Mapping[str, str] = field(default_factory=dict)
     # Free label next to the fixed tags, for taxonomy maintenance only
     free_topic: str = ""
+    # One of `CANDIDATE_TOPICS` when it fits, counted by the same report
+    topic_candidate: str = ""
     # Set by `ListingEnricher` from the registry text, never by the model
     districts: tuple[str, ...] = ()
 
@@ -95,10 +99,15 @@ def enrichment_input_hash(listing: Listing) -> str:
 
 def build_prompt(listing: Listing, detail: str | None) -> str:
     tag_list = "\n".join(
-        f"- {tag}" + (f" (Achse: {', '.join(axes)})" if axes else "")
+        f"- {tag}"
+        + (f" ({TAG_HINTS[tag]})" if tag in TAG_HINTS else "")
+        + (f" (Achse: {', '.join(axes)})" if axes else "")
         for tag, axes in TAG_AXES.items()
     )
     axis_list = "\n".join(f"- {axis}: {text}" for axis, text in AXIS_LANGUAGE.items())
+    candidate_list = "\n".join(
+        f"- {topic}: {hint}" for topic, hint in CANDIDATE_TOPICS.items()
+    )
     snippet_list = "\n".join(
         f"- {tag}: {', '.join(keys)}" for tag, keys in TAG_BETROFFENHEIT_KEYS.items()
     )
@@ -132,6 +141,7 @@ Eintrag unten und antworte NUR mit JSON in genau dieser Struktur:
   "title": "<kurze, neutrale Frage>",
   "summary": "<2 kurze Sätze in einfacher Sprache>",
   "thema": "<1-4 Wörter: das konkrete Thema in eigenen Worten>",
+  "kandidat": "<Name aus der Kandidatenliste oder leer>",
   "affected_tags": ["<tag>", ...],
   "werte_relevanz": {{"<achse>": <-1.0 bis 1.0>}},
   "pro_argumente": ["<arg>", "<arg>"],
@@ -192,7 +202,12 @@ thema: das konkrete Thema frei benannt, unabhängig von der Tag-Liste unten
 (z.B. "Tierschutz", "Menstruationsprodukte", "Kita-Schließung"). Erfinde
 nichts dazu; wenn ein Tag gut passt, darf thema trotzdem genauer sein.
 
-affected_tags: NUR aus dieser Liste:
+kandidat: nur wenn das Thema zu einer dieser Kandidaten-Gruppen gehört,
+sonst leer:
+{candidate_list}
+
+affected_tags: NUR aus dieser Liste. Wähle nur Tags, die wirklich zum Thema
+passen, lieber einen passenden als drei entfernte:
 {tag_list}
 
 werte_relevanz: NUR die Achsen der erkannten Tags, jede in ihrer eigenen
@@ -242,6 +257,7 @@ def parse_enrichment(raw: Mapping[str, Any]) -> Enrichment:
     tags = tuple(t for t in _strings(raw.get("affected_tags")) if t in TAG_AXES)
     axes = {axis for tag in tags for axis in TAG_AXES[tag]}
     snippet_keys = {key for tag in tags for key in TAG_BETROFFENHEIT_KEYS.get(tag, [])}
+    candidate = _text(raw.get("kandidat"))
     return Enrichment(
         is_relevant=True,
         reason=reason,
@@ -264,6 +280,7 @@ def parse_enrichment(raw: Mapping[str, Any]) -> Enrichment:
             if key in snippet_keys and isinstance(value, str) and value.strip()
         },
         free_topic=_text(raw.get("thema")),
+        topic_candidate=candidate if candidate in CANDIDATE_TOPICS else "",
     )
 
 
