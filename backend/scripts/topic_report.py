@@ -23,13 +23,13 @@ from sqlalchemy import select
 
 from meinimpact.core.config import get_settings
 from meinimpact.infrastructure.ai.lebenslagen import LEBENSLAGEN
-from meinimpact.infrastructure.ai.listing_enricher import MAX_LEBENSLAGEN
 from meinimpact.infrastructure.ai.taxonomy import CANDIDATE_TOPICS
 from meinimpact.infrastructure.database import Database
 from meinimpact.infrastructure.models import OpportunityRecord
 
 _FORCE_FIT_TAGS = 3
 _BROAD_SHARE = 0.2
+_MANY_GROUPS = 5
 
 
 def _tags(affected_tags: list[str] | None) -> str:
@@ -82,12 +82,17 @@ async def main() -> None:
     untagged = sum(1 for row in rows if not row.lebenslagen)
     print(f"\n{untagged} opportunities without any Lebenslage")
 
-    # Breadth: a group on a large share of the pool separates nothing, and a
-    # card list that always fills the cap means the model pads the tags.
+    # Breadth: a group on a large share of the pool separates nothing. There
+    # is no cap on groups per card, so padding shows up as many-group cards:
+    # read those to judge whether every group really fits.
     per_card = Counter(len(row.lebenslagen or []) for row in rows)
     print("Lebenslagen per card:", dict(sorted(per_card.items())))
-    at_cap = per_card[MAX_LEBENSLAGEN]
-    print(f"{at_cap} of {len(rows)} cards at the cap of {MAX_LEBENSLAGEN}")
+    print(f"\nCards with {_MANY_GROUPS}+ Lebenslagen (check for padding):")
+    for row in rows:
+        if len(row.lebenslagen or []) >= _MANY_GROUPS:
+            print(
+                f"     {row.free_topic or '(ohne Label)':32}  -> {', '.join(row.lebenslagen)}"
+            )
     broad = [
         f"{item.id} ({lebenslagen[item.id] / len(rows):.0%})"
         for item in LEBENSLAGEN

@@ -45,9 +45,8 @@ from meinimpact.infrastructure.ai.taxonomy import (
 from meinimpact.infrastructure.geo.districts import DistrictMatcher
 from meinimpact.infrastructure.listings.model import Listing, Region
 
-ENRICHMENT_VERSION = "8"
+ENRICHMENT_VERSION = "9"
 
-MAX_LEBENSLAGEN = 3
 
 _MAX_DETAIL_CHARS = 4000
 _MAX_ARGUMENTS = 3
@@ -222,14 +221,17 @@ affected_tags: NUR aus dieser Liste. Wähle nur Tags, die wirklich zum Thema
 passen, lieber einen passenden als drei entfernte:
 {tag_list}
 
-lebenslagen: NUR ids aus dieser Liste. Nenne eine Gruppe nur, wenn dieses
-Thema für sie deutlich wichtiger ist als für den Durchschnitt aller
-Menschen, z.B. Kinderkrankengeld -> eltern, Wohngeld -> wohngeld. Betrifft
-ein Thema alle gleichermaßen (Fluglärm, Grundwasser, Strompreise, Steuern),
-nenne KEINE Gruppe: []. Fülle die Liste nie auf; Verkehrsgruppen (oepnv,
-autofahrer, radfahrer, zu_fuss, pendler) nur bei echten Verkehrsthemen,
-Berufsgruppen nur, wenn der Beruf selbst betroffen ist, und "angestellt"
-nur bei Arbeitnehmerrechten. Höchstens {MAX_LEBENSLAGEN}:
+lebenslagen: NUR ids aus dieser Liste. Prüfe jede Gruppe einzeln: Würde
+diese Gruppe das Thema deutlich wichtiger finden als der Durchschnitt aller
+Menschen? Nur dann nenne sie, und nenne dann ALLE Gruppen, auf die das
+zutrifft, nicht nur die ersten. Beispiele: Kinderkrankengeld -> eltern,
+alleinerziehend; Wohngeld-Kürzung -> wohngeld, geringverdienend, rentner,
+alleinerziehend, eltern. Betrifft ein Thema alle gleichermaßen (Fluglärm,
+Grundwasser, Strompreise, Steuern), ist [] richtig. Eine Gruppe ist KEIN
+Füllwort für "betrifft viele": Verkehrsgruppen (oepnv, autofahrer,
+radfahrer, zu_fuss, pendler) nur bei echten Verkehrsthemen, Berufsgruppen
+nur, wenn der Beruf selbst betroffen ist, "angestellt" nur bei
+Arbeitnehmerrechten:
 {lebenslagen_list}
 lebenslage_frei: nur wenn eine Gruppe klar betroffen ist, die in der Liste
 fehlt: ihr kurzer Name, sonst leer.
@@ -286,7 +288,7 @@ def parse_enrichment(raw: Mapping[str, Any]) -> Enrichment:
         dict.fromkeys(
             i for i in _strings(raw.get("lebenslagen")) if i in LEBENSLAGEN_BY_ID
         )
-    )[:MAX_LEBENSLAGEN]
+    )
     return Enrichment(
         is_relevant=True,
         reason=reason,
