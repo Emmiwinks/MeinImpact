@@ -23,11 +23,13 @@ from sqlalchemy import select
 
 from meinimpact.core.config import get_settings
 from meinimpact.infrastructure.ai.lebenslagen import LEBENSLAGEN
+from meinimpact.infrastructure.ai.listing_enricher import MAX_LEBENSLAGEN
 from meinimpact.infrastructure.ai.taxonomy import CANDIDATE_TOPICS
 from meinimpact.infrastructure.database import Database
 from meinimpact.infrastructure.models import OpportunityRecord
 
 _FORCE_FIT_TAGS = 3
+_BROAD_SHARE = 0.2
 
 
 def _tags(affected_tags: list[str] | None) -> str:
@@ -79,6 +81,19 @@ async def main() -> None:
         print(f"{lebenslagen[item.id]:3}  {item.id}")
     untagged = sum(1 for row in rows if not row.lebenslagen)
     print(f"\n{untagged} opportunities without any Lebenslage")
+
+    # Breadth: a group on a large share of the pool separates nothing, and a
+    # card list that always fills the cap means the model pads the tags.
+    per_card = Counter(len(row.lebenslagen or []) for row in rows)
+    print("Lebenslagen per card:", dict(sorted(per_card.items())))
+    at_cap = per_card[MAX_LEBENSLAGEN]
+    print(f"{at_cap} of {len(rows)} cards at the cap of {MAX_LEBENSLAGEN}")
+    broad = [
+        f"{item.id} ({lebenslagen[item.id] / len(rows):.0%})"
+        for item in LEBENSLAGEN
+        if rows and lebenslagen[item.id] / len(rows) > _BROAD_SHARE
+    ]
+    print(f"Groups on more than {_BROAD_SHARE:.0%} of the pool: {', '.join(broad)}")
 
     missing = Counter(row.lebenslage_frei for row in rows if row.lebenslage_frei)
     print("\nGroups the catalog lacks (model's own labels):")

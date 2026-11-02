@@ -233,13 +233,7 @@ def test_lebenslagen_keep_only_catalog_ids_deduplicated_and_capped() -> None:
         )
     )
 
-    assert enrichment.lebenslagen == (
-        "mieter",
-        "eltern",
-        "pendler",
-        "oepnv",
-        "wohngeld",
-    )
+    assert enrichment.lebenslagen == ("mieter", "eltern", "pendler")
     assert enrichment.lebenslage_frei == "Kita-Personal"
     assert parse_enrichment(_relevant()).lebenslagen == ()
 
