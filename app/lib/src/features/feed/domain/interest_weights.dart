@@ -1,24 +1,24 @@
 import 'dart:math';
 
-/// What the user did with an opportunity, and how strongly it counts as
-/// interest in its topics.
+import 'interest_config.dart';
+
+/// What the user did with an opportunity. How strongly each counts is set
+/// in [InterestConfig].
 enum InterestSignal {
   // Opened the detail view.
-  opened(0.1),
+  opened,
   // Followed the call to action to the registry.
-  acted(0.3);
-
-  const InterestSignal(this.delta);
-  final double delta;
+  acted,
 }
 
 /// On-device interest per topic tag (the backend's fixed taxonomy), learned
-/// from behaviour. -1.0 .. +1.0, 0 = neutral. Never leaves the device and
-/// only reorders the feed, never hides anything.
+/// from behaviour. -maxWeight..+maxWeight, 0 = neutral. Never leaves the
+/// device and only reorders the feed, never hides anything.
 ///
-/// Weights drift back to neutral with a half-life, so old interests fade
-/// instead of locking the feed in. Decay is applied lazily: [asOf] is the
-/// moment the stored weights were last current.
+/// This holds data only; every tuning number comes from the [InterestConfig]
+/// passed to each call. Weights drift back to neutral with the config's
+/// half-life, so old interests fade instead of locking the feed in. Decay is
+/// applied lazily: [asOf] is the moment the stored weights were last current.
 class InterestWeights {
   const InterestWeights({this.weights = const {}, this.asOf});
 
@@ -31,47 +31,55 @@ class InterestWeights {
     );
   }
 
-  static const halfLife = Duration(days: 30);
-  // Below this a weight counts as "no opinion" (unexplored topic).
-  static const neutralBand = 0.05;
-  // From this a topic is strong enough to be named as the reason for a card.
-  static const reasonThreshold = 0.15;
-
   final Map<String, double> weights;
   final DateTime? asOf;
 
-  bool hasSignal(DateTime now) =>
-      weights.keys.any((tag) => weightOf(tag, now).abs() >= neutralBand);
+  bool hasSignal(DateTime now, InterestConfig config) => weights.keys
+      .any((tag) => weightOf(tag, now, config).abs() >= config.neutralBand);
 
-  double weightOf(String tag, DateTime now) {
+  double weightOf(String tag, DateTime now, InterestConfig config) {
     final stored = weights[tag];
     final since = asOf;
     if (stored == null || since == null) return 0;
-    return stored * _decayFactor(since, now);
+    return stored * _decayFactor(since, now, config.halfLife);
   }
 
   /// The strongest opinion among [tags] (largest magnitude, sign kept), so a
   /// card with one loved tag is not diluted by its other tags.
-  double interestIn(Iterable<String> tags, DateTime now) {
+  double interestIn(
+    Iterable<String> tags,
+    DateTime now,
+    InterestConfig config,
+  ) {
     var strongest = 0.0;
     for (final tag in tags) {
-      final w = weightOf(tag, now);
+      final w = weightOf(tag, now, config);
       if (w.abs() > strongest.abs()) strongest = w;
     }
     return strongest;
   }
 
   /// True when the user has no opinion about any of [tags] yet.
-  bool isUnexplored(Iterable<String> tags, DateTime now) =>
-      tags.every((tag) => weightOf(tag, now).abs() < neutralBand);
+  bool isUnexplored(
+    Iterable<String> tags,
+    DateTime now,
+    InterestConfig config,
+  ) =>
+      tags.every(
+        (tag) => weightOf(tag, now, config).abs() < config.neutralBand,
+      );
 
   /// The liked tag of [tags] to name as the reason for ranking a card up,
   /// or null when none is strong enough.
-  String? reasonTag(Iterable<String> tags, DateTime now) {
+  String? reasonTag(
+    Iterable<String> tags,
+    DateTime now,
+    InterestConfig config,
+  ) {
     String? best;
-    var bestWeight = reasonThreshold;
+    var bestWeight = config.reasonThreshold;
     for (final tag in tags) {
-      final w = weightOf(tag, now);
+      final w = weightOf(tag, now, config);
       if (w >= bestWeight) {
         best = tag;
         bestWeight = w;
@@ -87,15 +95,17 @@ class InterestWeights {
     Iterable<String> tags,
     InterestSignal signal,
     DateTime now,
+    InterestConfig config,
   ) {
     final unique = tags.toSet();
     if (unique.isEmpty) return this;
-    final share = signal.delta / sqrt(unique.length);
+    final share = config.deltaFor(signal) / sqrt(unique.length);
     final updated = <String, double>{
-      for (final tag in weights.keys) tag: weightOf(tag, now),
+      for (final tag in weights.keys) tag: weightOf(tag, now, config),
     };
     for (final tag in unique) {
-      updated[tag] = ((updated[tag] ?? 0) + share).clamp(-1.0, 1.0);
+      updated[tag] = ((updated[tag] ?? 0) + share)
+          .clamp(-config.maxWeight, config.maxWeight);
     }
     return InterestWeights(weights: updated, asOf: now);
   }
@@ -105,7 +115,7 @@ class InterestWeights {
         'as_of': asOf?.toIso8601String(),
       };
 
-  static double _decayFactor(DateTime since, DateTime now) {
+  static double _decayFactor(DateTime since, DateTime now, Duration halfLife) {
     final elapsed = now.difference(since);
     // A clock set back must not amplify weights.
     if (elapsed.isNegative) return 1;

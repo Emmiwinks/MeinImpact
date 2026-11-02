@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:meinimpact/l10n/app_localizations.dart';
 
 import '../data/opportunity_relevance_ranker.dart';
+import '../domain/interest_config.dart';
 import '../domain/interest_weights.dart';
 import '../domain/opportunity.dart';
 import '../domain/opportunity_repository.dart';
@@ -21,6 +22,7 @@ class AktionenTab extends StatefulWidget {
     required this.opportunityRepository,
     required this.profile,
     this.onInterestSignal,
+    this.interestConfig = const InterestConfig(),
     super.key,
   });
 
@@ -29,14 +31,13 @@ class AktionenTab extends StatefulWidget {
   // Reports what the user did with an opportunity, for learning interests.
   final void Function(Opportunity opportunity, InterestSignal signal)?
       onInterestSignal;
+  final InterestConfig interestConfig;
 
   @override
   State<AktionenTab> createState() => _AktionenTabState();
 }
 
 class _AktionenTabState extends State<AktionenTab> {
-  static const _ranker = OpportunityRelevanceRanker();
-
   late Future<List<RankedOpportunity>> _future;
   int? _selectedIndex;
 
@@ -48,7 +49,10 @@ class _AktionenTabState extends State<AktionenTab> {
 
   Future<List<RankedOpportunity>> _load() async {
     final pool = await widget.opportunityRepository.pool();
-    return _ranker.rank(pool, widget.profile);
+    final ranker = OpportunityRelevanceRanker(
+      interestConfig: widget.interestConfig,
+    );
+    return ranker.rank(pool, widget.profile);
   }
 
   void _open(List<RankedOpportunity> opportunities, int index) {

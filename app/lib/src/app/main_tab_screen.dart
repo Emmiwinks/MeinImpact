@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:meinimpact/l10n/app_localizations.dart';
 
 import '../features/feed/domain/betroffenheitsprofil.dart';
+import '../features/feed/domain/interest_config.dart';
 import '../features/feed/domain/interest_weights.dart';
 import '../features/feed/domain/opportunity.dart';
 import '../features/feed/domain/opportunity_repository.dart';
@@ -21,6 +22,7 @@ class MainTabScreen extends StatefulWidget {
     this.onEditProfile,
     this.onBetroffenheitsprofilChanged,
     this.onInterestSignal,
+    this.interestConfig = const InterestConfig(),
     super.key,
   });
 
@@ -30,6 +32,7 @@ class MainTabScreen extends StatefulWidget {
   final ValueChanged<Betroffenheitsprofil>? onBetroffenheitsprofilChanged;
   final void Function(Opportunity opportunity, InterestSignal signal)?
       onInterestSignal;
+  final InterestConfig interestConfig;
 
   static const _fallbackProfile = UserProfile();
 
@@ -55,6 +58,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
         opportunityRepository: widget.opportunityRepository,
         profile: effectiveProfile,
         onInterestSignal: widget.onInterestSignal,
+        interestConfig: widget.interestConfig,
       ),
       const _WirkungScaffoldTab(),
     ];
@@ -118,12 +122,14 @@ class _AktionenScaffoldTab extends StatelessWidget {
     required this.opportunityRepository,
     required this.profile,
     required this.onInterestSignal,
+    required this.interestConfig,
   });
 
   final OpportunityRepository opportunityRepository;
   final UserProfile profile;
   final void Function(Opportunity opportunity, InterestSignal signal)?
       onInterestSignal;
+  final InterestConfig interestConfig;
 
   @override
   Widget build(BuildContext context) {
@@ -133,6 +139,7 @@ class _AktionenScaffoldTab extends StatelessWidget {
         opportunityRepository: opportunityRepository,
         profile: profile,
         onInterestSignal: onInterestSignal,
+        interestConfig: interestConfig,
       ),
     );
   }

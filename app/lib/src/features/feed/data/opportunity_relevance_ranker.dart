@@ -1,3 +1,4 @@
+import '../domain/interest_config.dart';
 import '../domain/interest_weights.dart';
 import '../domain/opportunity.dart';
 import '../domain/user_profile.dart';
@@ -33,16 +34,18 @@ class RankedOpportunity {
 /// component: the server only serves opportunities that are still open,
 /// and support counts are informational, never a ranking signal.
 ///
-/// Once the user has learned interests, every [_explorationInterval]th slot
-/// goes to the best card from a topic they have no opinion on yet, so the
-/// feed does not close into a bubble.
+/// Once the user has learned interests, every
+/// [InterestConfig.explorationInterval]th slot goes to the best card from a
+/// topic they have no opinion on yet, so the feed does not close into a
+/// bubble. All interest tuning comes from [interestConfig].
 class OpportunityRelevanceRanker {
-  const OpportunityRelevanceRanker();
+  const OpportunityRelevanceRanker({
+    this.interestConfig = const InterestConfig(),
+  });
+
+  final InterestConfig interestConfig;
 
   static const _minAnsweredForWerteMatch = 4;
-  // Full interest (+1) is worth this much appeal (0-1 scale).
-  static const _interestInfluence = 0.3;
-  static const _explorationInterval = 5;
 
   List<RankedOpportunity> rank(
     List<Opportunity> pool,
@@ -54,8 +57,12 @@ class OpportunityRelevanceRanker {
     final ranked = pool.map((o) => _rankOne(o, profile, at)).toList();
     double score(RankedOpportunity r) =>
         r.opportunity.appeal +
-        _interestInfluence *
-            interests.interestIn(r.opportunity.affectedTags, at);
+        interestConfig.rankingInfluence *
+            interests.interestIn(
+              r.opportunity.affectedTags,
+              at,
+              interestConfig,
+            );
     ranked.sort((a, b) {
       final byMatch = _matchRank(b).compareTo(_matchRank(a));
       if (byMatch != 0) return byMatch;
@@ -63,7 +70,10 @@ class OpportunityRelevanceRanker {
       if (byScore != 0) return byScore;
       return b.werteAlignment.compareTo(a.werteAlignment);
     });
-    if (!interests.hasSignal(at)) return ranked;
+    if (interestConfig.explorationInterval <= 0 ||
+        !interests.hasSignal(at, interestConfig)) {
+      return ranked;
+    }
     return _withExploration(ranked, interests, at);
   }
 
@@ -74,13 +84,25 @@ class OpportunityRelevanceRanker {
   ) {
     final rest = List.of(sorted);
     final result = <RankedOpportunity>[];
+    // Topics already surfaced by an exploration slot: the next one prefers a
+    // different topic so exploration widens the feed instead of repeating.
+    final explored = <String>{};
+    bool isNew(RankedOpportunity r) =>
+        !r.opportunity.affectedTags.every(explored.contains);
     while (rest.isNotEmpty) {
       var take = 0;
-      if ((result.length + 1) % _explorationInterval == 0) {
-        final unexplored = rest.indexWhere(
-          (r) => interests.isUnexplored(r.opportunity.affectedTags, now),
-        );
-        if (unexplored >= 0) take = unexplored;
+      if ((result.length + 1) % interestConfig.explorationInterval == 0) {
+        bool unexplored(RankedOpportunity r) => interests.isUnexplored(
+              r.opportunity.affectedTags,
+              now,
+              interestConfig,
+            );
+        var pick = rest.indexWhere((r) => unexplored(r) && isNew(r));
+        if (pick < 0) pick = rest.indexWhere(unexplored);
+        if (pick >= 0) {
+          take = pick;
+          explored.addAll(rest[pick].opportunity.affectedTags);
+        }
       }
       result.add(rest.removeAt(take));
     }
@@ -96,7 +118,11 @@ class OpportunityRelevanceRanker {
       opportunity: opportunity,
       matchedSnippet: _matchedSnippetFor(opportunity, profile),
       werteAlignment: _computeWerteAlignment(opportunity, profile),
-      interestTag: profile.interests.reasonTag(opportunity.affectedTags, now),
+      interestTag: profile.interests.reasonTag(
+        opportunity.affectedTags,
+        now,
+        interestConfig,
+      ),
     );
   }
 

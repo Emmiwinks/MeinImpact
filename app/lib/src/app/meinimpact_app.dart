@@ -3,6 +3,7 @@ import 'package:meinimpact/l10n/app_localizations.dart';
 
 import '../core/profile/user_profile_store.dart';
 import '../features/feed/domain/betroffenheitsprofil.dart';
+import '../features/feed/domain/interest_config.dart';
 import '../features/feed/domain/interest_weights.dart';
 import '../features/feed/domain/opportunity.dart';
 import '../features/feed/domain/opportunity_repository.dart';
@@ -28,8 +29,10 @@ class MeinImpactApp extends StatefulWidget {
   /// Direct constructor — bypasses onboarding (used in tests and demos).
   const MeinImpactApp({
     required OpportunityRepository opportunityRepository,
+    InterestConfig interestConfig = const InterestConfig(),
     super.key,
   })  : _opportunityRepository = opportunityRepository,
+        _interestConfig = interestConfig,
         _profileStore = null,
         _initialProfile = null;
 
@@ -38,12 +41,15 @@ class MeinImpactApp extends StatefulWidget {
     required OpportunityRepository opportunityRepository,
     required UserProfileStore profileStore,
     UserProfile? initialProfile,
+    InterestConfig interestConfig = const InterestConfig(),
     super.key,
   })  : _opportunityRepository = opportunityRepository,
+        _interestConfig = interestConfig,
         _profileStore = profileStore,
         _initialProfile = initialProfile;
 
   final OpportunityRepository _opportunityRepository;
+  final InterestConfig _interestConfig;
   final UserProfileStore? _profileStore;
   final UserProfile? _initialProfile;
 
@@ -128,6 +134,7 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
         opportunity.affectedTags,
         signal,
         DateTime.now(),
+        widget._interestConfig,
       ),
     );
     _profile = updated;
@@ -177,6 +184,7 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
         onEditProfile: () => setState(() => _requizWerte = true),
         onBetroffenheitsprofilChanged: _onBetroffenheitsprofilChanged,
         onInterestSignal: _onInterestSignal,
+        interestConfig: widget._interestConfig,
       );
     }
 

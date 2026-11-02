@@ -1,10 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meinimpact/src/features/feed/data/opportunity_relevance_ranker.dart';
+import 'package:meinimpact/src/features/feed/domain/interest_config.dart';
 import 'package:meinimpact/src/features/feed/domain/interest_weights.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity.dart';
 import 'package:meinimpact/src/features/feed/domain/user_profile.dart';
 
 final _now = DateTime(2026, 11, 3);
+const _config = InterestConfig();
 
 Opportunity _opportunity(String id, List<String> tags, {int score = 3}) {
   return Opportunity(
@@ -27,38 +29,60 @@ Opportunity _opportunity(String id, List<String> tags, {int score = 3}) {
   );
 }
 
+InterestWeights _record(
+  InterestWeights weights,
+  List<String> tags,
+  InterestSignal signal, {
+  DateTime? at,
+  InterestConfig config = _config,
+}) =>
+    weights.record(tags, signal, at ?? _now, config);
+
 InterestWeights _liking(String tag, {int times = 3}) {
   var weights = const InterestWeights();
   for (var i = 0; i < times; i++) {
-    weights = weights.record([tag], InterestSignal.acted, _now);
+    weights = _record(weights, [tag], InterestSignal.acted);
   }
   return weights;
 }
 
+double _weight(InterestWeights w, String tag, {DateTime? at}) =>
+    w.weightOf(tag, at ?? _now, _config);
+
 void main() {
   group('InterestWeights', () {
     test('behaviour raises the weight of the opportunity\'s tags', () {
-      final weights = const InterestWeights()
-          .record(['Mobilität/Verkehr'], InterestSignal.opened, _now);
+      final weights = _record(
+        const InterestWeights(),
+        ['Mobilität/Verkehr'],
+        InterestSignal.opened,
+      );
 
-      expect(weights.weightOf('Mobilität/Verkehr', _now), closeTo(0.1, 1e-9));
-      expect(weights.weightOf('Wohnen/Miete', _now), 0);
+      expect(_weight(weights, 'Mobilität/Verkehr'), closeTo(0.1, 1e-9));
+      expect(_weight(weights, 'Wohnen/Miete'), 0);
     });
 
     test('a completed action counts more than opening', () {
-      final opened = const InterestWeights()
-          .record(['Umwelt/Natur'], InterestSignal.opened, _now);
-      final acted = const InterestWeights()
-          .record(['Umwelt/Natur'], InterestSignal.acted, _now);
+      final opened = _record(
+        const InterestWeights(),
+        ['Umwelt/Natur'],
+        InterestSignal.opened,
+      );
+      final acted = _record(
+        const InterestWeights(),
+        ['Umwelt/Natur'],
+        InterestSignal.acted,
+      );
 
       expect(
-        acted.weightOf('Umwelt/Natur', _now),
-        greaterThan(opened.weightOf('Umwelt/Natur', _now)),
+        _weight(acted, 'Umwelt/Natur'),
+        greaterThan(_weight(opened, 'Umwelt/Natur')),
       );
     });
 
     test('many tags share the signal instead of inflating each', () {
-      final weights = const InterestWeights().record(
+      final weights = _record(
+        const InterestWeights(),
         [
           'Wohnen/Miete',
           'Mobilität/Verkehr',
@@ -66,43 +90,56 @@ void main() {
           'Arbeit/Einkommen',
         ],
         InterestSignal.acted,
-        _now,
       );
 
-      expect(weights.weightOf('Wohnen/Miete', _now), closeTo(0.15, 1e-9));
+      expect(_weight(weights, 'Wohnen/Miete'), closeTo(0.15, 1e-9));
     });
 
     test('duplicate tags and empty tag lists are harmless', () {
-      final doubled = const InterestWeights().record(
+      final doubled = _record(
+        const InterestWeights(),
         ['Umwelt/Natur', 'Umwelt/Natur'],
         InterestSignal.opened,
-        _now,
       );
 
-      expect(doubled.weightOf('Umwelt/Natur', _now), closeTo(0.1, 1e-9));
+      expect(_weight(doubled, 'Umwelt/Natur'), closeTo(0.1, 1e-9));
       expect(
-        const InterestWeights().record([], InterestSignal.acted, _now).weights,
+        _record(const InterestWeights(), [], InterestSignal.acted).weights,
         isEmpty,
       );
     });
 
-    test('weights are capped at +1', () {
-      final weights = _liking('Umwelt/Natur', times: 50);
+    test('weights are capped at the configured maximum', () {
+      expect(_weight(_liking('Umwelt/Natur', times: 50), 'Umwelt/Natur'), 1.0);
 
-      expect(weights.weightOf('Umwelt/Natur', _now), 1.0);
+      const capped = InterestConfig(maxWeight: 0.5);
+      var weights = const InterestWeights();
+      for (var i = 0; i < 10; i++) {
+        weights = _record(
+          weights,
+          ['Umwelt/Natur'],
+          InterestSignal.acted,
+          config: capped,
+        );
+      }
+
+      expect(weights.weightOf('Umwelt/Natur', _now, capped), 0.5);
     });
 
     test('weights halve after the half-life and never flip sign', () {
       final weights = _liking('Umwelt/Natur');
-      final fresh = weights.weightOf('Umwelt/Natur', _now);
+      final fresh = _weight(weights, 'Umwelt/Natur');
 
-      final later = _now.add(InterestWeights.halfLife);
       expect(
-        weights.weightOf('Umwelt/Natur', later),
+        _weight(weights, 'Umwelt/Natur', at: _now.add(_config.halfLife)),
         closeTo(fresh / 2, 1e-9),
       );
       expect(
-        weights.weightOf('Umwelt/Natur', _now.add(const Duration(days: 900))),
+        _weight(
+          weights,
+          'Umwelt/Natur',
+          at: _now.add(const Duration(days: 900)),
+        ),
         greaterThan(0),
       );
     });
@@ -111,24 +148,25 @@ void main() {
       final weights = _liking('Umwelt/Natur');
 
       expect(
-        weights.weightOf(
+        _weight(
+          weights,
           'Umwelt/Natur',
-          _now.subtract(const Duration(days: 5)),
+          at: _now.subtract(const Duration(days: 5)),
         ),
-        weights.weightOf('Umwelt/Natur', _now),
+        _weight(weights, 'Umwelt/Natur'),
       );
     });
 
     test('recording decays the older weights before adding', () {
       final old = _liking('Umwelt/Natur');
-      final later = _now.add(InterestWeights.halfLife);
+      final later = _now.add(_config.halfLife);
 
       final updated =
-          old.record(['Wohnen/Miete'], InterestSignal.opened, later);
+          _record(old, ['Wohnen/Miete'], InterestSignal.opened, at: later);
 
       expect(
-        updated.weightOf('Umwelt/Natur', later),
-        closeTo(old.weightOf('Umwelt/Natur', _now) / 2, 1e-9),
+        _weight(updated, 'Umwelt/Natur', at: later),
+        closeTo(_weight(old, 'Umwelt/Natur') / 2, 1e-9),
       );
       expect(updated.asOf, later);
     });
@@ -138,21 +176,24 @@ void main() {
           InterestWeights.fromJson(_liking('Umwelt/Natur').toJson());
 
       expect(
-        restored.weightOf('Umwelt/Natur', _now),
-        _liking('Umwelt/Natur').weightOf('Umwelt/Natur', _now),
+        _weight(restored, 'Umwelt/Natur'),
+        _weight(_liking('Umwelt/Natur'), 'Umwelt/Natur'),
       );
-      expect(const InterestWeights().hasSignal(_now), isFalse);
+      expect(const InterestWeights().hasSignal(_now, _config), isFalse);
       expect(UserProfile.fromJson(const {}).interests.weights, isEmpty);
     });
 
     test('names a reason only for a clearly liked tag', () {
-      final weak = const InterestWeights()
-          .record(['Umwelt/Natur'], InterestSignal.opened, _now);
+      final weak = _record(
+        const InterestWeights(),
+        ['Umwelt/Natur'],
+        InterestSignal.opened,
+      );
 
-      expect(weak.reasonTag(['Umwelt/Natur'], _now), isNull);
+      expect(weak.reasonTag(['Umwelt/Natur'], _now, _config), isNull);
       expect(
         _liking('Umwelt/Natur')
-            .reasonTag(['Wohnen/Miete', 'Umwelt/Natur'], _now),
+            .reasonTag(['Wohnen/Miete', 'Umwelt/Natur'], _now, _config),
         'Umwelt/Natur',
       );
     });
@@ -162,7 +203,50 @@ void main() {
 
       final edited = profile.copyWith(werte: const {'wirtschaft_staat': 1});
 
-      expect(edited.interests.weightOf('Umwelt/Natur', _now), greaterThan(0));
+      expect(_weight(edited.interests, 'Umwelt/Natur'), greaterThan(0));
+    });
+  });
+
+  group('InterestConfig', () {
+    test('signal sizes and half-life come from the config', () {
+      const eager = InterestConfig(
+        openedDelta: 0.5,
+        halfLife: Duration(days: 1),
+      );
+      final weights = _record(
+        const InterestWeights(),
+        ['Umwelt/Natur'],
+        InterestSignal.opened,
+        config: eager,
+      );
+
+      expect(weights.weightOf('Umwelt/Natur', _now, eager), 0.5);
+      expect(
+        weights.weightOf(
+          'Umwelt/Natur',
+          _now.add(const Duration(days: 1)),
+          eager,
+        ),
+        closeTo(0.25, 1e-9),
+      );
+    });
+
+    test('exploration interval follows the config, 0 turns it off', () {
+      final profile = UserProfile(interests: _liking('Umwelt/Natur'));
+      final pool = [
+        for (var i = 0; i < 6; i++) _opportunity('liked$i', ['Umwelt/Natur']),
+        _opportunity('fresh', ['Migration/Integration'], score: 1),
+      ];
+
+      final off = const OpportunityRelevanceRanker(
+        interestConfig: InterestConfig(explorationInterval: 0),
+      ).rank(pool, profile, now: _now);
+      final every3 = const OpportunityRelevanceRanker(
+        interestConfig: InterestConfig(explorationInterval: 3),
+      ).rank(pool, profile, now: _now);
+
+      expect(off.last.opportunity.id, 'fresh');
+      expect(every3[2].opportunity.id, 'fresh');
     });
   });
 
@@ -230,15 +314,13 @@ void main() {
       expect(ranked.last.opportunity.id, 'last');
     });
 
-    test('exploration with nothing unexplored keeps the order', () {
+    test('exploration with nothing unexplored keeps all cards', () {
       final profile = UserProfile(interests: _liking('Umwelt/Natur'));
       final pool = [
         for (var i = 0; i < 6; i++) _opportunity('liked$i', ['Umwelt/Natur']),
       ];
 
-      final ranked = ranker.rank(pool, profile, now: _now);
-
-      expect(ranked, hasLength(6));
+      expect(ranker.rank(pool, profile, now: _now), hasLength(6));
     });
   });
 }
