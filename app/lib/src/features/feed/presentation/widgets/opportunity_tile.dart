@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../data/opportunity_relevance_ranker.dart';
+import '../../domain/lebenslage.dart';
 import 'app_colors.dart';
 
 /// One opportunity on the feed. Real, sourced facts only, no invented
@@ -131,10 +132,10 @@ class OpportunityTile extends StatelessWidget {
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  if (ranked.interestTag != null) ...[
+                  if (cardReason(ranked) case final reason?) ...[
                     const SizedBox(height: 8),
                     Text(
-                      'Weil du dich für ${ranked.interestTag} interessierst',
+                      reason,
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
                             color: AppColors.mutedText,
                             fontWeight: FontWeight.w600,
@@ -151,6 +152,19 @@ class OpportunityTile extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Why this card is up here, in one line: a picked Lebenslage first, then a
+/// learned topic interest. A private Lebenslage is never named on a card.
+String? cardReason(RankedOpportunity ranked) {
+  final lebenslage = lebenslageById[ranked.matchedLebenslage];
+  if (lebenslage != null) {
+    return lebenslage.isPrivate
+        ? 'Passt zu deinen Themen'
+        : 'Passt zu deinen Themen: ${lebenslage.label}';
+  }
+  final tag = ranked.interestTag;
+  return tag != null ? 'Weil du dich für $tag interessierst' : null;
 }
 
 class _DeadlineBadge extends StatelessWidget {

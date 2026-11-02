@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:meinimpact/l10n/app_localizations.dart';
 
-import '../features/feed/domain/betroffenheitsprofil.dart';
 import '../features/feed/domain/interest_config.dart';
 import '../features/feed/domain/interest_weights.dart';
 import '../features/feed/domain/opportunity.dart';
@@ -20,7 +19,7 @@ class MainTabScreen extends StatefulWidget {
     required this.opportunityRepository,
     this.profile,
     this.onEditProfile,
-    this.onBetroffenheitsprofilChanged,
+    this.onLebenslagenChanged,
     this.onInterestSignal,
     this.interestConfig = const InterestConfig(),
     super.key,
@@ -29,7 +28,7 @@ class MainTabScreen extends StatefulWidget {
   final OpportunityRepository opportunityRepository;
   final UserProfile? profile;
   final VoidCallback? onEditProfile;
-  final ValueChanged<Betroffenheitsprofil>? onBetroffenheitsprofilChanged;
+  final ValueChanged<Set<String>>? onLebenslagenChanged;
   final void Function(Opportunity opportunity, InterestSignal signal)?
       onInterestSignal;
   final InterestConfig interestConfig;
@@ -52,7 +51,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
       _ProfileTab(
         profile: effectiveProfile,
         onEdit: widget.onEditProfile,
-        onBetroffenheitsprofilChanged: widget.onBetroffenheitsprofilChanged,
+        onLebenslagenChanged: widget.onLebenslagenChanged,
       ),
       _AktionenScaffoldTab(
         opportunityRepository: widget.opportunityRepository,
@@ -97,12 +96,12 @@ class _ProfileTab extends StatelessWidget {
   const _ProfileTab({
     required this.profile,
     required this.onEdit,
-    required this.onBetroffenheitsprofilChanged,
+    required this.onLebenslagenChanged,
   });
 
   final UserProfile profile;
   final VoidCallback? onEdit;
-  final ValueChanged<Betroffenheitsprofil>? onBetroffenheitsprofilChanged;
+  final ValueChanged<Set<String>>? onLebenslagenChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -111,7 +110,7 @@ class _ProfileTab extends StatelessWidget {
       child: ProfileColumn(
         profile: profile,
         onEdit: onEdit ?? () {},
-        onBetroffenheitsprofilChanged: onBetroffenheitsprofilChanged ?? (_) {},
+        onLebenslagenChanged: onLebenslagenChanged ?? (_) {},
       ),
     );
   }

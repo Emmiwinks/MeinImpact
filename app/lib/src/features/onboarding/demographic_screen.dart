@@ -1,19 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../feed/domain/betroffenheitsprofil.dart';
 import '../feed/domain/mdb.dart';
 import '../feed/domain/user_profile.dart';
 import '../feed/presentation/widgets/app_colors.dart';
-import '../feed/presentation/widgets/betroffenheitsprofil_editor.dart';
+import '../feed/presentation/widgets/lebenslagen_picker.dart';
 import '../feed/presentation/widgets/components/surface_card.dart';
 
-/// PLZ/MdB lookup (unchanged) plus the real Betroffenheitsprofil — replaces
-/// the hardcoded demo persona that used to seed every profile
-/// (city/occupation/familyStatus/wohnsituation/sektor/lebenssituation, see
-/// git history). All Betroffenheitsprofil fields are optional and default
-/// to "not set", matching the "skipping degrades personalisation but never
-/// blocks usage" principle.
+/// PLZ/MdB lookup plus the Lebenslagen picker (what matters to the user).
+/// Everything is optional and starts empty, matching the "skipping degrades
+/// personalisation but never blocks usage" principle.
 class DemographicScreen extends StatefulWidget {
   const DemographicScreen({
     required this.onComplete,
@@ -36,13 +32,7 @@ class _DemographicScreenState extends State<DemographicScreen> {
   List<MdbOption> _results = const [];
   MdbOption? _selected;
 
-  Wohnsituation? _wohnsituation;
-  bool _oepnvNutzung = false;
-  bool _autoNutzung = false;
-  bool _hatKinder = false;
-  Erwerbsstatus? _erwerbsstatus;
-  bool _pflegeBetroffen = false;
-  bool? _migrationshintergrund;
+  Set<String> _lebenslagen = const {};
 
   @override
   void initState() {
@@ -84,16 +74,6 @@ class _DemographicScreenState extends State<DemographicScreen> {
     }
   }
 
-  Betroffenheitsprofil get _betroffenheitsprofil => Betroffenheitsprofil(
-        wohnsituation: _wohnsituation,
-        oepnvNutzung: _oepnvNutzung,
-        autoNutzung: _autoNutzung,
-        hatKinder: _hatKinder,
-        erwerbsstatus: _erwerbsstatus,
-        pflegeBetroffen: _pflegeBetroffen,
-        migrationshintergrund: _migrationshintergrund,
-      );
-
   void _confirm() {
     final sel = _selected;
     final plz = _plzController.text.trim();
@@ -103,7 +83,7 @@ class _DemographicScreenState extends State<DemographicScreen> {
         mdbName: sel?.mdbName,
         mdbParty: sel?.mdbParty,
         mdbWahlkreis: sel?.wahlkreisName,
-        betroffenheitsprofil: _betroffenheitsprofil,
+        lebenslagen: _lebenslagen,
       ),
     );
   }
@@ -180,17 +160,9 @@ class _DemographicScreenState extends State<DemographicScreen> {
                         },
                       ),
                       const SizedBox(height: 28),
-                      BetroffenheitsprofilEditor(
-                        value: _betroffenheitsprofil,
-                        onChanged: (bp) => setState(() {
-                          _wohnsituation = bp.wohnsituation;
-                          _oepnvNutzung = bp.oepnvNutzung;
-                          _autoNutzung = bp.autoNutzung;
-                          _hatKinder = bp.hatKinder;
-                          _erwerbsstatus = bp.erwerbsstatus;
-                          _pflegeBetroffen = bp.pflegeBetroffen;
-                          _migrationshintergrund = bp.migrationshintergrund;
-                        }),
+                      LebenslagenPicker(
+                        selected: _lebenslagen,
+                        onChanged: (ids) => setState(() => _lebenslagen = ids),
                       ),
                     ],
                   ),

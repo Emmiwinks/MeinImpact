@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:meinimpact/l10n/app_localizations.dart';
 
 import '../core/profile/user_profile_store.dart';
-import '../features/feed/domain/betroffenheitsprofil.dart';
 import '../features/feed/domain/interest_config.dart';
 import '../features/feed/domain/interest_weights.dart';
 import '../features/feed/domain/opportunity.dart';
@@ -12,18 +11,10 @@ import '../features/onboarding/demographic_screen.dart';
 import '../features/onboarding/value_profile_screen.dart';
 import 'main_tab_screen.dart';
 
-/// Hardcoded stand-in for the Betroffenheitsprofil, used by the
-/// "Beispiel-Profil übernehmen" onboarding shortcut. Deliberately not
-/// configurable — it exists to skip setup, not to represent a real answer.
-const _kExampleBetroffenheitsprofil = Betroffenheitsprofil(
-  wohnsituation: Wohnsituation.mieter,
-  oepnvNutzung: true,
-  autoNutzung: false,
-  hatKinder: false,
-  erwerbsstatus: Erwerbsstatus.angestellt,
-  pflegeBetroffen: false,
-  migrationshintergrund: false,
-);
+/// Hardcoded stand-in Lebenslagen, used by the "Beispiel-Profil übernehmen"
+/// onboarding shortcut. Deliberately not configurable: it exists to skip
+/// setup, not to represent a real answer.
+const _kExampleLebenslagen = {'mieter', 'oepnv', 'angestellt'};
 
 class MeinImpactApp extends StatefulWidget {
   /// Direct constructor — bypasses onboarding (used in tests and demos).
@@ -88,17 +79,14 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
       mdbName: patch?.mdbName,
       mdbParty: patch?.mdbParty,
       mdbWahlkreis: patch?.mdbWahlkreis,
-      betroffenheitsprofil:
-          patch?.betroffenheitsprofil ?? const Betroffenheitsprofil(),
+      lebenslagen: patch?.lebenslagen ?? const {},
     );
     await widget._profileStore?.save(profile);
     setState(() => _profile = profile);
   }
 
   Future<void> _onUseExampleProfile() async {
-    const profile = UserProfile(
-      betroffenheitsprofil: _kExampleBetroffenheitsprofil,
-    );
+    const profile = UserProfile(lebenslagen: _kExampleLebenslagen);
     await widget._profileStore?.save(profile);
     setState(() => _profile = profile);
   }
@@ -112,11 +100,8 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
     });
   }
 
-  Future<void> _onBetroffenheitsprofilChanged(
-    Betroffenheitsprofil betroffenheitsprofil,
-  ) async {
-    final updated =
-        _profile!.copyWith(betroffenheitsprofil: betroffenheitsprofil);
+  Future<void> _onLebenslagenChanged(Set<String> lebenslagen) async {
+    final updated = _profile!.copyWith(lebenslagen: lebenslagen);
     await widget._profileStore?.save(updated);
     setState(() => _profile = updated);
   }
@@ -176,13 +161,13 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
 
     // Profile loaded → show the tab shell (unless the owner chose to redo
     // just the Werteprofil quiz — demographic data is always editable
-    // inline instead, see onBetroffenheitsprofilChanged below).
+    // inline instead, see onLebenslagenChanged below).
     if (_profile != null && !_requizWerte) {
       return MainTabScreen(
         opportunityRepository: widget._opportunityRepository,
         profile: _profile,
         onEditProfile: () => setState(() => _requizWerte = true),
-        onBetroffenheitsprofilChanged: _onBetroffenheitsprofilChanged,
+        onLebenslagenChanged: _onLebenslagenChanged,
         onInterestSignal: _onInterestSignal,
         interestConfig: widget._interestConfig,
       );
@@ -200,7 +185,7 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
       );
     }
 
-    // Onboarding step 1: demographics (PLZ + MdB + Betroffenheitsprofil) —
+    // Onboarding step 1: demographics (PLZ + MdB + Lebenslagen) —
     // optional
     return DemographicScreen(
       onComplete: _onDemographicComplete,

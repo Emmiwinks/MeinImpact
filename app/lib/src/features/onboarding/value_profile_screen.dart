@@ -88,7 +88,7 @@ class ValueProfileScreen extends StatefulWidget {
 
   /// Shortcut shown only during first-time setup (null when re-doing the
   /// quiz from an existing profile) — fills every question neutral and
-  /// hands off to a hardcoded example Betroffenheitsprofil instead.
+  /// hands off to a hardcoded example set of Lebenslagen instead.
   final VoidCallback? onUseExampleProfile;
 
   @override

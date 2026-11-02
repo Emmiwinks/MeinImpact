@@ -1,5 +1,6 @@
-import 'betroffenheitsprofil.dart';
 import 'interest_weights.dart';
+import 'lebenslage.dart';
+import 'situation_keys.dart';
 
 class UserProfile {
   const UserProfile({
@@ -9,14 +10,14 @@ class UserProfile {
     this.mdbName,
     this.mdbParty,
     this.mdbWahlkreis,
-    this.betroffenheitsprofil = const Betroffenheitsprofil(),
+    this.lebenslagen = const {},
     this.interests = const InterestWeights(),
   });
 
   factory UserProfile.fromJson(Map<String, Object?> json) {
     final werteRaw = json['werte'] as Map<String, Object?>? ?? {};
-    final betroffenheitRaw =
-        json['betroffenheitsprofil'] as Map<String, Object?>?;
+    final lebenslagenRaw = json['lebenslagen'] as List<Object?>?;
+    final legacyRaw = json['betroffenheitsprofil'] as Map<String, Object?>?;
     final interestsRaw = json['interests'] as Map<String, Object?>?;
     return UserProfile(
       werte: werteRaw.map((k, v) => MapEntry(k, v as int)),
@@ -25,9 +26,16 @@ class UserProfile {
       mdbName: json['mdb_name'] as String?,
       mdbParty: json['mdb_party'] as String?,
       mdbWahlkreis: json['mdb_wahlkreis'] as String?,
-      betroffenheitsprofil: betroffenheitRaw != null
-          ? Betroffenheitsprofil.fromJson(betroffenheitRaw)
-          : const Betroffenheitsprofil(),
+      // Profiles saved before the catalog carry the old Betroffenheitsprofil
+      // instead; their answers are carried over, never dropped.
+      lebenslagen: lebenslagenRaw != null
+          ? {
+              for (final id in lebenslagenRaw)
+                if (id is String && lebenslageById.containsKey(id)) id,
+            }
+          : legacyRaw != null
+              ? lebenslagenFromLegacy(legacyRaw)
+              : const {},
       interests: interestsRaw != null
           ? InterestWeights.fromJson(interestsRaw)
           : const InterestWeights(),
@@ -36,7 +44,7 @@ class UserProfile {
 
   UserProfile copyWith({
     Map<String, int>? werte,
-    Betroffenheitsprofil? betroffenheitsprofil,
+    Set<String>? lebenslagen,
     InterestWeights? interests,
   }) {
     return UserProfile(
@@ -46,7 +54,7 @@ class UserProfile {
       mdbName: mdbName,
       mdbParty: mdbParty,
       mdbWahlkreis: mdbWahlkreis,
-      betroffenheitsprofil: betroffenheitsprofil ?? this.betroffenheitsprofil,
+      lebenslagen: lebenslagen ?? this.lebenslagen,
       interests: interests ?? this.interests,
     );
   }
@@ -62,10 +70,14 @@ class UserProfile {
   final String? mdbParty;
   final String? mdbWahlkreis;
 
-  // Concrete personal-situation profile (Betroffenheitsprofil) — on-device
-  // only, drives feed relevance. Never sent to the backend. See
-  // Betroffenheitsprofil's docstring for why this is separate from werte.
-  final Betroffenheitsprofil betroffenheitsprofil;
+  // Lebenslagen catalog ids the user marked as important to them (see
+  // Lebenslage). On-device only, never sent to the backend; drives feed
+  // relevance. Separate from werte: this says *what* concerns someone, not
+  // how they lean on it.
+  final Set<String> lebenslagen;
+
+  /// The server's per-card snippet keys these Lebenslagen unlock.
+  Set<String> get snippetKeys => snippetKeysFor(lebenslagen);
 
   // Learned topic interests (see InterestWeights) — on-device only, reorders
   // the feed, never filters it.
@@ -105,7 +117,7 @@ class UserProfile {
       'mdb_name': mdbName,
       'mdb_party': mdbParty,
       'mdb_wahlkreis': mdbWahlkreis,
-      'betroffenheitsprofil': betroffenheitsprofil.toJson(),
+      'lebenslagen': lebenslagen.toList(),
       'interests': interests.toJson(),
     };
   }

@@ -34,7 +34,7 @@ class OpportunityPanel extends StatelessWidget {
               OpportunityTile(
                 ranked: opportunities[i],
                 isSelected: i == selectedIndex,
-                isTopMatch: i == 0 && opportunities[i].matchedSnippet != null,
+                isTopMatch: i == 0 && opportunities[i].isSituationMatch,
                 onTap: () => onSelect(i),
               ),
               if (i < opportunities.length - 1) const SizedBox(height: 12),

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../domain/betroffenheitsprofil.dart';
+import '../../domain/lebenslage.dart';
 import '../../domain/user_profile.dart';
 import 'app_colors.dart';
-import 'betroffenheitsprofil_editor.dart';
+import 'lebenslagen_picker.dart';
 import 'components/surface_card.dart';
 import 'components/text_badges.dart';
 
@@ -11,13 +11,13 @@ class ProfileColumn extends StatelessWidget {
   const ProfileColumn({
     required this.profile,
     required this.onEdit,
-    required this.onBetroffenheitsprofilChanged,
+    required this.onLebenslagenChanged,
     super.key,
   });
 
   final UserProfile? profile;
   final VoidCallback onEdit;
-  final ValueChanged<Betroffenheitsprofil> onBetroffenheitsprofilChanged;
+  final ValueChanged<Set<String>> onLebenslagenChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +26,7 @@ class ProfileColumn extends StatelessWidget {
         _ProfileCard(
           profile: profile,
           onEdit: onEdit,
-          onBetroffenheitsprofilChanged: onBetroffenheitsprofilChanged,
+          onLebenslagenChanged: onLebenslagenChanged,
         ),
       ],
     );
@@ -37,12 +37,12 @@ class _ProfileCard extends StatelessWidget {
   const _ProfileCard({
     required this.profile,
     required this.onEdit,
-    required this.onBetroffenheitsprofilChanged,
+    required this.onLebenslagenChanged,
   });
 
   final UserProfile? profile;
   final VoidCallback onEdit;
-  final ValueChanged<Betroffenheitsprofil> onBetroffenheitsprofilChanged;
+  final ValueChanged<Set<String>> onLebenslagenChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -101,13 +101,88 @@ class _ProfileCard extends StatelessWidget {
           ),
           if (p != null) ...[
             const SizedBox(height: 24),
-            BetroffenheitsprofilEditor(
-              value: p.betroffenheitsprofil,
-              onChanged: onBetroffenheitsprofilChanged,
+            _LebenslagenSection(
+              selected: p.lebenslagen,
+              onChanged: onLebenslagenChanged,
             ),
           ],
         ],
       ),
+    );
+  }
+}
+
+/// The profile overview of what matters to the user, with the picker behind
+/// "Bearbeiten". Private Lebenslagen are left out of the overview (the
+/// picker itself shows them, it is where they are edited).
+class _LebenslagenSection extends StatefulWidget {
+  const _LebenslagenSection({required this.selected, required this.onChanged});
+
+  final Set<String> selected;
+  final ValueChanged<Set<String>> onChanged;
+
+  @override
+  State<_LebenslagenSection> createState() => _LebenslagenSectionState();
+}
+
+class _LebenslagenSectionState extends State<_LebenslagenSection> {
+  bool _editing = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_editing) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          LebenslagenPicker(
+            selected: widget.selected,
+            onChanged: widget.onChanged,
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => setState(() => _editing = false),
+              child: const Text('Fertig'),
+            ),
+          ),
+        ],
+      );
+    }
+    final shown = [
+      for (final id in widget.selected)
+        if (lebenslageById[id] case final item? when !item.isPrivate) item,
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const Expanded(child: SectionLabel(label: 'Dir wichtig')),
+            TextButton(
+              onPressed: () => setState(() => _editing = true),
+              child: const Text('Bearbeiten'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        if (shown.isEmpty)
+          Text(
+            widget.selected.isEmpty
+                ? 'Noch nichts ausgewählt. Damit zeigen wir dir passendere '
+                    'Themen.'
+                : 'Deine Auswahl ist gespeichert.',
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: AppColors.mutedText),
+          )
+        else
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [for (final item in shown) MetaChip(label: item.label)],
+          ),
+      ],
     );
   }
 }

@@ -1,12 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meinimpact/src/features/feed/data/opportunity_relevance_ranker.dart';
-import 'package:meinimpact/src/features/feed/domain/betroffenheitsprofil.dart';
+import 'package:meinimpact/src/features/feed/domain/lebenslagen_search.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity.dart';
 import 'package:meinimpact/src/features/feed/domain/user_profile.dart';
+import 'package:meinimpact/src/features/feed/presentation/widgets/opportunity_tile.dart';
 
 Opportunity _opportunity({
   String id = 'opp-1',
   List<String> affectedTags = const [],
+  List<String> lebenslagen = const [],
   Map<String, double> werteRelevanz = const {},
   Map<String, String> personalImpactSnippets = const {},
   OpportunityKind kind = OpportunityKind.petition,
@@ -25,6 +27,7 @@ Opportunity _opportunity({
     title: 'Title $id',
     summary: 'Summary $id',
     affectedTags: affectedTags,
+    lebenslagen: lebenslagen,
     werteRelevanz: werteRelevanz,
     proArgumente: const [],
     contraArgumente: const [],
@@ -142,41 +145,80 @@ void main() {
       expect(OpportunityKind.fromWire(null), OpportunityKind.other);
     });
   });
-  group('Betroffenheitsprofil.matchingKeys', () {
-    test('is empty for an unanswered profile', () {
-      expect(const Betroffenheitsprofil().matchingKeys(), isEmpty);
-    });
-
-    test('includes only set/true fields, formatted like the backend keys', () {
-      const profile = Betroffenheitsprofil(
-        wohnsituation: Wohnsituation.mieter,
-        oepnvNutzung: true,
-        hatKinder: true,
-        erwerbsstatus: Erwerbsstatus.schuelerStudent,
-        migrationshintergrund: true,
+  group('UserProfile Lebenslagen', () {
+    test('unlock the backend snippet keys, formatted exactly', () {
+      const profile = UserProfile(
+        lebenslagen: {'mieter', 'oepnv', 'kita_kinder', 'studierend', 'lgbtq'},
       );
 
-      expect(profile.matchingKeys(), {
+      expect(profile.snippetKeys, {
         'wohnsituation:mieter',
         'oepnv_nutzung:true',
         'hat_kinder:true',
         'erwerbsstatus:schueler_student',
-        'migrationshintergrund:true',
+      });
+      expect(const UserProfile().snippetKeys, isEmpty);
+    });
+
+    test('a profile saved before the catalog keeps its answers', () {
+      final profile = UserProfile.fromJson(const {
+        'betroffenheitsprofil': {
+          'wohnsituation': 'eigentuemer',
+          'oepnv_nutzung': false,
+          'auto_nutzung': true,
+          'hat_kinder': true,
+          'erwerbsstatus': 'arbeitslos',
+          'pflege_betroffen': true,
+          'migrationshintergrund': false,
+        },
+      });
+
+      expect(profile.lebenslagen, {
+        'eigentuemer',
+        'autofahrer',
+        'eltern',
+        'arbeitssuchend',
+        'pflegende_angehoerige',
       });
     });
 
-    test('false booleans and null migrationshintergrund produce no key', () {
-      const profile = Betroffenheitsprofil(
-        oepnvNutzung: false,
-        migrationshintergrund: null,
+    test('round-trips through JSON and drops ids the catalog lacks', () {
+      const profile = UserProfile(lebenslagen: {'eltern', 'beruf_kita'});
+
+      final restored = UserProfile.fromJson({
+        ...profile.toJson(),
+        'lebenslagen': ['eltern', 'beruf_kita', 'removed_later'],
+      });
+
+      expect(
+        UserProfile.fromJson(profile.toJson()).lebenslagen,
+        profile.lebenslagen,
       );
-      expect(profile.matchingKeys(), isEmpty);
+      expect(restored.lebenslagen, {'eltern', 'beruf_kita'});
+    });
+  });
+
+  group('searchLebenslagen', () {
+    List<String> ids(String query) =>
+        searchLebenslagen(query).map((l) => l.id).toList();
+
+    test('finds occupations through synonyms', () {
+      expect(ids('Erzieherin'), contains('beruf_kita'));
+      expect(ids('Bäcker'), contains('beruf_lebensmittel'));
     });
 
-    test('migrationshintergrund:false is distinct from null (no key either)',
+    test('tolerates umlaut spelling and a typo', () {
+      expect(ids('baecker'), contains('beruf_lebensmittel'));
+      expect(ids('erziherin'), contains('beruf_kita'));
+    });
+
+    test('puts word starts before inner matches, empty query finds nothing',
         () {
-      const profile = Betroffenheitsprofil(migrationshintergrund: false);
-      expect(profile.matchingKeys(), isEmpty);
+      final arzt = ids('arzt');
+      expect(arzt.first, 'beruf_medizin'); // synonym "arzt"
+      expect(arzt, contains('beruf_tier')); // inside "tierarzt"
+      expect(ids(''), isEmpty);
+      expect(ids('   '), isEmpty);
     });
   });
 
@@ -227,11 +269,7 @@ void main() {
         },
       );
       final unmatched = _opportunity(id: 'unmatched');
-      const profile = UserProfile(
-        betroffenheitsprofil: Betroffenheitsprofil(
-          wohnsituation: Wohnsituation.mieter,
-        ),
-      );
+      const profile = UserProfile(lebenslagen: {'mieter'});
 
       final ranked = ranker.rank([unmatched, matched], profile);
 
@@ -282,9 +320,7 @@ void main() {
         personalImpactSnippets: const {'hat_kinder:true': 'Betrifft dich.'},
       );
       final good = _opportunity(id: 'good', everyday: 4, accessible: 4);
-      const profile = UserProfile(
-        betroffenheitsprofil: Betroffenheitsprofil(hatKinder: true),
-      );
+      const profile = UserProfile(lebenslagen: {'eltern'});
 
       final ranked = ranker.rank(
         [niche, everyday, matchedNiche, matchedAverage, good],
@@ -297,6 +333,38 @@ void main() {
         ranked.map((r) => r.opportunity.id),
         ['everyday', 'matched-average', 'good', 'matched-niche', 'niche'],
       );
+    });
+
+    test('a picked Lebenslage on the card counts as a situation match', () {
+      final matched = _opportunity(id: 'matched', lebenslagen: ['lgbtq']);
+      final other = _opportunity(id: 'other', lebenslagen: ['rentner']);
+      const profile = UserProfile(lebenslagen: {'lgbtq'});
+
+      final ranked = ranker.rank([other, matched], profile);
+
+      expect(ranked.first.opportunity.id, 'matched');
+      expect(ranked.first.matchedLebenslage, 'lgbtq');
+      expect(ranked.first.isSituationMatch, isTrue);
+      expect(ranked.last.isSituationMatch, isFalse);
+    });
+
+    test('card reason names a public Lebenslage but never a private one', () {
+      RankedOpportunity ranked(String? lebenslage, {String? tag}) =>
+          RankedOpportunity(
+            opportunity: _opportunity(),
+            matchedSnippet: null,
+            werteAlignment: 0.5,
+            matchedLebenslage: lebenslage,
+            interestTag: tag,
+          );
+
+      expect(cardReason(ranked('eltern')), 'Passt zu deinen Themen: Eltern');
+      expect(cardReason(ranked('lgbtq')), 'Passt zu deinen Themen');
+      expect(
+        cardReason(ranked(null, tag: 'Umwelt/Natur')),
+        'Weil du dich für Umwelt/Natur interessierst',
+      );
+      expect(cardReason(ranked(null)), isNull);
     });
 
     test('unscored opportunities count as average appeal', () {

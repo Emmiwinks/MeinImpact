@@ -45,6 +45,7 @@ class Opportunity {
     required this.personalImpactSnippets,
     required this.firstSeenAt,
     this.districts = const [],
+    this.lebenslagen = const [],
     this.locality,
     this.organizer,
     this.opensOn,
@@ -84,6 +85,7 @@ class Opportunity {
       everydayRelevance: json['everyday_relevance'] as int?,
       accessibility: json['accessibility'] as int?,
       districts: _strings(json['districts']),
+      lebenslagen: _strings(json['lebenslagen']),
       firstSeenAt: DateTime.parse(json['first_seen_at'] as String),
     );
   }
@@ -107,11 +109,14 @@ class Opportunity {
   final String title;
   final String summary;
   final List<String> affectedTags;
+  // Lebenslagen catalog ids this concerns (see Lebenslage), matched against
+  // the ones the user picked.
+  final List<String> lebenslagen;
   final Map<String, double> werteRelevanz;
   final List<String> proArgumente;
   final List<String> contraArgumente;
   // "field:value" -> sentence, keyed to match
-  // Betroffenheitsprofil.matchingKeys().
+  // UserProfile.snippetKeys (situation_keys.dart).
   final Map<String, String> personalImpactSnippets;
   final DateTime? opensOn;
   final DateTime? closesOn;

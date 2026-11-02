@@ -7,7 +7,6 @@
 // guard rails; the printed numbers are the real output.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meinimpact/src/features/feed/data/opportunity_relevance_ranker.dart';
-import 'package:meinimpact/src/features/feed/domain/betroffenheitsprofil.dart';
 import 'package:meinimpact/src/features/feed/domain/interest_config.dart';
 import 'package:meinimpact/src/features/feed/domain/interest_weights.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity.dart';
@@ -164,9 +163,7 @@ void main() {
       _live(
         config: InterestConfig(matchBonus: bonus),
         favourite: 'Umwelt/Natur',
-        start: const UserProfile(
-          betroffenheitsprofil: Betroffenheitsprofil(hatKinder: true),
-        ),
+        start: const UserProfile(lebenslagen: {'eltern'}),
         from: DateTime(2026, 11, 1),
         days: 30,
         scanDepth: 20,
@@ -195,9 +192,7 @@ void main() {
     _live(
       config: config,
       favourite: 'Umwelt/Natur',
-      start: const UserProfile(
-        betroffenheitsprofil: Betroffenheitsprofil(hatKinder: true),
-      ),
+      start: const UserProfile(lebenslagen: {'eltern'}),
       from: DateTime(2026, 11, 1),
       days: 30,
       scanDepth: 20,

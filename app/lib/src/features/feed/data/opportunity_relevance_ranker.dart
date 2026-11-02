@@ -3,23 +3,32 @@ import '../domain/interest_weights.dart';
 import '../domain/opportunity.dart';
 import '../domain/user_profile.dart';
 
-/// An opportunity plus the two on-device-computed relevance facts the UI
-/// needs — computed once here rather than recomputed per widget rebuild.
+/// An opportunity plus the on-device-computed relevance facts the UI needs,
+/// computed once here rather than per widget rebuild.
 class RankedOpportunity {
   const RankedOpportunity({
     required this.opportunity,
     required this.matchedSnippet,
     required this.werteAlignment,
     this.interestTag,
+    this.matchedLebenslage,
   });
 
   final Opportunity opportunity;
   // The learned favourite topic that ranked this card up, if one is strong
   // enough to name ("Weil du dich für Mobilität interessierst").
   final String? interestTag;
-  // The personal_impact_snippet matching the user's Betroffenheitsprofil,
-  // if any: the feed card's hook line (else the opportunity's summary).
+  // A Lebenslage the user picked that this card concerns, if any (the
+  // catalog id; private ones are matched but never named on the card).
+  final String? matchedLebenslage;
+
+  // The personal_impact_snippet matching the user's Lebenslagen (through
+  // their snippet keys), if any: the feed card's hook line (else the
+  // opportunity's summary).
   final String? matchedSnippet;
+
+  bool get isSituationMatch =>
+      matchedSnippet != null || matchedLebenslage != null;
   // 0.0-1.0, 0.5 = neutral/no signal (opportunity has no relevant axis, or
   // profile isn't answered enough to have an opinion).
   final double werteAlignment;
@@ -28,8 +37,8 @@ class RankedOpportunity {
 /// Orders the open opportunities by on-device relevance with one blended
 /// score, so no signal can lock out another:
 ///   appeal (easy, everyday cards first: quick wins)
-///   + [InterestConfig.matchBonus] if a personal snippet matches the
-///     Betroffenheitsprofil (it concerns me)
+///   + [InterestConfig.matchBonus] if the card concerns one of the user's
+///     Lebenslagen (directly, or through a personal snippet)
 ///   + learned topic interest, scaled by [InterestConfig.rankingInfluence].
 /// Ties fall back to Werteprofil alignment. (A hard "matched first" tier
 /// used to sit above all of this; with ~45% of cards matched it made
@@ -61,7 +70,7 @@ class OpportunityRelevanceRanker {
     final ranked = pool.map((o) => _rankOne(o, profile, at)).toList();
     double score(RankedOpportunity r) =>
         r.opportunity.appeal +
-        (r.matchedSnippet != null ? interestConfig.matchBonus : 0) +
+        (r.isSituationMatch ? interestConfig.matchBonus : 0) +
         interestConfig.rankingInfluence *
             interests.interestIn(
               r.opportunity.affectedTags,
@@ -120,6 +129,7 @@ class OpportunityRelevanceRanker {
     return RankedOpportunity(
       opportunity: opportunity,
       matchedSnippet: _matchedSnippetFor(opportunity, profile),
+      matchedLebenslage: _matchedLebenslageFor(opportunity, profile),
       werteAlignment: _computeWerteAlignment(opportunity, profile),
       interestTag: profile.interests.reasonTag(
         opportunity.affectedTags,
@@ -131,10 +141,17 @@ class OpportunityRelevanceRanker {
 
   String? _matchedSnippetFor(Opportunity opportunity, UserProfile profile) {
     if (opportunity.personalImpactSnippets.isEmpty) return null;
-    final matchingKeys = profile.betroffenheitsprofil.matchingKeys();
+    final matchingKeys = profile.snippetKeys;
     for (final key in matchingKeys) {
       final snippet = opportunity.personalImpactSnippets[key];
       if (snippet != null) return snippet;
+    }
+    return null;
+  }
+
+  String? _matchedLebenslageFor(Opportunity opportunity, UserProfile profile) {
+    for (final id in opportunity.lebenslagen) {
+      if (profile.lebenslagen.contains(id)) return id;
     }
     return null;
   }
