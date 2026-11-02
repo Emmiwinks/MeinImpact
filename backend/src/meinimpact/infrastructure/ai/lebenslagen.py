@@ -7,9 +7,12 @@ The model tags each opportunity with catalog ids; the app matches them
 against the ids the user picked on their device. Nothing about a user's own
 picks ever reaches the server.
 
-`sensitive` marks special-category data (GDPR Art. 9: sexual identity,
-religion, ethnic origin, health, disability). The app keeps those optional,
-collapsed by default and out of every profile summary.
+`private` marks entries that fall under GDPR Art. 9 special categories
+(sexual identity, religion, ethnic origin, health, disability). It is a
+data-handling rule, not a judgment about the topic: the app shows every
+group in the same picker, but never puts a private one on a profile summary
+or any other view a bystander could see. What to enter is always the user's
+choice.
 
 The `label`s and `synonyms` (search terms, lower case) are exported to the
 app by `scripts/export_lebenslagen.py`; this module is the single source.
@@ -36,15 +39,15 @@ class Lebenslage:
     id: str
     label: str
     area: str
-    sensitive: bool = False
+    private: bool = False
     synonyms: tuple[str, ...] = ()
 
 
 def _l(
-    id: str, label: str, area: str, synonyms: str = "", *, sensitive: bool = False
+    id: str, label: str, area: str, synonyms: str = "", *, private: bool = False
 ) -> Lebenslage:
     terms = tuple(t.strip() for t in synonyms.split(",") if t.strip())
-    return Lebenslage(id, label, area, sensitive, terms)
+    return Lebenslage(id, label, area, private, terms)
 
 
 LEBENSLAGEN: tuple[Lebenslage, ...] = (
@@ -144,42 +147,42 @@ LEBENSLAGEN: tuple[Lebenslage, ...] = (
         "Chronisch krank",
         "Gesundheit",
         "krankheit, diabetes, krebs, dauerhaft",
-        sensitive=True,
+        private=True,
     ),
     _l(
         "psychisch_belastet",
         "Psychische Erkrankung oder Belastung",
         "Gesundheit",
         "depression, therapie, burnout, psychotherapie",
-        sensitive=True,
+        private=True,
     ),
     _l(
         "behinderung",
         "Mensch mit Behinderung",
         "Gesundheit",
         "schwerbehindert, barrierefrei, rollstuhl, inklusion",
-        sensitive=True,
+        private=True,
     ),
     _l(
         "pflegebeduerftig",
         "Pflegebedürftig",
         "Gesundheit",
         "pflegegrad, pflegeheim, pflege",
-        sensitive=True,
+        private=True,
     ),
     _l(
         "suchterfahrung",
         "Suchterkrankung oder -erfahrung",
         "Gesundheit",
         "sucht, alkohol, drogen, cannabis",
-        sensitive=True,
+        private=True,
     ),
     _l(
         "neurodivers",
         "Neurodivergent (z. B. ADHS, Autismus)",
         "Gesundheit",
         "adhs, autismus, legasthenie",
-        sensitive=True,
+        private=True,
     ),
     # --- Identität & Herkunft
     _l(
@@ -187,7 +190,7 @@ LEBENSLAGEN: tuple[Lebenslage, ...] = (
         "LGBTQ+",
         "Identität & Herkunft",
         "queer, schwul, lesbisch, bi, trans, intersexuell, nichtbinär, csd",
-        sensitive=True,
+        private=True,
     ),
     _l(
         "frauen",
@@ -200,35 +203,35 @@ LEBENSLAGEN: tuple[Lebenslage, ...] = (
         "Migrationshintergrund oder eingewandert",
         "Identität & Herkunft",
         "zuwanderung, ausländer, einwanderung, integration",
-        sensitive=True,
+        private=True,
     ),
     _l(
         "gefluechtet",
         "Geflüchtet oder im Asylverfahren",
         "Identität & Herkunft",
         "flucht, asyl, geduldet, ukraine, aufenthalt",
-        sensitive=True,
+        private=True,
     ),
     _l(
         "rassismuserfahrung",
         "Von Rassismus oder Diskriminierung betroffen",
         "Identität & Herkunft",
         "diskriminierung, rassismus, antisemitismus",
-        sensitive=True,
+        private=True,
     ),
     _l(
         "religioes",
         "Religiös oder Mitglied einer Glaubensgemeinschaft",
         "Identität & Herkunft",
         "kirche, moschee, synagoge, glaube, religion",
-        sensitive=True,
+        private=True,
     ),
     _l(
         "sorbisch",
         "Sorbisch / Minderheit in Sachsen",
         "Identität & Herkunft",
         "sorben, minderheit, sinti, roma",
-        sensitive=True,
+        private=True,
     ),
     _l(
         "ostdeutsch",

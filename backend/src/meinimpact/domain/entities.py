@@ -76,6 +76,9 @@ class Opportunity:
     title: str
     summary: str
     affected_tags: tuple[str, ...]
+    # Lebenslagen catalog ids this concerns (ai/lebenslagen.py); the app
+    # matches them against the groups the user picked on their device
+    lebenslagen: tuple[str, ...]
     werte_relevanz: dict[str, float]
     pro_argumente: tuple[str, ...]
     contra_argumente: tuple[str, ...]

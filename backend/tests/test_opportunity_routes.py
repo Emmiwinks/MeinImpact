@@ -23,6 +23,7 @@ _OPPORTUNITY = Opportunity(
     title="Soll die Kita erhalten bleiben?",
     summary="Die Stadt plant die Schließung.",
     affected_tags=("Familie/Kinder",),
+    lebenslagen=("eltern", "kita_kinder"),
     werte_relevanz={},
     pro_argumente=("Betreuungsplätze",),
     contra_argumente=("Kosten",),
@@ -81,6 +82,7 @@ def test_pool_serves_open_opportunities_for_today() -> None:
     assert item["support_count"] == 445
     assert (item["everyday_relevance"], item["accessibility"]) == (5, 4)
     assert item["districts"] == ["Hellerau"]
+    assert item["lebenslagen"] == ["eltern", "kita_kinder"]
     assert item["personal_impact_snippets"] == {
         "hat_kinder:true": "Betrifft deine Kita-Wahl."
     }

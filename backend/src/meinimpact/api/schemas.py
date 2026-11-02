@@ -205,6 +205,7 @@ class OpportunityResponse(BaseModel):
     title: str
     summary: str
     affected_tags: list[str]
+    lebenslagen: list[str]
     werte_relevanz: dict[str, float]
     pro_argumente: list[str]
     contra_argumente: list[str]
@@ -234,6 +235,7 @@ class OpportunityResponse(BaseModel):
             title=opportunity.title,
             summary=opportunity.summary,
             affected_tags=list(opportunity.affected_tags),
+            lebenslagen=list(opportunity.lebenslagen),
             werte_relevanz=dict(opportunity.werte_relevanz),
             pro_argumente=list(opportunity.pro_argumente),
             contra_argumente=list(opportunity.contra_argumente),

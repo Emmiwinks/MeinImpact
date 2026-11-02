@@ -7,6 +7,7 @@ import pytest
 from listing_fakes import make_listing
 
 from meinimpact.infrastructure.ai import listing_enricher
+from meinimpact.infrastructure.ai.lebenslagen import LEBENSLAGEN
 from meinimpact.infrastructure.ai.listing_enricher import (
     EnrichmentError,
     ListingEnricher,
@@ -212,6 +213,42 @@ def test_free_topic_is_kept_next_to_the_fixed_tags() -> None:
     enrichment = parse_enrichment(_relevant(thema="Menstruationsprodukte"))
 
     assert enrichment.free_topic == "Menstruationsprodukte"
+
+
+def test_lebenslagen_keep_only_catalog_ids_deduplicated_and_capped() -> None:
+    enrichment = parse_enrichment(
+        _relevant(
+            lebenslagen=[
+                "mieter",
+                "mieter",
+                "Erfunden",
+                42,
+                "eltern",
+                "pendler",
+                "oepnv",
+                "wohngeld",
+                "rentner",
+            ],
+            lebenslage_frei="Kita-Personal",
+        )
+    )
+
+    assert enrichment.lebenslagen == (
+        "mieter",
+        "eltern",
+        "pendler",
+        "oepnv",
+        "wohngeld",
+    )
+    assert enrichment.lebenslage_frei == "Kita-Personal"
+    assert parse_enrichment(_relevant()).lebenslagen == ()
+
+
+def test_prompt_lists_every_lebenslage_id() -> None:
+    prompt = build_prompt(make_listing(), None)
+
+    for item in LEBENSLAGEN:
+        assert f"- {item.id}: {item.label}" in prompt
 
 
 def test_candidate_topic_is_kept_only_from_the_candidate_list() -> None:

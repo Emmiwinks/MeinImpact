@@ -33,6 +33,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from typing import Any
 
+from meinimpact.infrastructure.ai.lebenslagen import LEBENSLAGEN, LEBENSLAGEN_BY_ID
 from meinimpact.infrastructure.ai.mistral_json import JsonCompleter
 from meinimpact.infrastructure.ai.taxonomy import (
     AXIS_LANGUAGE,
@@ -44,7 +45,9 @@ from meinimpact.infrastructure.ai.taxonomy import (
 from meinimpact.infrastructure.geo.districts import DistrictMatcher
 from meinimpact.infrastructure.listings.model import Listing, Region
 
-ENRICHMENT_VERSION = "6"
+ENRICHMENT_VERSION = "7"
+
+_MAX_LEBENSLAGEN = 5
 
 _MAX_DETAIL_CHARS = 4000
 _MAX_ARGUMENTS = 3
@@ -76,6 +79,10 @@ class Enrichment:
     title: str = ""
     summary: str = ""
     affected_tags: tuple[str, ...] = ()
+    # Lebenslagen catalog ids the opportunity concerns, and the model's own
+    # label for a clearly concerned group the catalog lacks
+    lebenslagen: tuple[str, ...] = ()
+    lebenslage_frei: str = ""
     werte_relevanz: Mapping[str, float] = field(default_factory=dict)
     pro_argumente: tuple[str, ...] = ()
     contra_argumente: tuple[str, ...] = ()
@@ -105,6 +112,9 @@ def build_prompt(listing: Listing, detail: str | None) -> str:
         for tag, axes in TAG_AXES.items()
     )
     axis_list = "\n".join(f"- {axis}: {text}" for axis, text in AXIS_LANGUAGE.items())
+    lebenslagen_list = "\n".join(
+        f"- {item.id}: {item.label} ({item.area})" for item in LEBENSLAGEN
+    )
     candidate_list = "\n".join(
         f"- {topic}: {hint}" for topic, hint in CANDIDATE_TOPICS.items()
     )
@@ -143,6 +153,8 @@ Eintrag unten und antworte NUR mit JSON in genau dieser Struktur:
   "thema": "<1-4 Wörter: das konkrete Thema in eigenen Worten>",
   "kandidat": "<Name aus der Kandidatenliste oder leer>",
   "affected_tags": ["<tag>", ...],
+  "lebenslagen": ["<id>", ...],
+  "lebenslage_frei": "<Gruppe oder leer>",
   "werte_relevanz": {{"<achse>": <-1.0 bis 1.0>}},
   "pro_argumente": ["<arg>", "<arg>"],
   "contra_argumente": ["<arg>", "<arg>"],
@@ -210,6 +222,14 @@ affected_tags: NUR aus dieser Liste. Wähle nur Tags, die wirklich zum Thema
 passen, lieber einen passenden als drei entfernte:
 {tag_list}
 
+lebenslagen: NUR ids aus dieser Liste: Gruppen, die dieses Thema direkt
+betrifft oder denen es besonders wichtig sein dürfte. Höchstens
+{_MAX_LEBENSLAGEN}, lieber wenige passende als viele entfernte; [] wenn keine
+passt:
+{lebenslagen_list}
+lebenslage_frei: nur wenn eine Gruppe klar betroffen ist, die in der Liste
+fehlt: ihr kurzer Name, sonst leer.
+
 werte_relevanz: NUR die Achsen der erkannten Tags, jede in ihrer eigenen
 bipolaren Sprache (NIEMALS ein generisches "progressiv vs. konservativ"):
 {axis_list}
@@ -258,6 +278,11 @@ def parse_enrichment(raw: Mapping[str, Any]) -> Enrichment:
     axes = {axis for tag in tags for axis in TAG_AXES[tag]}
     snippet_keys = {key for tag in tags for key in TAG_BETROFFENHEIT_KEYS.get(tag, [])}
     candidate = _text(raw.get("kandidat"))
+    lebenslagen = tuple(
+        dict.fromkeys(
+            i for i in _strings(raw.get("lebenslagen")) if i in LEBENSLAGEN_BY_ID
+        )
+    )[:_MAX_LEBENSLAGEN]
     return Enrichment(
         is_relevant=True,
         reason=reason,
@@ -267,6 +292,8 @@ def parse_enrichment(raw: Mapping[str, Any]) -> Enrichment:
         title=title,
         summary=summary,
         affected_tags=tags,
+        lebenslagen=lebenslagen,
+        lebenslage_frei=_text(raw.get("lebenslage_frei")),
         werte_relevanz={
             axis: max(-1.0, min(1.0, float(value)))
             for axis, value in _mapping(raw.get("werte_relevanz")).items()

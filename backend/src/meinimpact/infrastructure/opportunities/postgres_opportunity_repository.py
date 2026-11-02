@@ -135,6 +135,8 @@ class PostgresOpportunityRepository:
         record.title = enrichment.title or None
         record.summary = enrichment.summary or None
         record.affected_tags = list(enrichment.affected_tags)
+        record.lebenslagen = list(enrichment.lebenslagen)
+        record.lebenslage_frei = enrichment.lebenslage_frei or None
         record.werte_relevanz = dict(enrichment.werte_relevanz)
         record.pro_argumente = list(enrichment.pro_argumente)
         record.contra_argumente = list(enrichment.contra_argumente)
@@ -180,6 +182,7 @@ def _new_record(listing: Listing, observed_at: datetime) -> OpportunityRecord:
         external_id=listing.external_id,
         first_seen_at=observed_at,
         affected_tags=[],
+        lebenslagen=[],
         districts=[],
         werte_relevanz={},
         pro_argumente=[],
@@ -223,6 +226,7 @@ def _to_domain(record: OpportunityRecord) -> Opportunity:
         title=record.title or record.registry_title,
         summary=record.summary or record.registry_summary or "",
         affected_tags=tuple(record.affected_tags),
+        lebenslagen=tuple(record.lebenslagen),
         werte_relevanz=dict(record.werte_relevanz),
         pro_argumente=tuple(record.pro_argumente),
         contra_argumente=tuple(record.contra_argumente),

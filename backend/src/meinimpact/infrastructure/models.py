@@ -202,6 +202,12 @@ class OpportunityRecord(Base):
     affected_tags: Mapped[list[str]] = mapped_column(
         ARRAY(Text()), nullable=False, server_default="{}"
     )
+    # Lebenslagen catalog ids, and the model's own label for a missing group
+    # (scripts/topic_report.py)
+    lebenslagen: Mapped[list[str]] = mapped_column(
+        ARRAY(Text()), nullable=False, server_default="{}"
+    )
+    lebenslage_frei: Mapped[str | None] = mapped_column(Text, nullable=True)
     werte_relevanz: Mapped[dict[str, float]] = mapped_column(
         JSONB, nullable=False, server_default="{}"
     )

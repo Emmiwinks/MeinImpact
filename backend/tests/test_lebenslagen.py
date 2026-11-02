@@ -33,10 +33,10 @@ def test_synonyms_are_lower_case_and_unique_per_entry() -> None:
         assert len(item.synonyms) == len(set(item.synonyms)), item.id
 
 
-def test_special_category_groups_are_marked_sensitive() -> None:
-    for sensitive_id in ("lgbtq", "behinderung", "religioes", "gefluechtet"):
-        assert LEBENSLAGEN_BY_ID[sensitive_id].sensitive
+def test_special_category_groups_are_marked_private() -> None:
+    for private_id in ("lgbtq", "behinderung", "religioes", "gefluechtet"):
+        assert LEBENSLAGEN_BY_ID[private_id].private
 
 
-def test_occupations_are_never_sensitive() -> None:
-    assert not any(i.sensitive for i in LEBENSLAGEN if i.area == "Beruf")
+def test_occupations_are_never_private() -> None:
+    assert not any(i.private for i in LEBENSLAGEN if i.area == "Beruf")

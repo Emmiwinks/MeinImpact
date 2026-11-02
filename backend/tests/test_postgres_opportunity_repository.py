@@ -41,6 +41,8 @@ def _relevant(
         title="Soll die Kita bleiben?",
         summary="Eine Kita soll schließen.",
         affected_tags=("Familie/Kinder",),
+        lebenslagen=("eltern",),
+        lebenslage_frei="Kita-Personal",
         districts=("Hellerau",),
         free_topic="Kita-Schließung",
         pro_argumente=("Plätze",),
@@ -192,6 +194,7 @@ async def test_list_open_serves_relevant_active_unexpired_except_expert_only(
     assert opportunity.title == "Soll die Kita bleiben?"
     assert opportunity.region == "dresden"
     assert opportunity.districts == ("Hellerau",)
+    assert opportunity.lebenslagen == ("eltern",)
     assert opportunity.source_org == "src"  # unknown registry: id as name
     assert opportunity.personal_impact_snippets == {"hat_kinder:true": "Betrifft dich."}
 
