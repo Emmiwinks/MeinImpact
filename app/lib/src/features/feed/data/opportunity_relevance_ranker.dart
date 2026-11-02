@@ -25,11 +25,15 @@ class RankedOpportunity {
   final double werteAlignment;
 }
 
-/// Orders the open opportunities by on-device relevance, in three tiers:
-/// 1. Betroffenheitsprofil match (it concerns me),
-/// 2. appeal: easy, everyday cards before niche or demanding ones, so the
-///    feed starts with quick wins, nudged by learned topic interest,
-/// 3. Werteprofil alignment.
+/// Orders the open opportunities by on-device relevance with one blended
+/// score, so no signal can lock out another:
+///   appeal (easy, everyday cards first: quick wins)
+///   + [InterestConfig.matchBonus] if a personal snippet matches the
+///     Betroffenheitsprofil (it concerns me)
+///   + learned topic interest, scaled by [InterestConfig.rankingInfluence].
+/// Ties fall back to Werteprofil alignment. (A hard "matched first" tier
+/// used to sit above all of this; with ~45% of cards matched it made
+/// learned interests in unmatched topics invisible.)
 /// Never drops an opportunity, only reorders. No recency or support-count
 /// component: the server only serves opportunities that are still open,
 /// and support counts are informational, never a ranking signal.
@@ -57,6 +61,7 @@ class OpportunityRelevanceRanker {
     final ranked = pool.map((o) => _rankOne(o, profile, at)).toList();
     double score(RankedOpportunity r) =>
         r.opportunity.appeal +
+        (r.matchedSnippet != null ? interestConfig.matchBonus : 0) +
         interestConfig.rankingInfluence *
             interests.interestIn(
               r.opportunity.affectedTags,
@@ -64,8 +69,6 @@ class OpportunityRelevanceRanker {
               interestConfig,
             );
     ranked.sort((a, b) {
-      final byMatch = _matchRank(b).compareTo(_matchRank(a));
-      if (byMatch != 0) return byMatch;
       final byScore = score(b).compareTo(score(a));
       if (byScore != 0) return byScore;
       return b.werteAlignment.compareTo(a.werteAlignment);
@@ -125,8 +128,6 @@ class OpportunityRelevanceRanker {
       ),
     );
   }
-
-  int _matchRank(RankedOpportunity r) => r.matchedSnippet != null ? 1 : 0;
 
   String? _matchedSnippetFor(Opportunity opportunity, UserProfile profile) {
     if (opportunity.personalImpactSnippets.isEmpty) return null;

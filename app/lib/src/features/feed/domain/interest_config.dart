@@ -14,6 +14,7 @@ class InterestConfig {
     this.halfLife = const Duration(days: 14),
     this.neutralBand = 0.05,
     this.reasonThreshold = 0.15,
+    this.matchBonus = 0.25,
     this.rankingInfluence = 0.3,
     this.explorationInterval = 5,
   });
@@ -30,6 +31,10 @@ class InterestConfig {
   final double neutralBand;
   // From this weight a topic is strong enough to be named on a card.
   final double reasonThreshold;
+  // Appeal (0-1 scale) added to a card whose personal snippet matches the
+  // user's situation. Large enough that a match usually wins, small enough
+  // that a strongly liked topic can overtake it.
+  final double matchBonus;
   // How much appeal (0-1 scale) a topic at full weight is worth in ranking.
   final double rankingInfluence;
   // Every n-th slot goes to an unexplored topic; 0 turns exploration off.

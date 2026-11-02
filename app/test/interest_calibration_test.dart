@@ -7,6 +7,7 @@
 // guard rails; the printed numbers are the real output.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meinimpact/src/features/feed/data/opportunity_relevance_ranker.dart';
+import 'package:meinimpact/src/features/feed/domain/betroffenheitsprofil.dart';
 import 'package:meinimpact/src/features/feed/domain/interest_config.dart';
 import 'package:meinimpact/src/features/feed/domain/interest_weights.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity.dart';
@@ -23,7 +24,13 @@ const _topics = [
 // 8 cards per topic. Every topic is equally appealing, except that the
 // persona's favourite is made slightly LESS appealing, so interest has to
 // overcome a real baseline instead of winning on ties.
-List<Opportunity> _pool({required String favourite}) {
+// [matchedTopics] cards carry a personal snippet for a user with children,
+// like the situation-matched cards a Betroffenheit profile produces.
+List<Opportunity> _pool({
+  required String favourite,
+  Set<String> matchedTopics = const {},
+  int favouriteAccessibility = 3,
+}) {
   return [
     for (final topic in _topics)
       for (var i = 0; i < 8; i++)
@@ -40,10 +47,12 @@ List<Opportunity> _pool({required String favourite}) {
           werteRelevanz: const {},
           proArgumente: const [],
           contraArgumente: const [],
-          personalImpactSnippets: const {},
+          personalImpactSnippets: matchedTopics.contains(topic)
+              ? const {'hat_kinder:true': 'Betrifft dich.'}
+              : const {},
           firstSeenAt: DateTime(2026, 11, 1),
           everydayRelevance: 3,
-          accessibility: topic == favourite ? 3 : 4,
+          accessibility: topic == favourite ? favouriteAccessibility : 4,
         ),
   ];
 }
@@ -78,13 +87,23 @@ UserProfile _live({
   int opensPerDay = 2,
   int scanDepth = 40,
   int actEvery = 3,
+  Set<String> matchedTopics = const {},
+  int favouriteAccessibility = 3,
   void Function(int day, List<RankedOpportunity> feed)? onDay,
 }) {
   final ranker = OpportunityRelevanceRanker(interestConfig: config);
   var profile = start;
   for (var day = 0; day < days; day++) {
     final now = from.add(Duration(days: day));
-    final feed = ranker.rank(_pool(favourite: favourite), profile, now: now);
+    final feed = ranker.rank(
+      _pool(
+        favourite: favourite,
+        matchedTopics: matchedTopics,
+        favouriteAccessibility: favouriteAccessibility,
+      ),
+      profile,
+      now: now,
+    );
     onDay?.call(day, feed);
     var opened = 0;
     for (final ranked in feed.take(scanDepth)) {
@@ -139,6 +158,70 @@ _Result _measure(InterestConfig config, {int days = 30}) {
 }
 
 void main() {
+  test('match bonus sweep: how fast an unmatched favourite surfaces', () {
+    for (final bonus in [0.1, 0.25, 0.4, 0.6]) {
+      int? inTop10;
+      _live(
+        config: InterestConfig(matchBonus: bonus),
+        favourite: 'Umwelt/Natur',
+        start: const UserProfile(
+          betroffenheitsprofil: Betroffenheitsprofil(hatKinder: true),
+        ),
+        from: DateTime(2026, 11, 1),
+        days: 30,
+        scanDepth: 20,
+        matchedTopics: {'Mobilität/Verkehr', 'Wohnen/Miete'},
+        favouriteAccessibility: 5,
+        onDay: (day, feed) {
+          final top10 =
+              feed.take(10).map((r) => r.opportunity.affectedTags.first);
+          if (inTop10 == null && top10.contains('Umwelt/Natur')) {
+            inTop10 = day;
+          }
+        },
+      );
+      // ignore: avoid_print
+      print('matchBonus $bonus: favourite in top 10 on day $inTop10');
+    }
+  });
+
+  test('a topic with no situation match still gets through the matched cards',
+      () {
+    // 2 of 5 topics (16 of 40 cards) match the user's situation; the
+    // favourite is not one of them.
+    const config = InterestConfig();
+    int? inTop10;
+    int? leads;
+    _live(
+      config: config,
+      favourite: 'Umwelt/Natur',
+      start: const UserProfile(
+        betroffenheitsprofil: Betroffenheitsprofil(hatKinder: true),
+      ),
+      from: DateTime(2026, 11, 1),
+      days: 30,
+      scanDepth: 20,
+      matchedTopics: {'Mobilität/Verkehr', 'Wohnen/Miete'},
+      // Unmatched but more appealing than the other unmatched topics: it
+      // sits just below the matched cards, so only the tier can hold it back.
+      favouriteAccessibility: 5,
+      onDay: (day, feed) {
+        final top10 =
+            feed.take(10).map((r) => r.opportunity.affectedTags.first);
+        if (inTop10 == null && top10.contains('Umwelt/Natur')) inTop10 = day;
+        if (leads == null &&
+            feed.first.opportunity.affectedTags.first == 'Umwelt/Natur') {
+          leads = day;
+        }
+      },
+    );
+    // ignore: avoid_print
+    print('matched-tier scenario: top 10 on day $inTop10, leads on day $leads');
+
+    expect(inTop10, isNotNull);
+    expect(inTop10, lessThan(10));
+  });
+
   test('default config: a consistent user gets their topic on top soon', () {
     final result = _measure(const InterestConfig());
     // ignore: avoid_print

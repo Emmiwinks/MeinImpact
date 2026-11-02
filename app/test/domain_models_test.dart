@@ -266,7 +266,7 @@ void main() {
       expect(ranked.last.werteAlignment, lessThan(0.5));
     });
 
-    test('easy everyday cards rank above niche ones, after the match', () {
+    test('a match outweighs a small appeal gap but not a large one', () {
       final niche = _opportunity(id: 'niche', everyday: 1, accessible: 3);
       final everyday = _opportunity(id: 'everyday', everyday: 5, accessible: 5);
       final matchedNiche = _opportunity(
@@ -275,15 +275,27 @@ void main() {
         accessible: 2,
         personalImpactSnippets: const {'hat_kinder:true': 'Betrifft dich.'},
       );
+      final matchedAverage = _opportunity(
+        id: 'matched-average',
+        everyday: 3,
+        accessible: 3,
+        personalImpactSnippets: const {'hat_kinder:true': 'Betrifft dich.'},
+      );
+      final good = _opportunity(id: 'good', everyday: 4, accessible: 4);
       const profile = UserProfile(
         betroffenheitsprofil: Betroffenheitsprofil(hatKinder: true),
       );
 
-      final ranked = ranker.rank([niche, everyday, matchedNiche], profile);
+      final ranked = ranker.rank(
+        [niche, everyday, matchedNiche, matchedAverage, good],
+        profile,
+      );
 
+      // matched-average (0.5 + bonus) beats the better unmatched 'good'
+      // (0.75); an unmatched perfect card (1.0) beats a matched niche one.
       expect(
         ranked.map((r) => r.opportunity.id),
-        ['matched-niche', 'everyday', 'niche'],
+        ['everyday', 'matched-average', 'good', 'matched-niche', 'niche'],
       );
     });
 
