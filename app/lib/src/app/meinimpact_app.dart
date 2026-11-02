@@ -3,6 +3,8 @@ import 'package:meinimpact/l10n/app_localizations.dart';
 
 import '../core/profile/user_profile_store.dart';
 import '../features/feed/domain/betroffenheitsprofil.dart';
+import '../features/feed/domain/interest_weights.dart';
+import '../features/feed/domain/opportunity.dart';
 import '../features/feed/domain/opportunity_repository.dart';
 import '../features/feed/domain/user_profile.dart';
 import '../features/onboarding/demographic_screen.dart';
@@ -96,15 +98,7 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
   }
 
   Future<void> _onWerteRequizComplete(Map<String, int> werte) async {
-    final current = _profile!;
-    final updated = UserProfile(
-      werte: werte,
-      plz: current.plz,
-      mdbName: current.mdbName,
-      mdbParty: current.mdbParty,
-      mdbWahlkreis: current.mdbWahlkreis,
-      betroffenheitsprofil: current.betroffenheitsprofil,
-    );
+    final updated = _profile!.copyWith(werte: werte);
     await widget._profileStore?.save(updated);
     setState(() {
       _profile = updated;
@@ -115,17 +109,29 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
   Future<void> _onBetroffenheitsprofilChanged(
     Betroffenheitsprofil betroffenheitsprofil,
   ) async {
-    final current = _profile!;
-    final updated = UserProfile(
-      werte: current.werte,
-      plz: current.plz,
-      mdbName: current.mdbName,
-      mdbParty: current.mdbParty,
-      mdbWahlkreis: current.mdbWahlkreis,
-      betroffenheitsprofil: betroffenheitsprofil,
-    );
+    final updated =
+        _profile!.copyWith(betroffenheitsprofil: betroffenheitsprofil);
     await widget._profileStore?.save(updated);
     setState(() => _profile = updated);
+  }
+
+  // Interests are learned silently: persisted, but the open feed is not
+  // re-ranked under the user's finger (the next feed load picks them up).
+  Future<void> _onInterestSignal(
+    Opportunity opportunity,
+    InterestSignal signal,
+  ) async {
+    final current = _profile;
+    if (current == null) return;
+    final updated = current.copyWith(
+      interests: current.interests.record(
+        opportunity.affectedTags,
+        signal,
+        DateTime.now(),
+      ),
+    );
+    _profile = updated;
+    await widget._profileStore?.save(updated);
   }
 
   @override
@@ -170,6 +176,7 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
         profile: _profile,
         onEditProfile: () => setState(() => _requizWerte = true),
         onBetroffenheitsprofilChanged: _onBetroffenheitsprofilChanged,
+        onInterestSignal: _onInterestSignal,
       );
     }
 

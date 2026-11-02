@@ -131,6 +131,18 @@ class OpportunityTile extends StatelessWidget {
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  if (ranked.interestTag != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Weil du dich für ${ranked.interestTag} interessierst',
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            color: AppColors.mutedText,
+                            fontWeight: FontWeight.w600,
+                          ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ],
               ),
             ),

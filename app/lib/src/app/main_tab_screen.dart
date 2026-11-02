@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:meinimpact/l10n/app_localizations.dart';
 
 import '../features/feed/domain/betroffenheitsprofil.dart';
+import '../features/feed/domain/interest_weights.dart';
+import '../features/feed/domain/opportunity.dart';
 import '../features/feed/domain/opportunity_repository.dart';
 import '../features/feed/domain/user_profile.dart';
 import '../features/feed/presentation/aktionen_tab.dart';
@@ -18,6 +20,7 @@ class MainTabScreen extends StatefulWidget {
     this.profile,
     this.onEditProfile,
     this.onBetroffenheitsprofilChanged,
+    this.onInterestSignal,
     super.key,
   });
 
@@ -25,6 +28,8 @@ class MainTabScreen extends StatefulWidget {
   final UserProfile? profile;
   final VoidCallback? onEditProfile;
   final ValueChanged<Betroffenheitsprofil>? onBetroffenheitsprofilChanged;
+  final void Function(Opportunity opportunity, InterestSignal signal)?
+      onInterestSignal;
 
   static const _fallbackProfile = UserProfile();
 
@@ -49,6 +54,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
       _AktionenScaffoldTab(
         opportunityRepository: widget.opportunityRepository,
         profile: effectiveProfile,
+        onInterestSignal: widget.onInterestSignal,
       ),
       const _WirkungScaffoldTab(),
     ];
@@ -111,10 +117,13 @@ class _AktionenScaffoldTab extends StatelessWidget {
   const _AktionenScaffoldTab({
     required this.opportunityRepository,
     required this.profile,
+    required this.onInterestSignal,
   });
 
   final OpportunityRepository opportunityRepository;
   final UserProfile profile;
+  final void Function(Opportunity opportunity, InterestSignal signal)?
+      onInterestSignal;
 
   @override
   Widget build(BuildContext context) {
@@ -123,6 +132,7 @@ class _AktionenScaffoldTab extends StatelessWidget {
       child: AktionenTab(
         opportunityRepository: opportunityRepository,
         profile: profile,
+        onInterestSignal: onInterestSignal,
       ),
     );
   }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:meinimpact/l10n/app_localizations.dart';
 
 import '../data/opportunity_relevance_ranker.dart';
+import '../domain/interest_weights.dart';
+import '../domain/opportunity.dart';
 import '../domain/opportunity_repository.dart';
 import '../domain/user_profile.dart';
 import 'widgets/feed_error.dart';
@@ -18,11 +20,15 @@ class AktionenTab extends StatefulWidget {
   const AktionenTab({
     required this.opportunityRepository,
     required this.profile,
+    this.onInterestSignal,
     super.key,
   });
 
   final OpportunityRepository opportunityRepository;
   final UserProfile profile;
+  // Reports what the user did with an opportunity, for learning interests.
+  final void Function(Opportunity opportunity, InterestSignal signal)?
+      onInterestSignal;
 
   @override
   State<AktionenTab> createState() => _AktionenTabState();
@@ -48,11 +54,15 @@ class _AktionenTabState extends State<AktionenTab> {
   void _open(List<RankedOpportunity> opportunities, int index) {
     setState(() => _selectedIndex = index);
     final l10n = AppLocalizations.of(context);
+    final opportunity = opportunities[index].opportunity;
+    widget.onInterestSignal?.call(opportunity, InterestSignal.opened);
     showDialog<void>(
       context: context,
       builder: (dialogContext) => OpportunityDetailDialog(
         l10n: l10n,
         ranked: opportunities[index],
+        onActed: () =>
+            widget.onInterestSignal?.call(opportunity, InterestSignal.acted),
       ),
     ).then((_) {
       if (mounted) setState(() => _selectedIndex = null);

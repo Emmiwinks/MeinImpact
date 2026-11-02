@@ -1,4 +1,5 @@
 import 'betroffenheitsprofil.dart';
+import 'interest_weights.dart';
 
 class UserProfile {
   const UserProfile({
@@ -9,12 +10,14 @@ class UserProfile {
     this.mdbParty,
     this.mdbWahlkreis,
     this.betroffenheitsprofil = const Betroffenheitsprofil(),
+    this.interests = const InterestWeights(),
   });
 
   factory UserProfile.fromJson(Map<String, Object?> json) {
     final werteRaw = json['werte'] as Map<String, Object?>? ?? {};
     final betroffenheitRaw =
         json['betroffenheitsprofil'] as Map<String, Object?>?;
+    final interestsRaw = json['interests'] as Map<String, Object?>?;
     return UserProfile(
       werte: werteRaw.map((k, v) => MapEntry(k, v as int)),
       region: json['region'] as String?,
@@ -25,6 +28,26 @@ class UserProfile {
       betroffenheitsprofil: betroffenheitRaw != null
           ? Betroffenheitsprofil.fromJson(betroffenheitRaw)
           : const Betroffenheitsprofil(),
+      interests: interestsRaw != null
+          ? InterestWeights.fromJson(interestsRaw)
+          : const InterestWeights(),
+    );
+  }
+
+  UserProfile copyWith({
+    Map<String, int>? werte,
+    Betroffenheitsprofil? betroffenheitsprofil,
+    InterestWeights? interests,
+  }) {
+    return UserProfile(
+      werte: werte ?? this.werte,
+      region: region,
+      plz: plz,
+      mdbName: mdbName,
+      mdbParty: mdbParty,
+      mdbWahlkreis: mdbWahlkreis,
+      betroffenheitsprofil: betroffenheitsprofil ?? this.betroffenheitsprofil,
+      interests: interests ?? this.interests,
     );
   }
 
@@ -43,6 +66,10 @@ class UserProfile {
   // only, drives feed relevance. Never sent to the backend. See
   // Betroffenheitsprofil's docstring for why this is separate from werte.
   final Betroffenheitsprofil betroffenheitsprofil;
+
+  // Learned topic interests (see InterestWeights) — on-device only, reorders
+  // the feed, never filters it.
+  final InterestWeights interests;
 
   // Derived axes (-2.0 to +2.0). Names match the backend's werte_relevanz
   // axis vocabulary (opportunity_extractor.py's TAG_AXES) — renamed from
@@ -79,6 +106,7 @@ class UserProfile {
       'mdb_party': mdbParty,
       'mdb_wahlkreis': mdbWahlkreis,
       'betroffenheitsprofil': betroffenheitsprofil.toJson(),
+      'interests': interests.toJson(),
     };
   }
 }

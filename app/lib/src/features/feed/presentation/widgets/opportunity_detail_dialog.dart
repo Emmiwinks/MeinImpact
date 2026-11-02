@@ -17,15 +17,19 @@ class OpportunityDetailDialog extends StatelessWidget {
   const OpportunityDetailDialog({
     required this.l10n,
     required this.ranked,
+    this.onActed,
     super.key,
   });
 
   final AppLocalizations l10n;
   final RankedOpportunity ranked;
+  // Called when the user follows the call to action to the registry.
+  final VoidCallback? onActed;
 
   Future<void> _openSource() async {
     final uri = Uri.tryParse(ranked.opportunity.sourceUrl);
     if (uri == null) return;
+    onActed?.call();
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
