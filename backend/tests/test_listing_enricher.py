@@ -215,34 +215,28 @@ def test_free_topic_is_kept_next_to_the_fixed_tags() -> None:
     assert enrichment.free_topic == "Menstruationsprodukte"
 
 
-def test_lebenslagen_keep_only_catalog_ids_deduplicated_and_uncapped() -> None:
+def test_lebenslagen_need_a_catalog_id_and_a_reason() -> None:
     enrichment = parse_enrichment(
         _relevant(
             lebenslagen=[
+                {"id": "wohngeld", "grund": "verlieren den Anspruch"},
+                {"id": "wohngeld", "grund": "doppelt"},
+                {"id": "Erfunden", "grund": "nicht im Katalog"},
+                {"id": "eltern", "grund": ""},
+                {"id": "rentner"},
                 "mieter",
-                "mieter",
-                "Erfunden",
                 42,
-                "eltern",
-                "pendler",
-                "oepnv",
-                "wohngeld",
-                "rentner",
-                "haustiere",
+                {"id": "alleinerziehend", "grund": "kein zweites Einkommen"},
             ],
             lebenslage_frei="Kita-Personal",
         )
     )
 
-    assert enrichment.lebenslagen == (
-        "mieter",
-        "eltern",
-        "pendler",
-        "oepnv",
-        "wohngeld",
-        "rentner",
-        "haustiere",
-    )
+    assert enrichment.lebenslagen == ("wohngeld", "alleinerziehend")
+    assert enrichment.lebenslagen_gruende == {
+        "wohngeld": "verlieren den Anspruch",
+        "alleinerziehend": "kein zweites Einkommen",
+    }
     assert enrichment.lebenslage_frei == "Kita-Personal"
     assert parse_enrichment(_relevant()).lebenslagen == ()
 

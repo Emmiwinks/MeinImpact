@@ -15,6 +15,7 @@ class InterestConfig {
     this.neutralBand = 0.05,
     this.reasonThreshold = 0.15,
     this.matchBonus = 0.25,
+    this.minMatchWeight = 0.3,
     this.rankingInfluence = 0.3,
     this.explorationInterval = 5,
   });
@@ -35,6 +36,9 @@ class InterestConfig {
   // user's situation. Large enough that a match usually wins, small enough
   // that a strongly liked topic can overtake it.
   final double matchBonus;
+  // Share of [matchBonus] a Lebenslage still earns when it is on every card
+  // in the pool; rarer groups earn more, up to the full bonus.
+  final double minMatchWeight;
   // How much appeal (0-1 scale) a topic at full weight is worth in ranking.
   final double rankingInfluence;
   // Every n-th slot goes to an unexplored topic; 0 turns exploration off.

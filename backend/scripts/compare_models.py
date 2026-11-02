@@ -121,7 +121,10 @@ async def main(model_a: str, model_b: str, count: int) -> None:
                 print(f"  {name[:16]:16} (not relevant / failed)")
                 continue
             print(f"  {name[:16]:16} tags: {', '.join(result.affected_tags) or '-'}")
-            print(f"  {'':16} groups: {', '.join(result.lebenslagen) or '[]'}")
+            if not result.lebenslagen:
+                print(f"  {'':16} groups: []")
+            for lebenslage_id, reason in result.lebenslagen_gruende.items():
+                print(f"  {'':16} - {lebenslage_id}: {reason}")
             if result.lebenslage_frei:
                 print(f"  {'':16} missing group: {result.lebenslage_frei}")
 

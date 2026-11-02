@@ -45,7 +45,7 @@ from meinimpact.infrastructure.ai.taxonomy import (
 from meinimpact.infrastructure.geo.districts import DistrictMatcher
 from meinimpact.infrastructure.listings.model import Listing, Region
 
-ENRICHMENT_VERSION = "9"
+ENRICHMENT_VERSION = "10"
 
 
 _MAX_DETAIL_CHARS = 4000
@@ -82,6 +82,9 @@ class Enrichment:
     # label for a clearly concerned group the catalog lacks
     lebenslagen: tuple[str, ...] = ()
     lebenslage_frei: str = ""
+    # The model's reason per Lebenslage (why it matters more for them); for
+    # review in scripts/compare_models.py, not stored
+    lebenslagen_gruende: Mapping[str, str] = field(default_factory=dict)
     werte_relevanz: Mapping[str, float] = field(default_factory=dict)
     pro_argumente: tuple[str, ...] = ()
     contra_argumente: tuple[str, ...] = ()
@@ -152,7 +155,7 @@ Eintrag unten und antworte NUR mit JSON in genau dieser Struktur:
   "thema": "<1-4 Wörter: das konkrete Thema in eigenen Worten>",
   "kandidat": "<Name aus der Kandidatenliste oder leer>",
   "affected_tags": ["<tag>", ...],
-  "lebenslagen": ["<id>", ...],
+  "lebenslagen": [{{"id": "<id>", "grund": "<was sich für sie ändert>"}}, ...],
   "lebenslage_frei": "<Gruppe oder leer>",
   "werte_relevanz": {{"<achse>": <-1.0 bis 1.0>}},
   "pro_argumente": ["<arg>", "<arg>"],
@@ -221,17 +224,15 @@ affected_tags: NUR aus dieser Liste. Wähle nur Tags, die wirklich zum Thema
 passen, lieber einen passenden als drei entfernte:
 {tag_list}
 
-lebenslagen: NUR ids aus dieser Liste. Prüfe jede Gruppe einzeln: Würde
-diese Gruppe das Thema deutlich wichtiger finden als der Durchschnitt aller
-Menschen? Nur dann nenne sie, und nenne dann ALLE Gruppen, auf die das
-zutrifft, nicht nur die ersten. Beispiele: Kinderkrankengeld -> eltern,
-alleinerziehend; Wohngeld-Kürzung -> wohngeld, geringverdienend, rentner,
-alleinerziehend, eltern. Betrifft ein Thema alle gleichermaßen (Fluglärm,
-Grundwasser, Strompreise, Steuern), ist [] richtig. Eine Gruppe ist KEIN
-Füllwort für "betrifft viele": Verkehrsgruppen (oepnv, autofahrer,
-radfahrer, zu_fuss, pendler) nur bei echten Verkehrsthemen, Berufsgruppen
-nur, wenn der Beruf selbst betroffen ist, "angestellt" nur bei
-Arbeitnehmerrechten:
+lebenslagen: Gruppen aus dieser Liste, für die dieses Thema DEUTLICH
+wichtiger ist als für den Durchschnitt aller Menschen, die am stärksten
+betroffene zuerst. Gib zu jeder Gruppe einen kurzen "grund", was sich für
+genau diese Gruppe konkret ändert. Findest du keinen solchen Grund, lass die
+Gruppe weg; betrifft ein Thema alle gleichermaßen, ist [] richtig.
+Beispiele:
+- Kinderkrankengeld: eltern ("bekommen weniger bezahlte Tage, wenn das Kind
+  krank ist"), alleinerziehend ("haben niemanden, der sich die Tage teilt")
+- Fluglärm: [] (betrifft alle in der Region gleich)
 {lebenslagen_list}
 lebenslage_frei: nur wenn eine Gruppe klar betroffen ist, die in der Liste
 fehlt: ihr kurzer Name, sonst leer.
@@ -284,11 +285,7 @@ def parse_enrichment(raw: Mapping[str, Any]) -> Enrichment:
     axes = {axis for tag in tags for axis in TAG_AXES[tag]}
     snippet_keys = {key for tag in tags for key in TAG_BETROFFENHEIT_KEYS.get(tag, [])}
     candidate = _text(raw.get("kandidat"))
-    lebenslagen = tuple(
-        dict.fromkeys(
-            i for i in _strings(raw.get("lebenslagen")) if i in LEBENSLAGEN_BY_ID
-        )
-    )
+    lebenslagen = _lebenslagen(raw.get("lebenslagen"))
     return Enrichment(
         is_relevant=True,
         reason=reason,
@@ -298,7 +295,8 @@ def parse_enrichment(raw: Mapping[str, Any]) -> Enrichment:
         title=title,
         summary=summary,
         affected_tags=tags,
-        lebenslagen=lebenslagen,
+        lebenslagen=tuple(lebenslagen),
+        lebenslagen_gruende=lebenslagen,
         lebenslage_frei=_text(raw.get("lebenslage_frei")),
         werte_relevanz={
             axis: max(-1.0, min(1.0, float(value)))
@@ -315,6 +313,22 @@ def parse_enrichment(raw: Mapping[str, Any]) -> Enrichment:
         free_topic=_text(raw.get("thema")),
         topic_candidate=candidate if candidate in CANDIDATE_TOPICS else "",
     )
+
+
+def _lebenslagen(value: object) -> dict[str, str]:
+    """Catalog id -> the model's reason, in the model's order. An entry
+    without a reason is dropped: the reason is what keeps the model from
+    padding the list with groups that are merely also affected."""
+    if not isinstance(value, list):
+        return {}
+    reasons: dict[str, str] = {}
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        lebenslage_id, reason = _text(item.get("id")), _text(item.get("grund"))
+        if lebenslage_id in LEBENSLAGEN_BY_ID and reason:
+            reasons.setdefault(lebenslage_id, reason)
+    return reasons
 
 
 def _score(value: object) -> int | None:

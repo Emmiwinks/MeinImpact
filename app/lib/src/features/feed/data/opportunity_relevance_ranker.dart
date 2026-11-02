@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import '../domain/interest_config.dart';
 import '../domain/interest_weights.dart';
 import '../domain/opportunity.dart';
@@ -12,23 +14,29 @@ class RankedOpportunity {
     required this.werteAlignment,
     this.interestTag,
     this.matchedLebenslage,
+    this.matchStrength = 0,
   });
 
   final Opportunity opportunity;
   // The learned favourite topic that ranked this card up, if one is strong
   // enough to name ("Weil du dich für Mobilität interessierst").
   final String? interestTag;
-  // A Lebenslage the user picked that this card concerns, if any (the
-  // catalog id; private ones are matched but never named on the card).
+  // The card's main Lebenslage (the first one enrichment listed) when the
+  // user picked it: the only group a card names in its hint, so an odd
+  // secondary tag never shows. Private ones are never named at all.
   final String? matchedLebenslage;
+  // 0-1: how strongly the card concerns the user's situation. A personal
+  // snippet counts fully; a Lebenslage counts by how rare it is in the
+  // pool, so a broad group ("Eltern" on a quarter of the cards) moves little
+  // and a specific one ("Pflegende Angehörige") a lot.
+  final double matchStrength;
 
   // The personal_impact_snippet matching the user's Lebenslagen (through
   // their snippet keys), if any: the feed card's hook line (else the
   // opportunity's summary).
   final String? matchedSnippet;
 
-  bool get isSituationMatch =>
-      matchedSnippet != null || matchedLebenslage != null;
+  bool get isSituationMatch => matchStrength > 0;
   // 0.0-1.0, 0.5 = neutral/no signal (opportunity has no relevant axis, or
   // profile isn't answered enough to have an opinion).
   final double werteAlignment;
@@ -37,8 +45,9 @@ class RankedOpportunity {
 /// Orders the open opportunities by on-device relevance with one blended
 /// score, so no signal can lock out another:
 ///   appeal (easy, everyday cards first: quick wins)
-///   + [InterestConfig.matchBonus] if the card concerns one of the user's
-///     Lebenslagen (directly, or through a personal snippet)
+///   + [InterestConfig.matchBonus] scaled by the match strength, if the
+///     card concerns the user's situation (a personal snippet, or one of
+///     their Lebenslagen weighted by its rarity in the pool)
 ///   + learned topic interest, scaled by [InterestConfig.rankingInfluence].
 /// Ties fall back to Werteprofil alignment. (A hard "matched first" tier
 /// used to sit above all of this; with ~45% of cards matched it made
@@ -67,10 +76,11 @@ class OpportunityRelevanceRanker {
   }) {
     final at = now ?? DateTime.now();
     final interests = profile.interests;
-    final ranked = pool.map((o) => _rankOne(o, profile, at)).toList();
+    final rarity = _rarity(pool);
+    final ranked = pool.map((o) => _rankOne(o, profile, at, rarity)).toList();
     double score(RankedOpportunity r) =>
         r.opportunity.appeal +
-        (r.isSituationMatch ? interestConfig.matchBonus : 0) +
+        interestConfig.matchBonus * r.matchStrength +
         interestConfig.rankingInfluence *
             interests.interestIn(
               r.opportunity.affectedTags,
@@ -121,15 +131,47 @@ class OpportunityRelevanceRanker {
     return result;
   }
 
+  /// Weight per Lebenslage from how many cards in the pool carry it: 1 for a
+  /// group on a single card, falling to [InterestConfig.minMatchWeight] for
+  /// one on every card (normalized inverse document frequency). Computed
+  /// from the current pool, so it adapts as the data changes.
+  Map<String, double> _rarity(List<Opportunity> pool) {
+    final counts = <String, int>{};
+    for (final opportunity in pool) {
+      for (final id in opportunity.lebenslagen.toSet()) {
+        counts[id] = (counts[id] ?? 0) + 1;
+      }
+    }
+    final minWeight = interestConfig.minMatchWeight;
+    if (pool.length < 2) return {for (final id in counts.keys) id: 1.0};
+    return {
+      for (final MapEntry(key: id, value: count) in counts.entries)
+        id: minWeight +
+            (1 - minWeight) * log(pool.length / count) / log(pool.length),
+    };
+  }
+
   RankedOpportunity _rankOne(
     Opportunity opportunity,
     UserProfile profile,
     DateTime now,
+    Map<String, double> rarity,
   ) {
+    final snippet = _matchedSnippetFor(opportunity, profile);
+    var strength = snippet != null ? 1.0 : 0.0;
+    for (final id in opportunity.lebenslagen) {
+      if (profile.lebenslagen.contains(id)) {
+        strength = max(strength, rarity[id] ?? 1.0);
+      }
+    }
+    final main =
+        opportunity.lebenslagen.isEmpty ? null : opportunity.lebenslagen.first;
     return RankedOpportunity(
       opportunity: opportunity,
-      matchedSnippet: _matchedSnippetFor(opportunity, profile),
-      matchedLebenslage: _matchedLebenslageFor(opportunity, profile),
+      matchedSnippet: snippet,
+      matchedLebenslage:
+          main != null && profile.lebenslagen.contains(main) ? main : null,
+      matchStrength: strength,
       werteAlignment: _computeWerteAlignment(opportunity, profile),
       interestTag: profile.interests.reasonTag(
         opportunity.affectedTags,
@@ -145,13 +187,6 @@ class OpportunityRelevanceRanker {
     for (final key in matchingKeys) {
       final snippet = opportunity.personalImpactSnippets[key];
       if (snippet != null) return snippet;
-    }
-    return null;
-  }
-
-  String? _matchedLebenslageFor(Opportunity opportunity, UserProfile profile) {
-    for (final id in opportunity.lebenslagen) {
-      if (profile.lebenslagen.contains(id)) return id;
     }
     return null;
   }

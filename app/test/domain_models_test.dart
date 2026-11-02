@@ -348,6 +348,47 @@ void main() {
       expect(ranked.last.isSituationMatch, isFalse);
     });
 
+    test('a rare Lebenslage counts more than one on most cards', () {
+      // 'eltern' on 9 of 10 cards, 'pflegende_angehoerige' on one.
+      final pool = [
+        for (var i = 0; i < 8; i++)
+          _opportunity(id: 'broad$i', lebenslagen: ['eltern']),
+        _opportunity(id: 'eltern', lebenslagen: ['eltern']),
+        _opportunity(id: 'pflege', lebenslagen: ['pflegende_angehoerige']),
+      ];
+      const profile = UserProfile(
+        lebenslagen: {'eltern', 'pflegende_angehoerige'},
+      );
+
+      final ranked = ranker.rank(pool, profile);
+      final pflege = ranked.firstWhere((r) => r.opportunity.id == 'pflege');
+      final eltern = ranked.firstWhere((r) => r.opportunity.id == 'eltern');
+
+      expect(ranked.first.opportunity.id, 'pflege');
+      expect(pflege.matchStrength, 1.0);
+      expect(eltern.matchStrength, lessThan(0.4));
+      expect(eltern.matchStrength, greaterThan(0));
+    });
+
+    test('only the card main Lebenslage is named, secondary ones still rank',
+        () {
+      final card = _opportunity(lebenslagen: ['wohngeld', 'eltern']);
+      final other = _opportunity(id: 'other', lebenslagen: ['rentner']);
+
+      final secondary = ranker.rank(
+        [card, other],
+        const UserProfile(lebenslagen: {'eltern'}),
+      ).firstWhere((r) => r.opportunity.id == 'opp-1');
+      final main = ranker.rank(
+        [card, other],
+        const UserProfile(lebenslagen: {'wohngeld'}),
+      ).firstWhere((r) => r.opportunity.id == 'opp-1');
+
+      expect(secondary.matchedLebenslage, isNull);
+      expect(secondary.isSituationMatch, isTrue);
+      expect(main.matchedLebenslage, 'wohngeld');
+    });
+
     test('card reason names a public Lebenslage but never a private one', () {
       RankedOpportunity ranked(String? lebenslage, {String? tag}) =>
           RankedOpportunity(
