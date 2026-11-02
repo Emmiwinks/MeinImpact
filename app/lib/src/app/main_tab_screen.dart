@@ -20,6 +20,7 @@ class MainTabScreen extends StatefulWidget {
     this.profile,
     this.onEditProfile,
     this.onLebenslagenChanged,
+    this.onInterestsChanged,
     this.onInterestSignal,
     this.interestConfig = const InterestConfig(),
     super.key,
@@ -29,6 +30,7 @@ class MainTabScreen extends StatefulWidget {
   final UserProfile? profile;
   final VoidCallback? onEditProfile;
   final ValueChanged<Set<String>>? onLebenslagenChanged;
+  final ValueChanged<InterestWeights>? onInterestsChanged;
   final void Function(Opportunity opportunity, InterestSignal signal)?
       onInterestSignal;
   final InterestConfig interestConfig;
@@ -52,6 +54,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
         profile: effectiveProfile,
         onEdit: widget.onEditProfile,
         onLebenslagenChanged: widget.onLebenslagenChanged,
+        onInterestsChanged: widget.onInterestsChanged,
       ),
       _AktionenScaffoldTab(
         opportunityRepository: widget.opportunityRepository,
@@ -97,11 +100,13 @@ class _ProfileTab extends StatelessWidget {
     required this.profile,
     required this.onEdit,
     required this.onLebenslagenChanged,
+    required this.onInterestsChanged,
   });
 
   final UserProfile profile;
   final VoidCallback? onEdit;
   final ValueChanged<Set<String>>? onLebenslagenChanged;
+  final ValueChanged<InterestWeights>? onInterestsChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -111,6 +116,7 @@ class _ProfileTab extends StatelessWidget {
         profile: profile,
         onEdit: onEdit ?? () {},
         onLebenslagenChanged: onLebenslagenChanged ?? (_) {},
+        onInterestsChanged: onInterestsChanged ?? (_) {},
       ),
     );
   }

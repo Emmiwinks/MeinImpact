@@ -106,6 +106,12 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
     setState(() => _profile = updated);
   }
 
+  Future<void> _onInterestsChanged(InterestWeights interests) async {
+    final updated = _profile!.copyWith(interests: interests);
+    await widget._profileStore?.save(updated);
+    setState(() => _profile = updated);
+  }
+
   // Interests are learned silently: persisted, but the open feed is not
   // re-ranked under the user's finger (the next feed load picks them up).
   Future<void> _onInterestSignal(
@@ -168,6 +174,7 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
         profile: _profile,
         onEditProfile: () => setState(() => _requizWerte = true),
         onLebenslagenChanged: _onLebenslagenChanged,
+        onInterestsChanged: _onInterestsChanged,
         onInterestSignal: _onInterestSignal,
         interestConfig: widget._interestConfig,
       );

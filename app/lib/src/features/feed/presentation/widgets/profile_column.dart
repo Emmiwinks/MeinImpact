@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../domain/interest_weights.dart';
 import '../../domain/lebenslage.dart';
 import '../../domain/user_profile.dart';
 import 'app_colors.dart';
+import 'interest_chips.dart';
 import 'lebenslagen_picker.dart';
 import 'components/surface_card.dart';
 import 'components/text_badges.dart';
@@ -12,12 +14,14 @@ class ProfileColumn extends StatelessWidget {
     required this.profile,
     required this.onEdit,
     required this.onLebenslagenChanged,
+    required this.onInterestsChanged,
     super.key,
   });
 
   final UserProfile? profile;
   final VoidCallback onEdit;
   final ValueChanged<Set<String>> onLebenslagenChanged;
+  final ValueChanged<InterestWeights> onInterestsChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +31,7 @@ class ProfileColumn extends StatelessWidget {
           profile: profile,
           onEdit: onEdit,
           onLebenslagenChanged: onLebenslagenChanged,
+          onInterestsChanged: onInterestsChanged,
         ),
       ],
     );
@@ -38,11 +43,13 @@ class _ProfileCard extends StatelessWidget {
     required this.profile,
     required this.onEdit,
     required this.onLebenslagenChanged,
+    required this.onInterestsChanged,
   });
 
   final UserProfile? profile;
   final VoidCallback onEdit;
   final ValueChanged<Set<String>> onLebenslagenChanged;
+  final ValueChanged<InterestWeights> onInterestsChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -104,6 +111,11 @@ class _ProfileCard extends StatelessWidget {
             _LebenslagenSection(
               selected: p.lebenslagen,
               onChanged: onLebenslagenChanged,
+            ),
+            const SizedBox(height: 24),
+            InterestChips(
+              interests: p.interests,
+              onChanged: onInterestsChanged,
             ),
           ],
         ],

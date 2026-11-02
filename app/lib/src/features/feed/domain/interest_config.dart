@@ -18,6 +18,8 @@ class InterestConfig {
     this.minMatchWeight = 0.3,
     this.rankingInfluence = 0.3,
     this.explorationInterval = 5,
+    this.manualMore = 0.6,
+    this.manualLess = -0.6,
   });
 
   // Weight gained by a topic when its card is opened / acted on.
@@ -43,6 +45,11 @@ class InterestConfig {
   final double rankingInfluence;
   // Every n-th slot goes to an unexplored topic; 0 turns exploration off.
   final int explorationInterval;
+
+  // Weight a topic set to "mehr" / "weniger" by hand adds on top of what
+  // was learned; manual levels never decay.
+  final double manualMore;
+  final double manualLess;
 
   double deltaFor(InterestSignal signal) => switch (signal) {
         InterestSignal.opened => openedDelta,
