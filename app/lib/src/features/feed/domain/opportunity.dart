@@ -8,7 +8,7 @@ enum OpportunityKind {
   survey('survey', 'Umfrage', 'An Umfrage teilnehmen'),
   event('event', 'Veranstaltung', 'Zur Veranstaltung'),
   // An upcoming council vote; closesOn is the meeting day.
-  decision('decision', 'Abstimmung im Rat', 'Vorlage ansehen'),
+  decision('decision', 'Abstimmung im Rat', 'Brief schreiben'),
   notice('notice', 'Bekanntmachung', 'Zur Quelle'),
   other('other', 'Beteiligung', 'Zur Quelle');
 

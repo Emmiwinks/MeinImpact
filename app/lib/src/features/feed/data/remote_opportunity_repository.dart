@@ -36,4 +36,16 @@ class RemoteOpportunityRepository implements OpportunityRepository {
       rethrow;
     }
   }
+
+  @override
+  Stream<String> streamLetter(String opportunityId, {String? notes}) async* {
+    final events = _apiClient.postSse('/v1/letters/stream', {
+      'opportunity_id': opportunityId,
+      if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
+    });
+    await for (final event in events) {
+      if (event.data == '[DONE]') return;
+      yield event.data;
+    }
+  }
 }

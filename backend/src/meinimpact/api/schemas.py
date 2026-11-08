@@ -471,15 +471,11 @@ class NewsResponse(BaseModel):
 
 
 class LetterRequest(BaseModel):
-    """Request for a streaming letter or public question draft."""
+    """Request for a streaming letter on an upcoming council decision.
 
-    action_id: str = Field(min_length=1, max_length=120)
-    type: str = Field(pattern=r"^(brief|anfrage)$")
-    recipient_name: str = Field(min_length=1, max_length=120)
-    recipient_party: str = Field(min_length=1, max_length=60)
-    recipient_wahlkreis: str | None = Field(default=None, max_length=120)
-    tone_descriptors: list[str] = Field(default_factory=list)
-    lebenssituation: list[str] = Field(default_factory=list)
-    sektor: str | None = None
-    plz_prefix: str | None = Field(default=None, max_length=2)
-    wohnsituation: str | None = None
+    `notes` is what the user typed for the AI: their stance, their own
+    situation, points to make. Nothing from the on-device profile is sent.
+    """
+
+    opportunity_id: UUID
+    notes: str | None = Field(default=None, max_length=1000)

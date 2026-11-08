@@ -208,3 +208,17 @@ async def test_save_enrichment_for_unknown_id_raises(db_session: AsyncSession) -
             input_hash="x",
             enriched_at=datetime.now(UTC),
         )
+
+
+async def test_get_returns_one_opportunity_by_id(db_session: AsyncSession) -> None:
+    repository = PostgresOpportunityRepository(db_session)
+    await repository.sync(
+        [make_listing("a")], complete_source_ids={"src"}, observed_at=NOW
+    )
+    record = await _record(db_session, "a")
+
+    found = await repository.get(record.id)
+
+    assert found is not None
+    assert found.id == record.id
+    assert await repository.get(uuid.uuid4()) is None

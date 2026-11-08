@@ -5,6 +5,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import '../domain/opportunity.dart';
 import 'widgets/app_colors.dart';
+import 'widgets/done_bar.dart';
 
 /// The action site inside the app (Android/iOS only: every action site
 /// refuses to be framed, so the web build opens a new tab instead). Pops
@@ -158,10 +159,11 @@ class _ActionBrowserScreenState extends State<ActionBrowserScreen> {
           ),
         ),
         body: WebViewWidget(controller: _controller),
-        // A fixed bar rather than a floating button, so "Fertig" never
-        // covers the site's own submit button.
         bottomNavigationBar: canComplete
-            ? _DoneBar(onDone: () => Navigator.of(context).pop(true))
+            ? DoneBar(
+                hint: 'Mitgemacht? Dann tippe auf Fertig.',
+                onDone: () => Navigator.of(context).pop(true),
+              )
             : null,
       ),
     );
@@ -169,46 +171,3 @@ class _ActionBrowserScreenState extends State<ActionBrowserScreen> {
 }
 
 enum _MenuItem { openExternally, reload, copyLink }
-
-class _DoneBar extends StatelessWidget {
-  const _DoneBar({required this.onDone});
-
-  final VoidCallback onDone;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      elevation: 8,
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 10, 14, 10),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Mitgemacht? Dann tippe auf Fertig.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.mutedText,
-                      ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              FilledButton.icon(
-                onPressed: onDone,
-                icon: const Icon(Icons.check),
-                label: const Text('Fertig'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.green,
-                  foregroundColor: Colors.white,
-                  textStyle: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}

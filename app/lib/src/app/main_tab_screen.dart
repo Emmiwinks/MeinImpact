@@ -25,7 +25,6 @@ class MainTabScreen extends StatefulWidget {
     this.onInterestSignal,
     this.doneIds = const {},
     this.onActionDone,
-    this.onActionUndone,
     this.interestConfig = const InterestConfig(),
     super.key,
   });
@@ -39,7 +38,6 @@ class MainTabScreen extends StatefulWidget {
       onInterestSignal;
   final Set<String> doneIds;
   final void Function(Opportunity opportunity, ActionVia via)? onActionDone;
-  final ValueChanged<String>? onActionUndone;
   final InterestConfig interestConfig;
 
   static const _fallbackProfile = UserProfile();
@@ -69,7 +67,6 @@ class _MainTabScreenState extends State<MainTabScreen> {
         onInterestSignal: widget.onInterestSignal,
         doneIds: widget.doneIds,
         onActionDone: widget.onActionDone,
-        onActionUndone: widget.onActionUndone,
         interestConfig: widget.interestConfig,
       ),
       const _WirkungScaffoldTab(),
@@ -139,7 +136,6 @@ class _AktionenScaffoldTab extends StatelessWidget {
     required this.onInterestSignal,
     required this.doneIds,
     required this.onActionDone,
-    required this.onActionUndone,
     required this.interestConfig,
   });
 
@@ -149,7 +145,6 @@ class _AktionenScaffoldTab extends StatelessWidget {
       onInterestSignal;
   final Set<String> doneIds;
   final void Function(Opportunity opportunity, ActionVia via)? onActionDone;
-  final ValueChanged<String>? onActionUndone;
   final InterestConfig interestConfig;
 
   @override
@@ -162,7 +157,6 @@ class _AktionenScaffoldTab extends StatelessWidget {
         onInterestSignal: onInterestSignal,
         doneIds: doneIds,
         onActionDone: onActionDone,
-        onActionUndone: onActionUndone,
         interestConfig: interestConfig,
       ),
     );

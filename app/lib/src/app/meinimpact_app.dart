@@ -89,12 +89,6 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
     await widget._actionLogStore?.save(updated);
   }
 
-  Future<void> _onActionUndone(String opportunityId) async {
-    final updated = _actionLog.without(opportunityId);
-    setState(() => _actionLog = updated);
-    await widget._actionLogStore?.save(updated);
-  }
-
   Future<void> _onWerteComplete(Map<String, int> werte) async {
     setState(() {
       _pendingWerte = werte;
@@ -194,7 +188,6 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
         opportunityRepository: widget._opportunityRepository,
         doneIds: _actionLog.doneIds,
         onActionDone: _onActionDone,
-        onActionUndone: _onActionUndone,
       );
     }
 
@@ -211,7 +204,6 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
         onInterestSignal: _onInterestSignal,
         doneIds: _actionLog.doneIds,
         onActionDone: _onActionDone,
-        onActionUndone: _onActionUndone,
         interestConfig: widget._interestConfig,
       );
     }

@@ -119,43 +119,6 @@ def test_action_route_returns_action() -> None:
     assert response.json()["id"] == "solar-letter-bundestag"
 
 
-def test_letter_stream_returns_404_for_unknown_action() -> None:
-    client = _client()
-    response = client.post(
-        "/v1/letters/stream",
-        headers=_auth_headers(client),
-        json={
-            "action_id": "missing-action",
-            "type": "brief",
-            "recipient_name": "Test MdB",
-            "recipient_party": "Test",
-            "tone_descriptors": ["balanced"],
-        },
-    )
-    assert response.status_code == 404
-
-
-def test_letter_stream_returns_raw_sse_tokens() -> None:
-    client = _client()
-    with client.stream(
-        "POST",
-        "/v1/letters/stream",
-        headers=_auth_headers(client),
-        json={
-            "action_id": "solar-letter-bundestag",
-            "type": "brief",
-            "recipient_name": "Test MdB",
-            "recipient_party": "Test",
-            "tone_descriptors": ["balanced"],
-            "lebenssituation": [],
-        },
-    ) as response:
-        assert response.status_code == 200
-        body = response.read().decode()
-    assert "data: " in body
-    assert "data: [DONE]" in body
-
-
 def test_pool_route_returns_all_actions() -> None:
     client = _client()
     response = client.get("/v1/actions/pool", headers=_auth_headers(client))

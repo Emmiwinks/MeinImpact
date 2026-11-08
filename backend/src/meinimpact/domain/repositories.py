@@ -1,5 +1,6 @@
 """Repository interfaces for domain services."""
 
+import uuid
 from collections.abc import Sequence
 from datetime import date
 from typing import Protocol
@@ -29,6 +30,9 @@ class OpportunityRepository(Protocol):
     async def list_open(self, today: date) -> Sequence[Opportunity]:
         """Relevant opportunities still listed by their registry and not
         closed before `today`."""
+
+    async def get(self, opportunity_id: uuid.UUID) -> Opportunity | None:
+        """One opportunity by id, whether or not it is still served."""
 
 
 class NewsRepository(Protocol):

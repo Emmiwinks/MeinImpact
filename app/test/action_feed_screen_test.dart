@@ -108,6 +108,10 @@ class _PoolRepository implements OpportunityRepository {
 
   @override
   Future<List<MdbOption>> lookupMdb(String plz) async => const [];
+
+  @override
+  Stream<String> streamLetter(String opportunityId, {String? notes}) =>
+      const Stream.empty();
 }
 
 class _EmptyRepository implements OpportunityRepository {
@@ -116,6 +120,10 @@ class _EmptyRepository implements OpportunityRepository {
 
   @override
   Future<List<MdbOption>> lookupMdb(String plz) async => const [];
+
+  @override
+  Stream<String> streamLetter(String opportunityId, {String? notes}) =>
+      const Stream.empty();
 }
 
 class _FailingRepository implements OpportunityRepository {
@@ -126,4 +134,8 @@ class _FailingRepository implements OpportunityRepository {
 
   @override
   Future<List<MdbOption>> lookupMdb(String plz) async => const [];
+
+  @override
+  Stream<String> streamLetter(String opportunityId, {String? notes}) =>
+      const Stream.empty();
 }

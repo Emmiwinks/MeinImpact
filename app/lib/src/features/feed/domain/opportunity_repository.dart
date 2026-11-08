@@ -11,4 +11,9 @@ abstract interface class OpportunityRepository {
   Future<List<Opportunity>> pool();
 
   Future<List<MdbOption>> lookupMdb(String plz);
+
+  /// Streams an AI-drafted letter about a council decision, chunk by chunk.
+  /// [notes] is what the user typed for the AI; nothing from the profile is
+  /// sent.
+  Stream<String> streamLetter(String opportunityId, {String? notes});
 }

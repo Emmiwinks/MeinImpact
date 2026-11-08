@@ -11,7 +11,7 @@ import '../domain/opportunity.dart';
 import '../domain/opportunity_repository.dart';
 import '../domain/user_profile.dart';
 import 'action_browser_screen.dart';
-import 'widgets/action_done_sheet.dart';
+import 'letter_screen.dart';
 import 'widgets/feed_error.dart';
 import 'widgets/loading_card.dart';
 import 'widgets/opportunity_detail_dialog.dart';
@@ -23,6 +23,15 @@ typedef ActionOpener = Future<bool> Function(
   BuildContext context,
   Opportunity opportunity,
 );
+
+/// Opens the letter for a council decision and resolves to true when the
+/// user marked it done.
+typedef LetterOpener = Future<bool> Function(
+  BuildContext context,
+  Opportunity opportunity, {
+  required OpportunityRepository repository,
+  required VoidCallback onViewPaper,
+});
 
 /// The "Aktionen" tab — the current run's opportunities (see
 /// OpportunityRepository.pool, "one run, one feed"), ranked on-device by
@@ -37,9 +46,9 @@ class AktionenTab extends StatefulWidget {
     this.doneIds = const {},
     this.onInterestSignal,
     this.onActionDone,
-    this.onActionUndone,
     this.interestConfig = const InterestConfig(),
     this.openAction = ActionBrowserScreen.open,
+    this.openLetter = LetterScreen.open,
     super.key,
   });
 
@@ -51,10 +60,11 @@ class AktionenTab extends StatefulWidget {
   final void Function(Opportunity opportunity, InterestSignal signal)?
       onInterestSignal;
   final void Function(Opportunity opportunity, ActionVia via)? onActionDone;
-  final ValueChanged<String>? onActionUndone;
   final InterestConfig interestConfig;
   // The in-app browser on Android/iOS; replaceable in tests.
   final ActionOpener openAction;
+  // The letter for council decisions; replaceable in tests.
+  final LetterOpener openLetter;
 
   @override
   State<AktionenTab> createState() => _AktionenTabState();
@@ -96,19 +106,37 @@ class _AktionenTabState extends State<AktionenTab> {
   }
 
   Future<void> _takeAction(Opportunity opportunity) async {
+    if (opportunity.kind == OpportunityKind.decision) {
+      final done = await widget.openLetter(
+        context,
+        opportunity,
+        repository: widget.opportunityRepository,
+        onViewPaper: () => _openSource(opportunity),
+      );
+      if (done && mounted) _complete(opportunity, ActionVia.letter);
+      return;
+    }
     if (kIsWeb) {
-      // Action sites refuse to be framed, so the web build opens a new tab
-      // and offers "Fertig" for when the user comes back.
-      final uri = Uri.tryParse(opportunity.sourceUrl);
-      if (uri == null) return;
-      await launchUrl(uri, webOnlyWindowName: '_blank');
-      if (mounted && opportunity.kind.completesInBrowser) {
-        _showReturnBanner(opportunity, uri.host);
-      }
+      await _openSource(opportunity);
       return;
     }
     final done = await widget.openAction(context, opportunity);
-    if (done && mounted) await _complete(opportunity, ActionVia.inAppBrowser);
+    if (done && mounted) _complete(opportunity, ActionVia.inAppBrowser);
+  }
+
+  // The in-app browser, or on web a new tab, since action sites refuse to
+  // be framed. The web build then offers "Fertig" for the user's return.
+  Future<void> _openSource(Opportunity opportunity) async {
+    if (!kIsWeb) {
+      await widget.openAction(context, opportunity);
+      return;
+    }
+    final uri = Uri.tryParse(opportunity.sourceUrl);
+    if (uri == null) return;
+    await launchUrl(uri, webOnlyWindowName: '_blank');
+    if (mounted && opportunity.kind.completesInBrowser) {
+      _showReturnBanner(opportunity, uri.host);
+    }
   }
 
   void _showReturnBanner(Opportunity opportunity, String host) {
@@ -134,16 +162,14 @@ class _AktionenTabState extends State<AktionenTab> {
     );
   }
 
-  // Logs the action first, so the feed drops it while the sheet is up.
-  // Interest learning waits for the sheet, so an undo leaves no trace.
-  Future<void> _complete(Opportunity opportunity, ActionVia via) async {
+  // No confirmation step: the action leaves the feed right away and a short
+  // message says so.
+  void _complete(Opportunity opportunity, ActionVia via) {
     widget.onActionDone?.call(opportunity, via);
-    final undone = await ActionDoneSheet.show(context, opportunity);
-    if (undone) {
-      widget.onActionUndone?.call(opportunity.id);
-    } else {
-      widget.onInterestSignal?.call(opportunity, InterestSignal.acted);
-    }
+    widget.onInterestSignal?.call(opportunity, InterestSignal.acted);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Stark, erledigt!')),
+    );
   }
 
   @override

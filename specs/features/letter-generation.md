@@ -7,6 +7,19 @@ and rate limiting.
 
 ---
 
+## Status (2026-11-08): council-decision letters
+
+What is built differs from the MdB-era design below. The endpoint now
+takes `{opportunity_id, notes}` and only serves opportunities of kind
+`decision`; the prompt (`services/draft_service.py`) picks a stance mode
+when `notes` is non-empty and a neutral mode otherwise. No profile data,
+tone descriptors or placeholders are sent; the letter ends with a
+greeting and the user adds their name. Brief/Anfrage to MdBs, rate
+limiting and cost tracking below are not built. App flow and recipients:
+`action-types.md`.
+
+---
+
 ## Decisions
 
 - **Generation is server-proxied.** The app never calls Mistral directly.

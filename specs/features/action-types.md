@@ -34,7 +34,12 @@ Decided with the user for the MVP:
     öffnen, Neu laden, Link kopieren). Android back goes through WebView
     history first. "Fertig" sits right-aligned in a fixed bottom bar, not
     a floating button, so it never covers the site's own submit button.
-  - Closing without "Fertig" stores nothing and asks nothing.
+  - Closing without "Fertig" stores nothing and asks nothing. "Fertig"
+    goes straight back to the feed with a short "Stark, erledigt!"
+    message; no confirmation sheet and no undo (decided 2026-11-08: an
+    accidental tap is rarer than the extra tap is annoying).
+  - Web build: the detail view says the site opens in a new tab and that
+    "Fertig" waits in the app; a banner offers "Fertig" afterwards.
   - "Fertig" shows for every kind with a source link except decisions
     (letter flow). For events it means "signed up".
   - A done action leaves the feed; it reappears in Mein Impact (later).
@@ -49,6 +54,22 @@ Decided with the user for the MVP:
   Mein Impact can show actions that have left the pool. Ids are stable:
   rows are upserted on (source_id, external_id). Lost on Android
   uninstall; no server copy by design.
+- **No server-side record of done actions (user decided 2026-11-08),** not
+  even an anonymous counter. Whether Mein Impact needs aggregate counts is
+  to be discussed later; if it comes back, the conditions were: count
+  only (no token or time per event), shown from ~5 upward, delayed
+  increments, privacy-policy note on transient IP processing.
+- **Letter pop-up for decisions (built 2026-11-08):** CTA "Brief
+  schreiben" opens a full-screen letter view: an optional "Was ist dir
+  wichtig?" field (max 1000 chars, sent as `notes`; nothing from the
+  profile is sent), "Brief erstellen" streams the draft from
+  `POST /v1/letters/stream` (`opportunity_id`, `notes`) into an editable
+  field, then "Kopieren" / "Mail-App" (mailto with subject, body; no
+  recipients yet) and "Fertig" (logged with `via: letter`). With notes the
+  letter argues the user's stance; without notes it stays neutral. It
+  never invents facts about the person nor states their gender (an
+  optional gender setting was discussed and left out for now).
+  Recipients from OParl memberships are the next step.
 - **Decisions get an AI-drafted letter in a pop-up** (to the members of
   the deciding body), sent from the same in-app flow, then "Fertig". The
   letter generator still runs on the old `/v1/actions` stack and has to be

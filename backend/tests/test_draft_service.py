@@ -1,55 +1,62 @@
 """Draft service tests."""
 
-from meinimpact.api.schemas import LetterRequest
-from meinimpact.domain.entities import ActionType, CivicAction
+import uuid
+from datetime import UTC, date, datetime
+
+from meinimpact.domain.entities import Opportunity
 from meinimpact.infrastructure.ai.dummy_generator import DummyTextGenerator
-from meinimpact.services.draft_service import DraftService
+from meinimpact.services.draft_service import DraftService, build_prompt
+
+DECISION = Opportunity(
+    id=uuid.UUID(int=7),
+    source_org="Ratsinformationssystem Dresden",
+    source_url="https://ratsinfo.dresden.de/vo0050.asp?__kvonr=1",
+    kind="decision",
+    status="open",
+    region="dresden",
+    locality="Landeshauptstadt Dresden",
+    organizer="Ausschuss für Stadtentwicklung",
+    title="Soll der Radweg an der Bautzner Straße gebaut werden?",
+    summary="Die Stadt will einen geschützten Radweg bauen.",
+    affected_tags=("Verkehr",),
+    lebenslagen=(),
+    werte_relevanz={},
+    pro_argumente=("Sicherer für Radfahrende",),
+    contra_argumente=("Weniger Parkplätze",),
+    personal_impact_snippets={},
+    everyday_relevance=4,
+    accessibility=4,
+    districts=("Radeberger Vorstadt",),
+    opens_on=None,
+    closes_on=date(2026, 11, 26),
+    support_count=None,
+    support_goal=None,
+    support_count_as_of=None,
+    first_seen_at=datetime(2026, 11, 8, tzinfo=UTC),
+)
 
 
-async def test_draft_service_streams_tokens_for_brief() -> None:
+def test_prompt_carries_the_decision_and_the_users_notes() -> None:
+    prompt = build_prompt(DECISION, "  Ich fahre dort täglich zur Arbeit.  ")
+
+    assert "„Ausschuss für Stadtentwicklung“" in prompt
+    assert "am 26.11.2026" in prompt
+    assert "Soll der Radweg an der Bautzner Straße gebaut werden?" in prompt
+    assert "Sicherer für Radfahrende" in prompt
+    assert "Weniger Parkplätze" in prompt
+    assert "<<<\nIch fahre dort täglich zur Arbeit.\n>>>" in prompt
+
+
+def test_prompt_without_notes_asks_for_a_neutral_letter() -> None:
+    for notes in (None, "   "):
+        prompt = build_prompt(DECISION, notes)
+        assert "<<<" not in prompt
+        assert "Bleib neutral" in prompt
+
+
+async def test_draft_service_streams_tokens() -> None:
     service = DraftService(DummyTextGenerator())
-    request = LetterRequest(
-        action_id="action",
-        type="brief",
-        recipient_name="Test MdB",
-        recipient_party="Test Party",
-        tone_descriptors=["balanced"],
-    )
-    action = CivicAction(
-        id="action",
-        title="Testmaßnahme",
-        action_type=ActionType.REPRESENTATIVE_LETTER,
-        summary="Eine Zusammenfassung.",
-        region=None,
-        deadline=None,
-        effort_minutes=3,
-        impact_hint="Wird nachverfolgt.",
-        source_url="https://example.org",
-    )
-    chunks = [chunk async for chunk in service.stream_letter(request, action)]
-    assert len(chunks) > 0
+
+    chunks = [chunk async for chunk in service.stream_letter(DECISION, None)]
+
     assert "".join(chunks).strip()
-
-
-async def test_draft_service_streams_tokens_for_anfrage() -> None:
-    service = DraftService(DummyTextGenerator())
-    request = LetterRequest(
-        action_id="action",
-        type="anfrage",
-        recipient_name="Test MdB",
-        recipient_party="Test Party",
-        tone_descriptors=["reform-minded"],
-    )
-    action = CivicAction(
-        id="action",
-        title="Anfragethema",
-        action_type=ActionType.PUBLIC_QUESTION,
-        summary="Eine öffentliche Anfrage.",
-        region=None,
-        deadline=None,
-        effort_minutes=3,
-        impact_hint="Antwort öffentlich einsehbar.",
-        source_url="https://example.org",
-    )
-    chunks = [chunk async for chunk in service.stream_letter(request, action)]
-    assert len(chunks) > 0

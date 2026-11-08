@@ -164,6 +164,10 @@ class PostgresOpportunityRepository:
         )
         return [_to_domain(record) for record in result.scalars().all()]
 
+    async def get(self, opportunity_id: uuid.UUID) -> Opportunity | None:
+        record = await self._session.get(OpportunityRecord, opportunity_id)
+        return _to_domain(record) if record is not None else None
+
     async def _records_for(
         self, source_ids: Collection[str]
     ) -> dict[tuple[str, str], OpportunityRecord]:

@@ -8,6 +8,7 @@ import 'package:meinimpact/src/features/feed/domain/opportunity.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity_repository.dart';
 import 'package:meinimpact/src/features/feed/domain/user_profile.dart';
 import 'package:meinimpact/src/features/feed/presentation/aktionen_tab.dart';
+import 'package:meinimpact/src/features/feed/presentation/letter_screen.dart';
 import 'package:meinimpact/src/features/tracking/data/action_log_store.dart';
 import 'package:meinimpact/src/features/tracking/domain/action_log.dart';
 
@@ -15,14 +16,13 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('ActionLog', () {
-    test('keeps one entry per opportunity and can undo it', () {
+    test('keeps one entry per opportunity', () {
       final entry = _entry(_petition());
       final log =
           const ActionLog().withDone(entry).withDone(_entry(_petition()));
 
       expect(log.entries, hasLength(1));
       expect(log.entries.single.doneAt, entry.doneAt);
-      expect(log.without('petition-1').isDone('petition-1'), isFalse);
     });
 
     test('round-trips through JSON with its snapshot', () {
@@ -67,60 +67,123 @@ void main() {
   });
 
   group('Fertig in the feed', () {
-    testWidgets('a done action leaves the feed and counts as acted',
+    testWidgets('a done action leaves the feed right away and counts as acted',
         (tester) async {
-      final signals = <InterestSignal>[];
-      await tester.pumpWidget(
-        _Harness(openAction: (_, __) async => true, signals: signals),
-      );
+      final harness = _Harness(openAction: (_, __) async => true);
+      await tester.pumpWidget(harness);
       await tester.pumpAndSettle();
 
-      await _takeAction(tester);
-      expect(find.text('Stark, erledigt!'), findsOneWidget);
-      await tester.tap(find.text('Weiter'));
-      await tester.pumpAndSettle();
+      await _takeAction(tester, 'Petition zum Klimaschutz');
 
       expect(find.text('Petition zum Klimaschutz'), findsNothing);
-      expect(signals, [InterestSignal.opened, InterestSignal.acted]);
-    });
-
-    testWidgets('undo brings the action back without learning from it',
-        (tester) async {
-      final signals = <InterestSignal>[];
-      await tester.pumpWidget(
-        _Harness(openAction: (_, __) async => true, signals: signals),
-      );
-      await tester.pumpAndSettle();
-
-      await _takeAction(tester);
-      await tester.tap(find.text('Rückgängig'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Petition zum Klimaschutz'), findsOneWidget);
-      expect(signals, [InterestSignal.opened]);
+      expect(find.text('Stark, erledigt!'), findsOneWidget);
+      expect(harness.signals, [InterestSignal.opened, InterestSignal.acted]);
+      expect(harness.done, {'petition-1': ActionVia.inAppBrowser});
     });
 
     testWidgets('closing the browser without Fertig changes nothing',
         (tester) async {
-      final signals = <InterestSignal>[];
-      await tester.pumpWidget(
-        _Harness(openAction: (_, __) async => false, signals: signals),
-      );
+      final harness = _Harness(openAction: (_, __) async => false);
+      await tester.pumpWidget(harness);
       await tester.pumpAndSettle();
 
-      await _takeAction(tester);
+      await _takeAction(tester, 'Petition zum Klimaschutz');
 
-      expect(find.text('Stark, erledigt!'), findsNothing);
       expect(find.text('Petition zum Klimaschutz'), findsOneWidget);
-      expect(signals, [InterestSignal.opened]);
+      expect(harness.signals, [InterestSignal.opened]);
+      expect(harness.done, isEmpty);
+    });
+
+    testWidgets('a decision opens the letter, not the browser', (tester) async {
+      var browserOpened = false;
+      final harness = _Harness(
+        opportunities: [_decision()],
+        openAction: (_, __) async => browserOpened = true,
+        openLetter:
+            (_, __, {required repository, required onViewPaper}) async => true,
+      );
+      await tester.pumpWidget(harness);
+      await tester.pumpAndSettle();
+
+      await _takeAction(tester, 'Soll der Radweg gebaut werden?');
+
+      expect(browserOpened, isFalse);
+      expect(harness.done, {'decision-1': ActionVia.letter});
+    });
+  });
+
+  group('LetterScreen', () {
+    testWidgets('drafts with the notes, stays editable, Fertig pops true',
+        (tester) async {
+      final repository = _LetterRepository();
+      bool? result;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => TextButton(
+              onPressed: () async => result = await LetterScreen.open(
+                context,
+                _decision(),
+                repository: repository,
+                onViewPaper: () {},
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      // No Fertig before there is a letter.
+      expect(find.text('Fertig'), findsNothing);
+
+      await tester.enterText(find.byType(TextField), 'Ich fahre dort täglich.');
+      await tester.tap(find.text('Brief erstellen'));
+      await tester.pumpAndSettle();
+
+      expect(repository.notes, 'Ich fahre dort täglich.');
+      expect(
+        find.text('Sehr geehrte Damen und Herren, bitte stimmen Sie zu.'),
+        findsOneWidget,
+      );
+      expect(find.text('Neu erstellen'), findsOneWidget);
+
+      await tester.tap(find.text('Fertig'));
+      await tester.pumpAndSettle();
+
+      expect(result, isTrue);
+    });
+
+    testWidgets('a failed draft leaves the field to write by hand',
+        (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: LetterScreen(
+            opportunity: _decision(),
+            repository: _LetterRepository(fail: true),
+            onViewPaper: () {},
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Brief erstellen'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('konnte gerade nicht erstellt werden'),
+        findsOneWidget,
+      );
+      expect(find.text('Dein Brief (bearbeitbar)'), findsOneWidget);
+      expect(find.text('Fertig'), findsOneWidget);
     });
   });
 }
 
-Future<void> _takeAction(WidgetTester tester) async {
-  await tester.tap(find.text('Petition zum Klimaschutz'));
+Future<void> _takeAction(WidgetTester tester, String title) async {
+  await tester.tap(find.text(title));
   await tester.pumpAndSettle();
-  await tester.tap(find.text('Petition unterschreiben'));
+  await tester.tap(find.byType(ElevatedButton));
   await tester.pumpAndSettle();
 }
 
@@ -149,12 +212,40 @@ Opportunity _petition() => Opportunity(
       firstSeenAt: DateTime(2026, 11, 1),
     );
 
+Opportunity _decision() => Opportunity(
+      id: 'decision-1',
+      sourceOrg: 'Ratsinformationssystem Dresden',
+      sourceUrl: 'https://ratsinfo.dresden.de/vo0050.asp?__kvonr=1',
+      kind: OpportunityKind.decision,
+      isAnnounced: false,
+      region: 'dresden',
+      organizer: 'Ausschuss für Stadtentwicklung',
+      title: 'Soll der Radweg gebaut werden?',
+      summary: 'Die Stadt will einen Radweg bauen.',
+      affectedTags: const ['Verkehr'],
+      werteRelevanz: const {},
+      proArgumente: const [],
+      contraArgumente: const [],
+      personalImpactSnippets: const {},
+      closesOn: DateTime(2026, 11, 26),
+      firstSeenAt: DateTime(2026, 11, 8),
+    );
+
 /// The feed tab with an in-memory action log, as MeinImpactApp wires it.
 class _Harness extends StatefulWidget {
-  const _Harness({required this.openAction, required this.signals});
+  _Harness({
+    required this.openAction,
+    this.opportunities,
+    LetterOpener? openLetter,
+  }) : openLetter = openLetter ??
+            ((_, __, {required repository, required onViewPaper}) async =>
+                false);
 
   final ActionOpener openAction;
-  final List<InterestSignal> signals;
+  final LetterOpener openLetter;
+  final List<Opportunity>? opportunities;
+  final signals = <InterestSignal>[];
+  final done = <String, ActionVia>{};
 
   @override
   State<_Harness> createState() => _HarnessState();
@@ -172,21 +263,26 @@ class _HarnessState extends State<_Harness> {
       home: Scaffold(
         body: SingleChildScrollView(
           child: AktionenTab(
-            opportunityRepository: _PoolRepository(),
+            opportunityRepository: _LetterRepository(
+              opportunities: widget.opportunities ?? [_petition()],
+            ),
             profile: const UserProfile(),
             doneIds: _log.doneIds,
             openAction: widget.openAction,
+            openLetter: widget.openLetter,
             onInterestSignal: (_, signal) => widget.signals.add(signal),
-            onActionDone: (opportunity, via) => setState(
-              () => _log = _log.withDone(
-                ActionLogEntry.fromOpportunity(
-                  opportunity,
-                  doneAt: DateTime.now(),
-                  via: via,
+            onActionDone: (opportunity, via) {
+              widget.done[opportunity.id] = via;
+              setState(
+                () => _log = _log.withDone(
+                  ActionLogEntry.fromOpportunity(
+                    opportunity,
+                    doneAt: DateTime.now(),
+                    via: via,
+                  ),
                 ),
-              ),
-            ),
-            onActionUndone: (id) => setState(() => _log = _log.without(id)),
+              );
+            },
           ),
         ),
       ),
@@ -194,10 +290,24 @@ class _HarnessState extends State<_Harness> {
   }
 }
 
-class _PoolRepository implements OpportunityRepository {
+class _LetterRepository implements OpportunityRepository {
+  _LetterRepository({this.opportunities = const [], this.fail = false});
+
+  final List<Opportunity> opportunities;
+  final bool fail;
+  String? notes;
+
   @override
-  Future<List<Opportunity>> pool() async => [_petition()];
+  Future<List<Opportunity>> pool() async => opportunities;
 
   @override
   Future<List<MdbOption>> lookupMdb(String plz) async => const [];
+
+  @override
+  Stream<String> streamLetter(String opportunityId, {String? notes}) async* {
+    this.notes = notes;
+    if (fail) throw StateError('Mistral unavailable');
+    yield 'Sehr geehrte Damen und Herren,';
+    yield ' bitte stimmen Sie zu.';
+  }
 }

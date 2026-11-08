@@ -131,11 +131,6 @@ class ActionLog {
     return ActionLog([...entries, entry]);
   }
 
-  ActionLog without(String opportunityId) => ActionLog([
-        for (final e in entries)
-          if (e.opportunityId != opportunityId) e,
-      ]);
-
   Map<String, Object?> toJson() => {
         'version': _version,
         'entries': [for (final e in entries) e.toJson()],
