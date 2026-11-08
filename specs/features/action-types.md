@@ -120,6 +120,8 @@ Decided with the user for the MVP:
 - **Release target:** testers install the Android app from Google Play's
   internal testing track by 2026-11-12. Public listing later (a new
   personal developer account needs a 12-tester, 14-day closed test first).
+  iOS (TestFlight) follows once the Android release is done (decided
+  2026-11-09); until then iPhone users only get the web teaser.
 
 ---
 
