@@ -96,6 +96,23 @@ void main() {
       expect(harness.done, isEmpty);
     });
 
+    testWidgets('the web teaser points to the app instead of taking part',
+        (tester) async {
+      var opened = false;
+      final harness = _Harness(
+        openAction: (_, __) async => opened = true,
+        isWeb: true,
+      );
+      await tester.pumpWidget(harness);
+      await tester.pumpAndSettle();
+
+      await _takeAction(tester, 'Petition zum Klimaschutz');
+
+      expect(opened, isFalse);
+      expect(find.text('Mitmachen geht in der App'), findsOneWidget);
+      expect(harness.done, isEmpty);
+    });
+
     testWidgets('a decision opens the letter, not the browser', (tester) async {
       var browserOpened = false;
       final harness = _Harness(
@@ -407,6 +424,7 @@ class _Harness extends StatefulWidget {
   _Harness({
     required this.openAction,
     this.opportunities,
+    this.isWeb = false,
     LetterOpener? openLetter,
   }) : openLetter = openLetter ??
             ((_, __, {required repository, required onViewPaper}) async =>
@@ -414,6 +432,7 @@ class _Harness extends StatefulWidget {
 
   final ActionOpener openAction;
   final LetterOpener openLetter;
+  final bool isWeb;
   final List<Opportunity>? opportunities;
   final signals = <InterestSignal>[];
   final done = <String, ActionVia>{};
@@ -441,6 +460,7 @@ class _HarnessState extends State<_Harness> {
             doneIds: _log.doneIds,
             openAction: widget.openAction,
             openLetter: widget.openLetter,
+            isWeb: widget.isWeb,
             onInterestSignal: (_, signal) => widget.signals.add(signal),
             onActionDone: (opportunity, via) {
               widget.done[opportunity.id] = via;

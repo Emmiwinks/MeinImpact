@@ -116,13 +116,12 @@ class OpportunityDetailDialog extends StatelessWidget {
                     ],
                     const SizedBox(height: 16),
                     _PrimaryButton(
-                      label: opportunity.kind.callToAction,
+                      // The web build is a teaser (GetTheAppSheet)
+                      label: kIsWeb
+                          ? 'In der App mitmachen'
+                          : opportunity.kind.callToAction,
                       onPressed: () => _openSource(context),
                     ),
-                    if (kIsWeb && opportunity.kind.completesInBrowser) ...[
-                      const SizedBox(height: 8),
-                      const _NewTabNote(),
-                    ],
                   ],
                 ),
               ),
@@ -264,32 +263,6 @@ class _PrimaryButton extends StatelessWidget {
         ),
         child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
       ),
-    );
-  }
-}
-
-/// Web only: the site opens in a new tab, and "Fertig" waits here.
-class _NewTabNote extends StatelessWidget {
-  const _NewTabNote();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Icon(Icons.open_in_new, size: 16, color: AppColors.mutedText),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            'Öffnet sich in einem neuen Tab. Komm danach hierher zurück und '
-            'tippe auf „Fertig“, wenn du mitgemacht hast.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.mutedText,
-                  height: 1.3,
-                ),
-          ),
-        ),
-      ],
     );
   }
 }

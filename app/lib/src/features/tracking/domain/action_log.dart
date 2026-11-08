@@ -4,8 +4,6 @@ import '../../feed/domain/opportunity.dart';
 enum ActionVia {
   // "Fertig" in the in-app browser (Android/iOS).
   inAppBrowser('in_app_browser'),
-  // "Fertig" on the banner shown after the web build opened a new tab.
-  webReturn('web_return'),
   // "Fertig" after the letter pop-up for a council decision.
   letter('letter');
 

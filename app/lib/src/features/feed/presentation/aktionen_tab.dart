@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:meinimpact/l10n/app_localizations.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../tracking/domain/action_log.dart';
 import '../data/opportunity_relevance_ranker.dart';
@@ -13,6 +12,7 @@ import '../domain/user_profile.dart';
 import 'action_browser_screen.dart';
 import 'letter_screen.dart';
 import 'widgets/feed_error.dart';
+import 'widgets/get_the_app_sheet.dart';
 import 'widgets/loading_card.dart';
 import 'widgets/opportunity_detail_dialog.dart';
 import 'widgets/opportunity_panel.dart';
@@ -49,6 +49,7 @@ class AktionenTab extends StatefulWidget {
     this.interestConfig = const InterestConfig(),
     this.openAction = ActionBrowserScreen.open,
     this.openLetter = LetterScreen.open,
+    this.isWeb = kIsWeb,
     super.key,
   });
 
@@ -65,6 +66,8 @@ class AktionenTab extends StatefulWidget {
   final ActionOpener openAction;
   // The letter for council decisions; replaceable in tests.
   final LetterOpener openLetter;
+  // The web teaser build; replaceable in tests.
+  final bool isWeb;
 
   @override
   State<AktionenTab> createState() => _AktionenTabState();
@@ -106,60 +109,23 @@ class _AktionenTabState extends State<AktionenTab> {
   }
 
   Future<void> _takeAction(Opportunity opportunity) async {
+    // The web build is a teaser: taking part happens in the app.
+    if (widget.isWeb) {
+      await GetTheAppSheet.show(context);
+      return;
+    }
     if (opportunity.kind == OpportunityKind.decision) {
       final done = await widget.openLetter(
         context,
         opportunity,
         repository: widget.opportunityRepository,
-        onViewPaper: () => _openSource(opportunity),
+        onViewPaper: () => widget.openAction(context, opportunity),
       );
       if (done && mounted) _complete(opportunity, ActionVia.letter);
       return;
     }
-    if (kIsWeb) {
-      await _openSource(opportunity);
-      return;
-    }
     final done = await widget.openAction(context, opportunity);
     if (done && mounted) _complete(opportunity, ActionVia.inAppBrowser);
-  }
-
-  // The in-app browser, or on web a new tab, since action sites refuse to
-  // be framed. The web build then offers "Fertig" for the user's return.
-  Future<void> _openSource(Opportunity opportunity) async {
-    if (!kIsWeb) {
-      await widget.openAction(context, opportunity);
-      return;
-    }
-    final uri = Uri.tryParse(opportunity.sourceUrl);
-    if (uri == null) return;
-    await launchUrl(uri, webOnlyWindowName: '_blank');
-    if (mounted && opportunity.kind.completesInBrowser) {
-      _showReturnBanner(opportunity, uri.host);
-    }
-  }
-
-  void _showReturnBanner(Opportunity opportunity, String host) {
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.clearMaterialBanners();
-    messenger.showMaterialBanner(
-      MaterialBanner(
-        content: Text('Zurück von $host? Wenn du mitgemacht hast: Fertig.'),
-        actions: [
-          TextButton(
-            onPressed: messenger.hideCurrentMaterialBanner,
-            child: const Text('Später'),
-          ),
-          FilledButton(
-            onPressed: () {
-              messenger.hideCurrentMaterialBanner();
-              if (mounted) _complete(opportunity, ActionVia.webReturn);
-            },
-            child: const Text('Fertig'),
-          ),
-        ],
-      ),
-    );
   }
 
   // No confirmation step: the action leaves the feed right away and a short

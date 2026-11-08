@@ -22,8 +22,13 @@ Decided with the user for the MVP:
 - **Native only for the in-app browser.** Every action site blocks framing
   (X-Frame-Options / CSP frame-ancestors, checked 2026-11-06: openPetition,
   WeAct, abgeordnetenwatch, Beteiligungsportal Sachsen, Bundestag
-  ePetitionen, FragDenStaat, EU Have your say). Android/iOS use a WebView;
-  the web build opens a new tab and shows "Fertig" on return.
+  ePetitionen, FragDenStaat, EU Have your say). Android/iOS use a WebView.
+- **The web build is a teaser (decided 2026-11-09).** Feed, details and
+  profile work; every action button reads "In der App mitmachen" and
+  opens a sheet pointing to the app (`MEINIMPACT_APP_DOWNLOAD_URL`, today
+  the landing page's beta section). No web-specific workarounds: the full
+  experience, and the feedback that matters, is the native app. iPhone
+  testers therefore need an iOS build (TestFlight).
 - **In-app browser design (decided 2026-11-08):**
   - `webview_flutter` (Android WebView, iOS WKWebView). JavaScript on,
     cookies kept in the app's own store. Non-http links (`mailto:`,
@@ -38,8 +43,6 @@ Decided with the user for the MVP:
     goes straight back to the feed with a short "Stark, erledigt!"
     message; no confirmation sheet and no undo (decided 2026-11-08: an
     accidental tap is rarer than the extra tap is annoying).
-  - Web build: the detail view says the site opens in a new tab and that
-    "Fertig" waits in the app; a banner offers "Fertig" afterwards.
   - "Fertig" shows for every kind with a source link except decisions
     (letter flow). For events it means "signed up".
   - A done action leaves the feed; it reappears in Mein Impact (later).
@@ -49,7 +52,7 @@ Decided with the user for the MVP:
   `flutter_secure_storage` key `action_log_v1` (political participation
   is GDPR Art. 9 data, so encrypted like the profile, and separate from
   it so editing the profile never wipes history). One entry per
-  opportunity id with `doneAt`, `via` (`in_app_browser`, `web_return`,
+  opportunity id with `doneAt`, `via` (`in_app_browser`,
   `letter`) and a snapshot (title, kind, source, link, deadline, tags) so
   Mein Impact can show actions that have left the pool. Ids are stable:
   rows are upserted on (source_id, external_id). Lost on Android
