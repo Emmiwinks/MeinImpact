@@ -41,6 +41,13 @@ class Settings(BaseSettings):
     newsdata_api_key: str | None = None
     max_request_body_bytes: int = 65_536
     admin_api_key: str | None = None
+    # Password for the /admin page. Unset means the page rejects every login.
+    admin_password: str | None = None
+    admin_session_hours: int = 12
+    # Off by default so local dev never spends Mistral credit on its own;
+    # production turns it on in fly.toml. The interval is set on /admin.
+    ingestion_scheduler_enabled: bool = False
+    ingestion_check_minutes: int = 15
 
     model_config = SettingsConfigDict(
         env_file=".env",

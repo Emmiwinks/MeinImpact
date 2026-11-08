@@ -39,9 +39,18 @@ steps), `infrastructure/ai/listing_enricher.py`,
 
 ### Rules
 
-- **Trigger-based only.** `POST /v1/admin/ingestion/run` (starts in the
-  background, one run at a time) or `scripts/run_ingestion.py`. No
-  in-process scheduler.
+- **Scheduled or on demand, managed on `/admin`.** A password-protected
+  page (`MEINIMPACT_ADMIN_PASSWORD`, signed session cookie, throttled
+  logins) starts runs, switches the schedule on/off, sets its interval
+  (default every 48 h) and lists past runs with their summary and errors.
+  The scheduler is an in-process loop that checks every 15 min whether a
+  run is due; it only runs where `MEINIMPACT_INGESTION_SCHEDULER_ENABLED`
+  is set (production via `fly.toml`, never local dev). A manual run counts
+  as the last run, so it postpones the next scheduled one. Each run is a
+  row in `ingestion_runs`; a row in status `running` is the lock across
+  Fly machines, and one older than 3 h counts as interrupted.
+  `POST /v1/admin/ingestion/run` (header key) and
+  `scripts/run_ingestion.py` still work for scripts.
 - **Polite, rule-abiding crawling.** Every request goes through
   `PoliteHttpClient`: robots.txt per RFC 9309, per-host Crawl-delay (min.
   1 s), one honest User-Agent. Registries that disallow crawling

@@ -68,7 +68,7 @@ specs/
 │   ├── sources-federal.md         ← AW, MdB statements (topic sourcing there
 │   │                                 is outdated: see ingestion-pipeline.md)
 │   ├── ingestion-pipeline.md      ← Registries + Dresden OParl -> steps ->
-│   │                                 Mistral enrichment; trigger-based
+│   │                                 Mistral enrichment; /admin schedule
 │   ├── database-schema.md         ← All PostgreSQL tables + pool view
 │   └── caching.md                 ← Redis server cache, Hive client cache
 │

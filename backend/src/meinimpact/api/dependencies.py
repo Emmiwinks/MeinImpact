@@ -40,6 +40,7 @@ from meinimpact.infrastructure.tracking.postgres_tracking_repository import (
     PostgresTrackingRepository,
 )
 from meinimpact.services.draft_service import DraftService
+from meinimpact.services.ingestion_runs import IngestionRuns
 from meinimpact.services.recommendation_service import RecommendationService
 
 _bearer_scheme = HTTPBearer(auto_error=False)
@@ -76,15 +77,28 @@ def require_principal(
         ) from error
 
 
-async def get_db_session(
-    settings: Settings = Depends(get_settings),
-) -> AsyncIterator[AsyncSession]:
-    """Yields one database session per request."""
+def get_database(settings: Settings = Depends(get_settings)) -> Database:
+    """Returns the process-wide database, created on first use."""
     global _db
     if _db is None:
         _db = Database(settings.database_url)
-    async for session in _db.session():
+    return _db
+
+
+async def get_db_session(
+    database: Database = Depends(get_database),
+) -> AsyncIterator[AsyncSession]:
+    """Yields one database session per request."""
+    async for session in database.session():
         yield session
+
+
+def get_ingestion_runs(
+    database: Database = Depends(get_database),
+    settings: Settings = Depends(get_settings),
+) -> IngestionRuns:
+    """Returns the service behind manual and scheduled ingestion runs."""
+    return IngestionRuns(database, settings)
 
 
 def get_action_repository(

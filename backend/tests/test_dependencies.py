@@ -38,28 +38,20 @@ async def test_get_db_session_yields_session() -> None:
     mock_db = MagicMock()
     mock_db.session.return_value = _fake_session()
 
-    original = _deps._db
-    try:
-        _deps._db = mock_db
-        results = [s async for s in _deps.get_db_session(Settings(jwt_secret="s"))]
-    finally:
-        _deps._db = original
+    results = [s async for s in _deps.get_db_session(mock_db)]
 
     assert results == [mock_session]
 
 
-async def test_get_db_session_creates_database_on_first_call() -> None:
+def test_get_database_creates_database_once() -> None:
     original = _deps._db
     _deps._db = None
+    try:
+        with patch("meinimpact.api.dependencies.Database") as MockDB:
+            first = _deps.get_database(Settings(jwt_secret="s"))
+            second = _deps.get_database(Settings(jwt_secret="s"))
+    finally:
+        _deps._db = original
 
-    async def _fake_session() -> object:
-        yield object()
-
-    with patch("meinimpact.api.dependencies.Database") as MockDB:
-        instance = MagicMock()
-        instance.session.return_value = _fake_session()
-        MockDB.return_value = instance
-        _ = [s async for s in _deps.get_db_session(Settings(jwt_secret="s"))]
-
-    assert MockDB.called
-    _deps._db = original
+    assert MockDB.call_count == 1
+    assert first is second

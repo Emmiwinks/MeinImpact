@@ -131,11 +131,10 @@ Device (Flutter app)
 │
 Backend (Fly.io)
 │
-│  Trigger-based ingestion pipeline (not scheduled — see
-│  data/ingestion-pipeline.md "Status"): Tavily-search-based topic
-│  discovery (replaces the retired DIP-sourced pipeline), full design
-│  pending. Classify with Mistral (value axes, urgency, pro/contra).
-│  Write to PostgreSQL action pool.
+│  Ingestion pipeline, scheduled (default every 2 days) or on demand
+│  from the /admin page (see data/ingestion-pipeline.md): action
+│  registries + Dresden OParl, enriched with Mistral, written to the
+│  PostgreSQL opportunity pool.
 │
 │  On tracking event:
 │    Look up push_tokens subscribed to action_id

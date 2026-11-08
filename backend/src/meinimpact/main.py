@@ -1,15 +1,19 @@
 """FastAPI application factory."""
 
+import asyncio
 import logging
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
+from datetime import timedelta
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from meinimpact.api.dependencies import get_database
 from meinimpact.api.routes import (
     actions,
     admin,
+    admin_portal,
     auth,
     beta,
     feedback,
@@ -26,6 +30,7 @@ from meinimpact.core.middleware import (
     SecurityHeadersMiddleware,
 )
 from meinimpact.infrastructure.mdb.wks_service import WksService
+from meinimpact.services.ingestion_runs import IngestionRuns, run_scheduler
 
 logger = logging.getLogger(__name__)
 
@@ -45,10 +50,23 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             )
         app.state.wks_service = wks
 
-        # Ingestion is trigger-based only (POST /v1/admin/ingestion/run or
-        # scripts/run_ingestion.py); nothing is scheduled in-process.
+        # Every machine checks; the run row in the database makes sure only
+        # one of them actually ingests. Interval and on/off live on /admin.
+        scheduler: asyncio.Task[None] | None = None
+        if resolved_settings.ingestion_scheduler_enabled:
+            scheduler = asyncio.create_task(
+                run_scheduler(
+                    IngestionRuns(get_database(resolved_settings), resolved_settings),
+                    timedelta(minutes=resolved_settings.ingestion_check_minutes),
+                )
+            )
 
         yield
+
+        if scheduler is not None:
+            scheduler.cancel()
+            with suppress(asyncio.CancelledError):
+                await scheduler
 
     app = FastAPI(
         title=resolved_settings.app_name,
@@ -80,6 +98,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(feedback.router)
     app.include_router(beta.router)
     app.include_router(admin.router)
+    app.include_router(admin_portal.router)
     app.dependency_overrides[get_settings] = lambda: resolved_settings
     return app
 
