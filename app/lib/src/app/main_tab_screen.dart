@@ -9,6 +9,7 @@ import '../features/feed/domain/user_profile.dart';
 import '../features/feed/presentation/aktionen_tab.dart';
 import '../features/feed/presentation/widgets/app_colors.dart';
 import '../features/feed/presentation/widgets/profile_column.dart';
+import '../features/tracking/domain/action_log.dart';
 import '../features/tracking/wirkung_tab.dart';
 
 /// App root: three bottom-navigation tabs (Profil, Aktionen, Wirkung — no
@@ -22,6 +23,9 @@ class MainTabScreen extends StatefulWidget {
     this.onLebenslagenChanged,
     this.onInterestsChanged,
     this.onInterestSignal,
+    this.doneIds = const {},
+    this.onActionDone,
+    this.onActionUndone,
     this.interestConfig = const InterestConfig(),
     super.key,
   });
@@ -33,6 +37,9 @@ class MainTabScreen extends StatefulWidget {
   final ValueChanged<InterestWeights>? onInterestsChanged;
   final void Function(Opportunity opportunity, InterestSignal signal)?
       onInterestSignal;
+  final Set<String> doneIds;
+  final void Function(Opportunity opportunity, ActionVia via)? onActionDone;
+  final ValueChanged<String>? onActionUndone;
   final InterestConfig interestConfig;
 
   static const _fallbackProfile = UserProfile();
@@ -60,6 +67,9 @@ class _MainTabScreenState extends State<MainTabScreen> {
         opportunityRepository: widget.opportunityRepository,
         profile: effectiveProfile,
         onInterestSignal: widget.onInterestSignal,
+        doneIds: widget.doneIds,
+        onActionDone: widget.onActionDone,
+        onActionUndone: widget.onActionUndone,
         interestConfig: widget.interestConfig,
       ),
       const _WirkungScaffoldTab(),
@@ -127,6 +137,9 @@ class _AktionenScaffoldTab extends StatelessWidget {
     required this.opportunityRepository,
     required this.profile,
     required this.onInterestSignal,
+    required this.doneIds,
+    required this.onActionDone,
+    required this.onActionUndone,
     required this.interestConfig,
   });
 
@@ -134,6 +147,9 @@ class _AktionenScaffoldTab extends StatelessWidget {
   final UserProfile profile;
   final void Function(Opportunity opportunity, InterestSignal signal)?
       onInterestSignal;
+  final Set<String> doneIds;
+  final void Function(Opportunity opportunity, ActionVia via)? onActionDone;
+  final ValueChanged<String>? onActionUndone;
   final InterestConfig interestConfig;
 
   @override
@@ -144,6 +160,9 @@ class _AktionenScaffoldTab extends StatelessWidget {
         opportunityRepository: opportunityRepository,
         profile: profile,
         onInterestSignal: onInterestSignal,
+        doneIds: doneIds,
+        onActionDone: onActionDone,
+        onActionUndone: onActionUndone,
         interestConfig: interestConfig,
       ),
     );

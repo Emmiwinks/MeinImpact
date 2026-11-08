@@ -24,6 +24,31 @@ Decided with the user for the MVP:
   WeAct, abgeordnetenwatch, Beteiligungsportal Sachsen, Bundestag
   ePetitionen, FragDenStaat, EU Have your say). Android/iOS use a WebView;
   the web build opens a new tab and shows "Fertig" on return.
+- **In-app browser design (decided 2026-11-08):**
+  - `webview_flutter` (Android WebView, iOS WKWebView). JavaScript on,
+    cookies kept in the app's own store. Non-http links (`mailto:`,
+    `tel:`, `intent:`) go to the system. "Im Browser öffnen" in the menu
+    is the fallback for anything the WebView cannot do (Google sign-in,
+    some captchas, uploads); no per-site workarounds.
+  - Full-screen route: close, domain, progress bar, menu (Im Browser
+    öffnen, Neu laden, Link kopieren). Android back goes through WebView
+    history first. "Fertig" sits right-aligned in a fixed bottom bar, not
+    a floating button, so it never covers the site's own submit button.
+  - Closing without "Fertig" stores nothing and asks nothing.
+  - "Fertig" shows for every kind with a source link except decisions
+    (letter flow). For events it means "signed up".
+  - A done action leaves the feed; it reappears in Mein Impact (later).
+  - The `acted` interest signal fires on "Fertig", not on opening the
+    action; opening it counts as `opened`.
+- **Action log on the device:** `ActionLogStore`, its own
+  `flutter_secure_storage` key `action_log_v1` (political participation
+  is GDPR Art. 9 data, so encrypted like the profile, and separate from
+  it so editing the profile never wipes history). One entry per
+  opportunity id with `doneAt`, `via` (`in_app_browser`, `web_return`,
+  `letter`) and a snapshot (title, kind, source, link, deadline, tags) so
+  Mein Impact can show actions that have left the pool. Ids are stable:
+  rows are upserted on (source_id, external_id). Lost on Android
+  uninstall; no server copy by design.
 - **Decisions get an AI-drafted letter in a pop-up** (to the members of
   the deciding body), sent from the same in-app flow, then "Fertig". The
   letter generator still runs on the old `/v1/actions` stack and has to be

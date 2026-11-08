@@ -18,6 +18,10 @@ enum OpportunityKind {
   final String label;
   final String callToAction;
 
+  /// Whether the in-app browser offers "Fertig". Decisions are done through
+  /// the letter pop-up instead.
+  bool get completesInBrowser => this != decision;
+
   static OpportunityKind fromWire(String? value) => values.firstWhere(
         (kind) => kind.wire == value,
         orElse: () => OpportunityKind.other,

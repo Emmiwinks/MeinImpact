@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:meinimpact/l10n/app_localizations.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/opportunity_relevance_ranker.dart';
 import '../../domain/opportunity.dart';
@@ -11,26 +10,25 @@ import 'pros_cons_expansion.dart';
 
 /// Opened from a feed tile. One opportunity, one view; everything needed is
 /// already in the pool response, so opening makes no network request. The
-/// call to action deep-links to the registry, where the participation
-/// itself happens.
+/// call to action hands over to the registry, where the participation
+/// itself happens (see AktionenTab._takeAction).
 class OpportunityDetailDialog extends StatelessWidget {
   const OpportunityDetailDialog({
     required this.l10n,
     required this.ranked,
-    this.onActed,
+    required this.onTakeAction,
     super.key,
   });
 
   final AppLocalizations l10n;
   final RankedOpportunity ranked;
-  // Called when the user follows the call to action to the registry.
-  final VoidCallback? onActed;
+  // Called after the dialog closed itself, when the user follows the call
+  // to action to the registry.
+  final VoidCallback onTakeAction;
 
-  Future<void> _openSource() async {
-    final uri = Uri.tryParse(ranked.opportunity.sourceUrl);
-    if (uri == null) return;
-    onActed?.call();
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  void _openSource(BuildContext context) {
+    Navigator.of(context).pop();
+    onTakeAction();
   }
 
   @override
@@ -118,7 +116,7 @@ class OpportunityDetailDialog extends StatelessWidget {
                     const SizedBox(height: 16),
                     _PrimaryButton(
                       label: opportunity.kind.callToAction,
-                      onPressed: _openSource,
+                      onPressed: () => _openSource(context),
                     ),
                   ],
                 ),

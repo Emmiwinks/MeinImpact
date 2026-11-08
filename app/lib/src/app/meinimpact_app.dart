@@ -9,6 +9,8 @@ import '../features/feed/domain/opportunity_repository.dart';
 import '../features/feed/domain/user_profile.dart';
 import '../features/onboarding/demographic_screen.dart';
 import '../features/onboarding/value_profile_screen.dart';
+import '../features/tracking/data/action_log_store.dart';
+import '../features/tracking/domain/action_log.dart';
 import 'main_tab_screen.dart';
 
 /// Hardcoded stand-in Lebenslagen, used by the "Beispiel-Profil übernehmen"
@@ -25,24 +27,32 @@ class MeinImpactApp extends StatefulWidget {
   })  : _opportunityRepository = opportunityRepository,
         _interestConfig = interestConfig,
         _profileStore = null,
-        _initialProfile = null;
+        _initialProfile = null,
+        _actionLogStore = null,
+        _initialActionLog = const ActionLog();
 
   /// Production constructor — shows onboarding when no profile exists.
   const MeinImpactApp.withProfile({
     required OpportunityRepository opportunityRepository,
     required UserProfileStore profileStore,
+    required ActionLogStore actionLogStore,
     UserProfile? initialProfile,
+    ActionLog initialActionLog = const ActionLog(),
     InterestConfig interestConfig = const InterestConfig(),
     super.key,
   })  : _opportunityRepository = opportunityRepository,
         _interestConfig = interestConfig,
         _profileStore = profileStore,
-        _initialProfile = initialProfile;
+        _initialProfile = initialProfile,
+        _actionLogStore = actionLogStore,
+        _initialActionLog = initialActionLog;
 
   final OpportunityRepository _opportunityRepository;
   final InterestConfig _interestConfig;
   final UserProfileStore? _profileStore;
   final UserProfile? _initialProfile;
+  final ActionLogStore? _actionLogStore;
+  final ActionLog _initialActionLog;
 
   @override
   State<MeinImpactApp> createState() => _MeinImpactAppState();
@@ -58,11 +68,31 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
   // quiz from "Mein Profil" — demographic data is left untouched, see
   // _onWerteRequizComplete.
   bool _requizWerte = false;
+  late ActionLog _actionLog;
 
   @override
   void initState() {
     super.initState();
     _profile = widget._initialProfile;
+    _actionLog = widget._initialActionLog;
+  }
+
+  Future<void> _onActionDone(Opportunity opportunity, ActionVia via) async {
+    final updated = _actionLog.withDone(
+      ActionLogEntry.fromOpportunity(
+        opportunity,
+        doneAt: DateTime.now(),
+        via: via,
+      ),
+    );
+    setState(() => _actionLog = updated);
+    await widget._actionLogStore?.save(updated);
+  }
+
+  Future<void> _onActionUndone(String opportunityId) async {
+    final updated = _actionLog.without(opportunityId);
+    setState(() => _actionLog = updated);
+    await widget._actionLogStore?.save(updated);
   }
 
   Future<void> _onWerteComplete(Map<String, int> werte) async {
@@ -162,6 +192,9 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
     if (widget._profileStore == null) {
       return MainTabScreen(
         opportunityRepository: widget._opportunityRepository,
+        doneIds: _actionLog.doneIds,
+        onActionDone: _onActionDone,
+        onActionUndone: _onActionUndone,
       );
     }
 
@@ -176,6 +209,9 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
         onLebenslagenChanged: _onLebenslagenChanged,
         onInterestsChanged: _onInterestsChanged,
         onInterestSignal: _onInterestSignal,
+        doneIds: _actionLog.doneIds,
+        onActionDone: _onActionDone,
+        onActionUndone: _onActionUndone,
         interestConfig: widget._interestConfig,
       );
     }
