@@ -7,6 +7,29 @@ existing civic platforms.
 
 ---
 
+## Status (2026-11-08): direction for "Mein Impact" / Wirkung
+
+The DIP- and Tavily-based tiers below predate the registry pipeline and
+are not built. What the user asked for (next work item):
+
+- **Petition counts alone are not enough.** Support snapshots per run
+  already exist, but Wirkung must show more: what the deciding people
+  said about the topic, movements and groups involved, and links to real
+  articles.
+- **Likely approach:** a search plus a Mistral call per action (per
+  action, not per user, so no profile data leaves the device), cached and
+  refreshed by ingestion. Guardrails: only claims with a source link, a
+  visible "KI-Zusammenfassung" label, political balance of sources, a cost
+  ceiling per run.
+- **Council decisions bring their own outcome:** OParl agenda items carry
+  a `result` after the meeting (e.g. "Zustimmung", "Ablehnung",
+  "Vertagung"), so a decision card can show how the vote went.
+- **Depends on the action history:** the in-app "Fertig" button
+  (`action-types.md`) is what tells Mein Impact which actions the user
+  took; it is stored on the device only.
+
+---
+
 ## Decisions
 
 - **Two tracking tiers in MVP:** Tier 1 (fully automatic via DIP API)

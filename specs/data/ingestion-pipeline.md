@@ -20,13 +20,15 @@ open window and a way to take part.
 
 ```
 catalog.default_sources   openPetition (Bund/Sachsen/Dresden), Beteiligungsportal
-                          Sachsen, EU "Have your say", WeAct
+                          Sachsen, EU "Have your say", WeAct, Dresden council
+                          (OParl, upcoming decisions)
 collect()                 all sources concurrently, failures isolated per source
 steps.default_steps       in_coverage -> actionable -> not_expired -> dedupe
 store.sync()              mirror into `opportunities`, snapshot support counts,
                           deactivate entries a fully-read registry no longer lists
 enrich pending            new or changed listings only: detail text (openPetition,
-                          EU) + one Mistral call (relevance + neutral framing)
+                          EU, council paper PDFs) + one Mistral call (relevance
+                          + neutral framing)
 store.save_enrichment()   committed per result, so progress survives failures
 ```
 
@@ -81,15 +83,57 @@ steps), `infrastructure/ai/listing_enricher.py`,
 - **`ENRICHMENT_VERSION`** is part of the enrichment input hash: bumping it
   re-enriches everything on the next run.
 
+### Council decisions: Dresden OParl (since 2026-11-08)
+
+Upcoming decisions are the occasion for "standing actions" (write to the
+members before the vote). Source: `listings/sources/oparl.py`, kind
+`decision`, `source_id` `dresden-ratsinfo`.
+
+- **API:** `https://oparl.dresden.de/bodies/0001` (OParl 1.1, licence
+  dl-de/zero-2.0, no robots.txt). `ratsinfo.dresden.de` disallows crawling
+  and is only used as the human-facing link
+  (`vo0050.asp?__kvonr=<paper id>`).
+- **One listing per paper** (Vorlage, Antrag, Petition) with an upcoming
+  meeting. `closes_on` = the next deciding ("beschließend") meeting, else
+  the next advisory one; `organizer` = that body.
+- **Discovery:** agenda items created in the last 28 days (agendas are
+  published about two weeks ahead) -> their meetings (date, body) ->
+  consultations only for upcoming meetings of bodies in scope. The paper
+  list is too large to walk (1,200+ changes in 45 days, mostly district
+  budget grants). A run takes about 15-25 min because the server is slow.
+- **Bodies in scope:** Stadtrat, committees, Stadtbezirksbeiräte,
+  Ortschaftsräte. Not: advisory boards (Beiräte), party groups.
+- **Non-public papers are dropped.** Contract awards sit on public agendas,
+  but OParl answers 404 for their paper and the web link shows an error.
+- **Detail text:** paper type, reference and the paper PDF's first pages
+  (`pypdf`), read only for new or changed listings. Often there is no
+  `mainFile`; the paper is then the attachment named after its reference
+  (`V1070/26` -> `V1070_26`).
+- **Relevance for Ratsvorlagen:** the way to act (write to the members) is
+  always there, so the model only judges public interest vs. routine. The
+  first dry run (2026-11-08, 71 papers, no Stadtrat agenda published yet)
+  showed the model rejecting nearly everything for "no participation
+  option", including the school-building strategy and the 2027/28 budget;
+  the prompt was fixed (ENRICHMENT_VERSION 12); no re-test planned.
+- **Districts:** the body name is in the registry summary, so a
+  Stadtbezirksbeirat's district is matched like any other. Known gap: the
+  district list has Ortsteile, not Stadtbezirke, and lacks
+  Schönfeld-Weißig.
+- Council members' emails are available via OParl memberships/persons
+  (not read yet; needed for letters).
+
 ### Relevance (LLM, per listing)
 
 Kept: petitions, statements on displayed plans (Bauleitplanung),
 consultations, citizen surveys and public dialogues on public decisions,
-understandable for a private person. Dropped: property viewings, job and
-speaker calls, internal administration trainings, award ceremonies,
-professional-only info events, highly technical acts. Scope must be EU,
-Bund, Sachsen or Dresden; other municipalities and other Länder are
-dropped (nationally relevant topics count as Bund).
+upcoming council decisions (Ratsvorlagen), understandable for a private
+person. Dropped: property viewings, job and speaker calls, internal
+administration trainings, award ceremonies, professional-only info events,
+highly technical acts; for council papers also administrative routine
+(committee appointments, budget transfers, annual accounts, grants to
+single clubs, property deals, personnel matters, information-only papers).
+Scope must be EU, Bund, Sachsen or Dresden; other municipalities and other
+Länder are dropped (nationally relevant topics count as Bund).
 
 ---
 
@@ -102,9 +146,13 @@ dropped (nationally relevant topics count as Bund).
 
 ## Open Questions
 
-- [ ] Decision calendars for standing actions (write to MdB/MdL/Stadtrat):
-      Dresden OParl API, Bundestag agenda (PDF or DIP), Landtag Sachsen
-      (robots-disallowed; EDAS or permission).
+- [x] Dresden council decisions via OParl (2026-11-08).
+- [ ] Roadmap: Landtag Sachsen decisions. Session calendar and EDAS are
+      robots-disallowed; options are asking the Landtag for permission or
+      entering key plenary items by hand.
+- [ ] Not planned now: Bundestag agenda (low expected impact; PDF or DIP).
+- [ ] Scheduled ingestion: decisions appear ~2 weeks ahead and expire on
+      the meeting day, so runs must be at least daily once deployed.
 - [ ] Bundestag ePetitionen (list needs a JS session token).
 - [ ] Momentum: support snapshots are recorded per run; how (and whether)
       to surface momentum is undecided.

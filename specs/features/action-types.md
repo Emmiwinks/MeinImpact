@@ -6,6 +6,56 @@ targets, and specific behaviour per type.
 
 ---
 
+## Status (2026-11-08): supersedes the flows below where they conflict
+
+Actions are now registry opportunities (`ingestion-pipeline.md`), not the
+three DIP-era types. The app's `OpportunityKind` mirrors the backend's
+`ActionKind`: petition, consultation, public_display, survey, event,
+decision (upcoming council vote), notice, other.
+
+Decided with the user for the MVP:
+
+- **Taking action stays inside the app.** Listed actions (petitions,
+  consultations, surveys, Bürgerbefragungen) open in an in-app browser. A
+  "Fertig" button bottom right marks the action done; no separate "Hast du
+  mitgemacht?" question. Completion stays self-reported.
+- **Native only for the in-app browser.** Every action site blocks framing
+  (X-Frame-Options / CSP frame-ancestors, checked 2026-11-06: openPetition,
+  WeAct, abgeordnetenwatch, Beteiligungsportal Sachsen, Bundestag
+  ePetitionen, FragDenStaat, EU Have your say). Android/iOS use a WebView;
+  the web build opens a new tab and shows "Fertig" on return.
+- **Decisions get an AI-drafted letter in a pop-up** (to the members of
+  the deciding body), sent from the same in-app flow, then "Fertig". The
+  letter generator still runs on the old `/v1/actions` stack and has to be
+  moved onto opportunities; recipients come from OParl memberships.
+- **Letter recipients for council decisions (decided 2026-11-08):**
+  - *Default:* the members of the committee responsible for the topic,
+    pre-selected. For a Stadtrat item that is the committee in the paper's
+    consultation chain (the advising committee); if the deciding body is
+    itself a committee, its members. From OParl memberships; emails from
+    OParl persons, Fraktion office as fallback.
+  - *Additional option:* the Stadtrat members elected in the user's
+    Wahlkreis. Needs a hand-made table per election period (Kommunalwahl
+    2024: who was elected where, which Stadtteile form each Wahlkreis),
+    matched via the user's Stadtteil from the profile.
+  - *Stadtbezirksbeirat / Ortschaftsrat items:* the members of that body.
+  - *Not:* all 70 Stadtrat members (reads as mass mail).
+  - *Neutral:* never chosen by party or by the user's profile; everyone
+    listed with party in a neutral order; the letter text does not depend
+    on the recipients. The user can deselect or add.
+  - *Sending:* one email from the user's own mail app with all selected
+    recipients openly in "An", then "Fertig".
+- **MeinImpact still never sends or signs on the user's behalf.**
+- **Roadmap, not MVP:** auto-filling forms on action sites (per-site fill
+  rules, needs name/email stored on device: a deliberate decision);
+  actions that need leaving the house (demos, Einwohnerfragestunde);
+  Landtag Sachsen decisions; Bundestag decisions (low expected impact).
+- **Release target:** testers install the Android app from Google Play's
+  internal testing track by 2026-11-12. Public listing later (a new
+  personal developer account needs a 12-tester, 14-day closed test first).
+
+---
+
 ## Decisions
 
 - **Three action types in MVP:** Brief (letter to MdB), Petition

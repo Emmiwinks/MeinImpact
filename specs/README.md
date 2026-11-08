@@ -36,9 +36,11 @@ One-sentence value proposition:
 5. **MVP uses beta tokens only. No user accounts.**
    See `user/authentication.md`.
 
-6. **Three action types in MVP: brief, petition, anfrage.**
-   No EU consultations, no Leserbriefe, no local/state actions.
-   See `features/action-types.md`.
+6. **Actions are registry opportunities** (petitions, consultations,
+   plan displays, surveys, upcoming Dresden council decisions) at EU,
+   Bund, Sachsen and Dresden level, taken inside the app. The original
+   brief/petition/anfrage model is superseded; see the status section of
+   `features/action-types.md` and `data/ingestion-pipeline.md`.
 
 7. **Feed has no hardcoded maximum and no surprise slot.**
    All actions scoring ≥ 0.2 are shown. See `features/feed.md`.
@@ -63,16 +65,17 @@ specs/
 │   └── general-profile.md         ← Demographics, MdB lookup, letter context
 │
 ├── data/
-│   ├── sources-federal.md         ← AW, MdB statements; topic sourcing being
-│   │                                 redesigned (Tavily search, was DIP)
-│   ├── ingestion-pipeline.md      ← Trigger-based (was daily); pipeline being
-│   │                                 redesigned, was DIP-sourced
+│   ├── sources-federal.md         ← AW, MdB statements (topic sourcing there
+│   │                                 is outdated: see ingestion-pipeline.md)
+│   ├── ingestion-pipeline.md      ← Registries + Dresden OParl -> steps ->
+│   │                                 Mistral enrichment; trigger-based
 │   ├── database-schema.md         ← All PostgreSQL tables + pool view
 │   └── caching.md                 ← Redis server cache, Hive client cache
 │
 ├── features/
 │   ├── feed.md                    ← Scoring algorithm, assembly, display
-│   ├── action-types.md            ← Brief, petition, anfrage flows
+│   ├── action-types.md            ← In-app action flow, "Fertig", decisions
+│   │                                 + letter pop-up (older flows below it)
 │   ├── letter-generation.md       ← Streaming, prompts, placeholders, fallback
 │   ├── tracking.md                ← Tier 1 (DIP), Tier 2 (scraping+Tavily)
 │   └── gamification.md            ← Streak, badges, activity screen
@@ -98,8 +101,8 @@ specs/
 | Database | PostgreSQL via Supabase (EU region, Frankfurt) |
 | Cache | Redis via Fly.io managed |
 | AI | Mistral API (mistral-small for classification, mistral-medium for letters) |
-| Web search | Tavily API |
-| News | NewsData.io (free tier) |
+| Web search | Not used for sourcing (Tavily retired); Mistral web search under consideration for "Wirkung" |
+| News | Not wired (NewsData.io client unused) |
 | Streaming | HTTP SSE — not WebSocket |
 | Push | FCM (Android) + APNS (iOS) — anonymous tokens only |
 | Payments | Not active in MVP |
@@ -150,7 +153,11 @@ The backend stores ONLY these tables. Nothing else.
 | SSE over WebSocket | One-way stream, simpler, stateless | streaming.md |
 | No user accounts in MVP | Reduces complexity, GDPR clean | authentication.md |
 | Demographic fields sent transiently | Enables real personalisation without Art. 9 issues | dsgvo.md |
-| No EU consultations | Aufwand-Nutzen not justified for MVP | sources-federal.md |
+| ~~No EU consultations~~ (superseded: EU "Have your say" is a source) | | ingestion-pipeline.md |
+| Read registries, not search | Search results were stale and random | ingestion-pipeline.md |
+| Dresden council decisions via OParl; Landtag on roadmap | Official API; Landtag blocks crawling | ingestion-pipeline.md |
+| Actions taken inside the app, "Fertig" marks done | Keep people in the app; no extra question | action-types.md |
+| In-app browser native only | All action sites block framing | action-types.md |
 | No max feed size | All relevant actions shown above threshold | feed.md |
 | No surprise slot | Simplifies feed logic, V2 feature | feed.md |
 | MdB statements explicit not-found | Honest communication over false impressions | tracking.md |
