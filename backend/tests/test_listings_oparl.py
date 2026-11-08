@@ -22,6 +22,7 @@ from meinimpact.infrastructure.listings.sources.oparl import (
     OParlDetailReader,
     OParlSource,
     build_listings,
+    choose_recipient_bodies,
     paper_document,
     parse_agenda_page,
     pdf_text,
@@ -112,7 +113,14 @@ _OBJECTS: Mapping[str, Mapping[str, Any]] = {
     "/bodies/0001/consultations/104": _consultation(104, "2", "beschließend"),
     "/bodies/0001/consultations/106": _consultation(106, "31000", "beschließend"),
     "/bodies/0001/consultations/107": _consultation(107, "31199", "beschließend"),
-    "/bodies/0001/papers/vo/30796": {"paperType": "Petition"},
+    "/bodies/0001/papers/vo/30796": {
+        "paperType": "Petition",
+        # Embedded as served: the committee prepares, the council decides
+        "consultation": [
+            {"organization": [f"{_BODY}/organizations/gr/157"], "role": "beratend"},
+            {"organization": [f"{_BODY}/organizations/gr/1"], "role": "beschließend"},
+        ],
+    },
     "/bodies/0001/papers/vo/31000": {"paperType": "Vorlage STB Blasewitz"},
 }
 
@@ -178,6 +186,25 @@ async def test_one_listing_per_upcoming_paper_with_the_deciding_meeting() -> Non
     assert (
         by_id["vo/31000"].summary == "Stadtbezirksbeirat Blasewitz entscheidet darüber."
     )
+    # A council item's letter goes to the committee that prepares it; a
+    # district item's to the district council itself
+    organizations = "https://oparl.dresden.de/bodies/0001/organizations/gr"
+    assert windrad.recipient_bodies == (f"{organizations}/157",)
+    assert by_id["vo/31000"].recipient_bodies == (f"{organizations}/167",)
+
+
+def test_council_item_without_a_committee_goes_to_the_council() -> None:
+    council = "https://x/organizations/gr/1"
+    names = {
+        council: "Stadtrat",
+        "https://x/gr/90": "Integrations- und Ausländerbeirat",
+    }
+
+    bodies = choose_recipient_bodies(
+        council, "Stadtrat", [council, "https://x/gr/90"], names, DRESDEN
+    )
+
+    assert bodies == (council,)
 
 
 async def test_skips_past_cancelled_and_out_of_scope_meetings_cheaply() -> None:

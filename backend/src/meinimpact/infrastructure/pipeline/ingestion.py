@@ -66,6 +66,8 @@ class IngestionSummary:
     deactivated: int = 0
     enriched: int = 0
     relevant: int = 0
+    # Council members stored by the weekly member sync; 0 when it did not run
+    council_members: int = 0
     failed_sources: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
 

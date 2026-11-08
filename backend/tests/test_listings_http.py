@@ -167,3 +167,46 @@ async def test_context_manager_closes_owned_client() -> None:
     async with PoliteHttpClient() as client:
         inner = client._client
     assert inner.is_closed
+
+
+def _flaky(failures: int) -> Callable[[httpx.Request], httpx.Response]:
+    """Drops the connection on the first `failures` page requests."""
+    remaining = [failures]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/robots.txt":
+            return httpx.Response(404)
+        if remaining[0] > 0:
+            remaining[0] -= 1
+            raise httpx.RemoteProtocolError("Server disconnected", request=request)
+        return httpx.Response(200, text="page")
+
+    return handler
+
+
+async def test_a_dropped_get_is_retried_after_a_pause() -> None:
+    time = FakeTime()
+    client, seen = _client(_flaky(2), time)
+
+    response = await client.get("https://example.org/page")
+
+    assert response.text == "page"
+    assert [r.url.path for r in seen].count("/page") == 3
+    # Growing pauses (10 s, then 20 s) before the retries
+    assert time.sleeps[-2:] == [10.0, 20.0]
+
+
+async def test_a_get_that_keeps_failing_raises() -> None:
+    client, _ = _client(_flaky(3))
+
+    with pytest.raises(httpx.RemoteProtocolError):
+        await client.get("https://example.org/page")
+
+
+async def test_posts_are_never_retried() -> None:
+    client, seen = _client(_flaky(1))
+
+    with pytest.raises(httpx.RemoteProtocolError):
+        await client.post_form("https://example.org/page", data={"q": "x"})
+
+    assert [r.url.path for r in seen].count("/page") == 1

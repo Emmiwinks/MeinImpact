@@ -1,4 +1,5 @@
 import '../../../core/network/api_client.dart';
+import '../domain/letter_recipients.dart';
 import '../domain/mdb.dart';
 import '../domain/opportunity.dart';
 import '../domain/opportunity_repository.dart';
@@ -35,6 +36,13 @@ class RemoteOpportunityRepository implements OpportunityRepository {
       if (e.statusCode == 404) return const [];
       rethrow;
     }
+  }
+
+  @override
+  Future<LetterRecipients> letterRecipients(String opportunityId) async {
+    final response =
+        await _apiClient.getJson('/v1/opportunities/$opportunityId/recipients');
+    return LetterRecipients.fromJson(response);
   }
 
   @override

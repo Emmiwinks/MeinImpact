@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meinimpact/src/app/meinimpact_app.dart';
+import 'package:meinimpact/src/features/feed/domain/letter_recipients.dart';
 import 'package:meinimpact/src/features/feed/domain/mdb.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity_repository.dart';
@@ -112,6 +113,10 @@ class _PoolRepository implements OpportunityRepository {
   @override
   Stream<String> streamLetter(String opportunityId, {String? notes}) =>
       const Stream.empty();
+
+  @override
+  Future<LetterRecipients> letterRecipients(String opportunityId) async =>
+      const LetterRecipients();
 }
 
 class _EmptyRepository implements OpportunityRepository {
@@ -124,6 +129,10 @@ class _EmptyRepository implements OpportunityRepository {
   @override
   Stream<String> streamLetter(String opportunityId, {String? notes}) =>
       const Stream.empty();
+
+  @override
+  Future<LetterRecipients> letterRecipients(String opportunityId) async =>
+      const LetterRecipients();
 }
 
 class _FailingRepository implements OpportunityRepository {
@@ -138,4 +147,8 @@ class _FailingRepository implements OpportunityRepository {
   @override
   Stream<String> streamLetter(String opportunityId, {String? notes}) =>
       const Stream.empty();
+
+  @override
+  Future<LetterRecipients> letterRecipients(String opportunityId) async =>
+      const LetterRecipients();
 }

@@ -252,6 +252,26 @@ class OpportunityResponse(BaseModel):
         )
 
 
+class RecipientMemberResponse(BaseModel):
+    name: str
+    fraktion: str | None
+
+
+class RecipientOfficeResponse(BaseModel):
+    fraktion: str
+    email: str | None
+
+
+class RecipientsResponse(BaseModel):
+    """Who a letter about a council decision goes to. `offices` is empty for
+    district and village councils (names only for now) and when no members
+    are known yet; the app then leaves "An" to the user."""
+
+    bodies: list[str]
+    members: list[RecipientMemberResponse]
+    offices: list[RecipientOfficeResponse]
+
+
 class OpportunityPoolResponse(BaseModel):
     """All open opportunities. Ordering is not meaningful server-side; the
     device ranks on-device (Betroffenheitsprofil match, then Werteprofil

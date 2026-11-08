@@ -20,6 +20,9 @@ from meinimpact.infrastructure.ai.mistral_client import MistralTextGenerator
 from meinimpact.infrastructure.beta.postgres_beta_repository import (
     PostgresBetaTokenRepository,
 )
+from meinimpact.infrastructure.council.postgres_council_repository import (
+    PostgresCouncilRepository,
+)
 from meinimpact.infrastructure.database import Database
 from meinimpact.infrastructure.feedback.postgres_feedback_repository import (
     PostgresFeedbackRepository,
@@ -113,6 +116,13 @@ def get_opportunity_repository(
 ) -> repositories.OpportunityRepository:
     """Returns the PostgreSQL-backed opportunity repository."""
     return PostgresOpportunityRepository(session)
+
+
+def get_council_repository(
+    session: AsyncSession = Depends(get_db_session),
+) -> PostgresCouncilRepository:
+    """Returns the PostgreSQL-backed council member repository."""
+    return PostgresCouncilRepository(session)
 
 
 def get_action_stats_repository(

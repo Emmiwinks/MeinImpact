@@ -1,3 +1,4 @@
+import 'letter_recipients.dart';
 import 'mdb.dart';
 import 'opportunity.dart';
 
@@ -16,4 +17,7 @@ abstract interface class OpportunityRepository {
   /// [notes] is what the user typed for the AI; nothing from the profile is
   /// sent.
   Stream<String> streamLetter(String opportunityId, {String? notes});
+
+  /// Who a letter about a council decision goes to.
+  Future<LetterRecipients> letterRecipients(String opportunityId);
 }

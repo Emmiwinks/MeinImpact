@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meinimpact/l10n/app_localizations.dart';
 import 'package:meinimpact/src/features/feed/domain/interest_weights.dart';
+import 'package:meinimpact/src/features/feed/domain/letter_recipients.dart';
 import 'package:meinimpact/src/features/feed/domain/mdb.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity_repository.dart';
@@ -155,6 +156,83 @@ void main() {
       expect(result, isTrue);
     });
 
+    testWidgets('offices are pre-selected and can be unticked', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: LetterScreen(
+            opportunity: _decision(),
+            repository: _LetterRepository(
+              recipients: const LetterRecipients(
+                bodies: ['Ausschuss für Stadtentwicklung'],
+                members: [
+                  CouncilMember(name: 'Anton Amsel', fraktion: 'CDU-Fraktion'),
+                  CouncilMember(name: 'Bea Berg', fraktion: 'SPD-Fraktion'),
+                ],
+                offices: [
+                  FraktionOffice(
+                    fraktion: 'CDU-Fraktion',
+                    email: 'cdu-fraktion@dresden.de',
+                  ),
+                  FraktionOffice(fraktion: 'Neue Fraktion'),
+                  FraktionOffice(
+                    fraktion: 'SPD-Fraktion',
+                    email: 'spd-fraktion@dresden.de',
+                  ),
+                ],
+              ),
+            ),
+            onViewPaper: () {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final boxes = tester
+          .widgetList<CheckboxListTile>(find.byType(CheckboxListTile))
+          .toList();
+      expect([for (final b in boxes) b.value], [true, false, true]);
+      // An office without a known address cannot be ticked
+      expect(boxes[1].onChanged, isNull);
+      expect(find.text('Adresse fehlt noch'), findsOneWidget);
+      expect(
+        find.text('Mitglieder: Ausschuss für Stadtentwicklung (2)'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('SPD-Fraktion'));
+      await tester.pump();
+
+      expect(
+        tester
+            .widgetList<CheckboxListTile>(find.byType(CheckboxListTile))
+            .last
+            .value,
+        isFalse,
+      );
+    });
+
+    testWidgets('district councils show names and no addresses',
+        (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: LetterScreen(
+            opportunity: _decision(),
+            repository: _LetterRepository(
+              recipients: const LetterRecipients(
+                bodies: ['Stadtbezirksbeirat Blasewitz'],
+                members: [CouncilMember(name: 'Carla Cron')],
+              ),
+            ),
+            onViewPaper: () {},
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CheckboxListTile), findsNothing);
+      expect(find.textContaining('noch keine Adressen'), findsOneWidget);
+    });
+
     testWidgets('a failed draft leaves the field to write by hand',
         (tester) async {
       await tester.pumpWidget(
@@ -291,11 +369,20 @@ class _HarnessState extends State<_Harness> {
 }
 
 class _LetterRepository implements OpportunityRepository {
-  _LetterRepository({this.opportunities = const [], this.fail = false});
+  _LetterRepository({
+    this.opportunities = const [],
+    this.fail = false,
+    this.recipients = const LetterRecipients(),
+  });
 
   final List<Opportunity> opportunities;
   final bool fail;
+  final LetterRecipients recipients;
   String? notes;
+
+  @override
+  Future<LetterRecipients> letterRecipients(String opportunityId) async =>
+      recipients;
 
   @override
   Future<List<Opportunity>> pool() async => opportunities;

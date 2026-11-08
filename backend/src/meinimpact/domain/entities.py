@@ -94,6 +94,8 @@ class Opportunity:
     support_goal: int | None
     support_count_as_of: datetime | None
     first_seen_at: datetime
+    # Decisions: OParl bodies whose members a letter goes to
+    recipient_bodies: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

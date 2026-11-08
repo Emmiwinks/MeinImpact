@@ -6,6 +6,10 @@ Crawling rules live here, once, instead of in each source:
 - Requests to the same host are serialized and spaced by the host's
   Crawl-delay (or a default), so concurrent sources on one host stay polite.
 - One honest User-Agent for all requests.
+- A GET that fails on the connection (dropped, timed out) is retried a few
+  times with growing pauses; long walks over slow servers (OParl: ~200
+  requests) otherwise fail on a single hiccup. Error statuses are answers,
+  not hiccups, and are never retried.
 """
 
 import asyncio
@@ -32,6 +36,8 @@ class CrawlPolicy:
     user_agent: str = "MeinImpactBot/0.1 (civic participation index)"
     default_delay_s: float = 1.0
     timeout_s: float = 30.0
+    get_retries: int = 2
+    retry_backoff_s: float = 10.0
 
 
 @dataclass(slots=True)
@@ -109,14 +115,26 @@ class PoliteHttpClient:
         host = await self._host_state(url)
         if not host.robots.can_fetch(self._policy.user_agent, url):
             raise RobotsDisallowedError(f"robots.txt disallows {url}")
+        retries = self._policy.get_retries if method == "GET" else 0
         async with host.lock:
-            await self._wait_turn(host)
-            try:
-                response = await self._client.request(
-                    method, url, params=params, data=data, headers=headers
-                )
-            finally:
-                host.next_allowed_at = self._clock() + host.delay_s
+            for attempt in range(retries + 1):
+                await self._wait_turn(host)
+                try:
+                    response = await self._client.request(
+                        method, url, params=params, data=data, headers=headers
+                    )
+                    break
+                except httpx.TransportError:
+                    if attempt == retries:
+                        raise
+                    host.next_allowed_at = (
+                        self._clock() + self._policy.retry_backoff_s * (attempt + 1)
+                    )
+                    continue
+                finally:
+                    host.next_allowed_at = max(
+                        host.next_allowed_at, self._clock() + host.delay_s
+                    )
         response.raise_for_status()
         return response
 

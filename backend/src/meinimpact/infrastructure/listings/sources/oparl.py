@@ -15,12 +15,16 @@ consultations of upcoming meetings in scope.
 
 The paper's text lives in PDFs; `OParlDetailReader` extracts it for
 enrichment only for new or changed listings.
+
+Each decision also names the bodies a letter about it goes to: the body
+that meets on it, or for a Stadtrat item the committees in the paper's
+consultation chain, which prepare the vote (`recipient_bodies`).
 """
 
 import io
 import re
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
 from typing import Any
 
@@ -48,7 +52,8 @@ class OParlBody:
     carries no human-facing link. `bodies` are regexes over organization
     names: only meetings of matching bodies are read (the city council and
     its committees, district and village councils; not advisory boards or
-    party groups).
+    party groups). `council` is the full council's name and `committees`
+    match its committees, for choosing a letter's recipients.
     """
 
     source_id: str
@@ -57,6 +62,8 @@ class OParlBody:
     locality: str
     paper_web_url: str
     bodies: tuple[str, ...]
+    council: str
+    committees: tuple[str, ...]
 
 
 DRESDEN = OParlBody(
@@ -72,6 +79,8 @@ DRESDEN = OParlBody(
         r"^Stadtbezirksbeirat ",
         r"^Ortschaftsrat ",
     ),
+    council="Stadtrat",
+    committees=(r"^Ausschuss ", r"ausschuss$"),
 )
 
 
@@ -153,18 +162,54 @@ class Candidate:
     consultation: Consultation
 
 
-def build_listings(
-    candidates: Sequence[Candidate], body: OParlBody, *, observed_at: datetime
-) -> list[Listing]:
-    """One listing per paper. A paper on several upcoming agendas (committee,
-    then council) gets the next deciding meeting as its deadline, else the
-    next advisory one."""
+def best_candidates(candidates: Sequence[Candidate]) -> list[Candidate]:
+    """One candidate per paper. A paper on several upcoming agendas
+    (committee, then council) keeps the next deciding meeting, else the next
+    advisory one."""
     best: dict[str, Candidate] = {}
     for candidate in candidates:
         current = best.get(candidate.consultation.paper_url)
         if current is None or _rank(candidate) < _rank(current):
             best[candidate.consultation.paper_url] = candidate
-    return [_listing(c, body, observed_at=observed_at) for c in best.values()]
+    return list(best.values())
+
+
+def build_listings(
+    candidates: Sequence[Candidate], body: OParlBody, *, observed_at: datetime
+) -> list[Listing]:
+    """One listing per paper, see `best_candidates`."""
+    return [
+        _listing(c, body, observed_at=observed_at) for c in best_candidates(candidates)
+    ]
+
+
+def consultation_bodies(paper: Mapping[str, Any]) -> list[str]:
+    """Every organization in a paper's consultation chain, in order."""
+    return [
+        https(str(organization))
+        for consultation in paper.get("consultation") or []
+        if isinstance(consultation, dict)
+        for organization in consultation.get("organization") or []
+    ]
+
+
+def choose_recipient_bodies(
+    meeting_body_url: str,
+    meeting_body_name: str,
+    chain: Iterable[str],
+    names: Mapping[str, str],
+    body: OParlBody,
+) -> tuple[str, ...]:
+    """Whose members a letter goes to: the body that meets on the paper, or
+    for a full-council item the committees in its chain (never the whole
+    council while a committee prepares the vote)."""
+    if meeting_body_name != body.council:
+        return (meeting_body_url,)
+    patterns = [re.compile(p) for p in body.committees]
+    committees = dict.fromkeys(
+        url for url in chain if any(p.search(names.get(url, "")) for p in patterns)
+    )
+    return tuple(committees) or (meeting_body_url,)
 
 
 def _rank(candidate: Candidate) -> tuple[bool, date]:
@@ -211,6 +256,7 @@ class OParlSource:
         self._lookback_days = lookback_days
         self._max_pages = max_pages
         self._body_patterns = tuple(re.compile(p) for p in body.bodies)
+        self._names: dict[str, str] = {}
 
     @property
     def source_id(self) -> str:
@@ -225,7 +271,6 @@ class OParlSource:
         items = await self._recent_agenda_items(observed_at)
 
         meetings: dict[str, Meeting | None] = {}
-        body_names: dict[str, str] = {}
         candidates: list[Candidate] = []
         for item in items:
             if item.meeting_url not in meetings:
@@ -233,11 +278,7 @@ class OParlSource:
             meeting = meetings[item.meeting_url]
             if meeting is None or meeting.start < today or not meeting.organization_url:
                 continue
-            if meeting.organization_url not in body_names:
-                body_names[meeting.organization_url] = await self._body_name(
-                    meeting.organization_url
-                )
-            body_name = body_names[meeting.organization_url]
+            body_name = await self._body_name(meeting.organization_url)
             if not self._in_scope(body_name):
                 continue
             consultation = parse_consultation(
@@ -246,20 +287,38 @@ class OParlSource:
             if consultation is not None:
                 candidates.append(Candidate(item, meeting, body_name, consultation))
 
-        listings = build_listings(candidates, self._body, observed_at=observed_at)
-        return [listing for listing in listings if await self._is_public(listing)]
+        listings: list[Listing] = []
+        for candidate in best_candidates(candidates):
+            listing = _listing(candidate, self._body, observed_at=observed_at)
+            paper = await self._paper(listing)
+            if paper is None:
+                continue
+            chain = consultation_bodies(paper)
+            for url in chain:
+                await self._body_name(url)
+            bodies = choose_recipient_bodies(
+                str(candidate.meeting.organization_url),
+                candidate.body_name,
+                chain,
+                self._names,
+                self._body,
+            )
+            listings.append(replace(listing, recipient_bodies=bodies))
+        return listings
 
-    async def _is_public(self, listing: Listing) -> bool:
-        """Non-public papers (seen live: contract awards) sit on public
-        agendas, but OParl answers 404 for them and the web link shows only
-        an error page."""
+    async def _paper(self, listing: Listing) -> Mapping[str, Any] | None:
+        """None for non-public papers (seen live: contract awards): they sit
+        on public agendas, but OParl answers 404 for them and the web link
+        shows only an error page."""
         try:
-            await self._http.get(f"{self._body.body_url}/papers/{listing.external_id}")
+            response = await self._http.get(
+                f"{self._body.body_url}/papers/{listing.external_id}"
+            )
         except httpx.HTTPStatusError as error:
             if error.response.status_code == 404:
-                return False
+                return None
             raise
-        return True
+        return response.json()  # type: ignore[no-any-return]
 
     async def _recent_agenda_items(self, observed_at: datetime) -> list[AgendaItem]:
         since = (observed_at - timedelta(days=self._lookback_days)).isoformat()
@@ -279,8 +338,10 @@ class OParlSource:
         return parse_meeting((await self._http.get(url)).json())
 
     async def _body_name(self, url: str) -> str:
-        payload = (await self._http.get(url)).json()
-        return clean_text(str(payload.get("name") or ""))
+        if url not in self._names:
+            payload = (await self._http.get(url)).json()
+            self._names[url] = clean_text(str(payload.get("name") or ""))
+        return self._names[url]
 
     def _in_scope(self, body_name: str) -> bool:
         return any(p.search(body_name) for p in self._body_patterns)

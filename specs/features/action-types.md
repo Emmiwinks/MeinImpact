@@ -69,7 +69,22 @@ Decided with the user for the MVP:
   letter argues the user's stance; without notes it stays neutral. It
   never invents facts about the person nor states their gender (an
   optional gender setting was discussed and left out for now).
-  Recipients from OParl memberships are the next step.
+- **Letter recipients (built 2026-11-09, replaces the per-person plan
+  below):** OParl rarely carries personal emails (1 of 10 current
+  Stadträte sampled), so a letter goes to the **Fraktion offices** of the
+  members of the responsible body, one address per Fraktion, all
+  pre-selected, alphabetical, untickable; never personal addresses, even
+  where known (equal treatment). The responsible body: the body meeting on
+  the paper; for a Stadtrat item the committees in the paper's
+  consultation chain, else the Stadtrat itself (`recipient_bodies`, set by
+  the OParl source). Members come from a weekly OParl people walk
+  (`council_members`, ~10 min, run inside ingestion when older than 7
+  days); office addresses from a hand-made table
+  (`infrastructure/council/offices.py`; a Fraktion without an address
+  shows as "Adresse fehlt noch" and is reported on /admin).
+  Stadtbezirksbeirat/Ortschaftsrat items: member names only, no addresses
+  yet. `GET /v1/opportunities/{id}/recipients`. The Wahlkreis option
+  below is not built.
 - **Decisions get an AI-drafted letter in a pop-up** (to the members of
   the deciding body), sent from the same in-app flow, then "Fertig". The
   letter generator still runs on the old `/v1/actions` stack and has to be
@@ -92,7 +107,10 @@ Decided with the user for the MVP:
   - *Sending:* one email from the user's own mail app with all selected
     recipients openly in "An", then "Fertig".
 - **MeinImpact still never sends or signs on the user's behalf.**
-- **Roadmap, not MVP:** auto-filling forms on action sites (per-site fill
+- **Roadmap, not MVP:** an optional gender/pronouns setting in the
+  profile, used only for letters (on device, sent only with a letter
+  request; unset keeps today's gender-neutral wording);
+  auto-filling forms on action sites (per-site fill
   rules, needs name/email stored on device: a deliberate decision);
   actions that need leaving the house (demos, Einwohnerfragestunde);
   Landtag Sachsen decisions; Bundestag decisions (low expected impact).

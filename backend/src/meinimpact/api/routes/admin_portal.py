@@ -338,6 +338,7 @@ _SUMMARY_LABELS = (
     ("deactivated", "deaktiviert"),
     ("enriched", "angereichert"),
     ("relevant", "relevant"),
+    ("council_members", "Ratsmitglieder"),
 )
 
 

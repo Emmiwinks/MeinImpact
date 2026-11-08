@@ -207,6 +207,7 @@ def _apply_facts(
     record.registry_title = listing.title
     record.registry_summary = listing.summary
     record.source_labels = list(listing.source_labels)
+    record.recipient_bodies = list(listing.recipient_bodies)
     record.opens_on = listing.opens_on
     record.closes_on = listing.closes_on
     if listing.support.count is not None:
@@ -244,4 +245,5 @@ def _to_domain(record: OpportunityRecord) -> Opportunity:
         support_goal=record.support_goal,
         support_count_as_of=record.support_count_as_of,
         first_seen_at=record.first_seen_at,
+        recipient_bodies=tuple(record.recipient_bodies),
     )

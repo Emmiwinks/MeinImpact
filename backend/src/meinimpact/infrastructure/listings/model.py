@@ -78,6 +78,9 @@ class Listing:
     closes_on: date | None = None
     support: Support = field(default_factory=Support)
     source_labels: tuple[str, ...] = ()
+    # Decisions only: the bodies (OParl organization URLs) whose members a
+    # letter about this listing goes to
+    recipient_bodies: tuple[str, ...] = ()
 
     @property
     def key(self) -> tuple[str, str]:

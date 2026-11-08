@@ -163,6 +163,10 @@ class OpportunityRecord(Base):
     source_labels: Mapped[list[str]] = mapped_column(
         ARRAY(Text()), nullable=False, server_default="{}"
     )
+    # Decisions: OParl organization URLs whose members a letter goes to
+    recipient_bodies: Mapped[list[str]] = mapped_column(
+        ARRAY(Text()), nullable=False, server_default="{}"
+    )
     opens_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     closes_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     support_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -220,6 +224,26 @@ class OpportunityRecord(Base):
     personal_impact_snippets: Mapped[dict[str, str]] = mapped_column(
         JSONB, nullable=False, server_default="{}"
     )
+
+
+class CouncilMemberRecord(Base):
+    """A current voting member of a council body, with their Fraktion.
+
+    Read from OParl and replaced wholesale per source on every sync. Only
+    public facts about office holders: name, body, Fraktion.
+    """
+
+    __tablename__ = "council_members"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    source_id: Mapped[str] = mapped_column(String(length=60), nullable=False)
+    organization_url: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    organization_name: Mapped[str] = mapped_column(Text, nullable=False)
+    person_url: Mapped[str] = mapped_column(Text, nullable=False)
+    person_name: Mapped[str] = mapped_column(Text, nullable=False)
+    fraktion_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    fraktion_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    synced_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class SupportSnapshotRecord(Base):
