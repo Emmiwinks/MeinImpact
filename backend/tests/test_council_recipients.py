@@ -267,7 +267,12 @@ async def test_member_sync_runs_at_most_weekly() -> None:
 async def test_member_sync_reports_fraktionen_without_an_office(
     monkeypatch: Any,
 ) -> None:
-    members = [_member("A", "Neue Fraktion"), _member("B", None)]
+    members = [
+        _member("A", "Neue Fraktion"),
+        _member("B", None),
+        # Left open in OParl, but only on a district council: not reported
+        _member("C", "Alte Fraktion", body="Stadtbezirksbeirat Cotta"),
+    ]
 
     async def fake_fetch(*_: Any, **__: Any) -> list[CouncilMember]:
         return members
@@ -286,7 +291,7 @@ async def test_member_sync_reports_fraktionen_without_an_office(
     )
 
     assert repository.replaced == members
-    assert summary.council_members == 2
+    assert summary.council_members == 3
     assert summary.errors == ["Fraktion ohne Büro-Adresse: Neue Fraktion"]
 
 

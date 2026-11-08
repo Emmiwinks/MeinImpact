@@ -36,12 +36,17 @@ class Recipients:
     offices: list[Office]
 
 
+def is_local_body(name: str) -> bool:
+    """District and village councils: letters list names only."""
+    return bool(_LOCAL_BODY.match(name))
+
+
 def resolve_recipients(
     members: Sequence[CouncilMember], offices: Mapping[str, str]
 ) -> Recipients:
     bodies = sorted({m.organization_name for m in members})
     people = {m.person_url: m for m in members}.values()
-    local = bool(bodies) and all(_LOCAL_BODY.match(b) for b in bodies)
+    local = bool(bodies) and all(is_local_body(b) for b in bodies)
     # Keyed by address, so a Fraktion listed under two OParl ids (renamed)
     # gets one entry; unknown addresses stay apart per Fraktion
     by_address: dict[str, Office] = {}

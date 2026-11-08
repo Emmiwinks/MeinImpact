@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_email_sender/flutter_email_sender.dart';
 
 import '../domain/letter_recipients.dart';
 import '../domain/opportunity.dart';
@@ -10,13 +10,14 @@ import 'widgets/done_bar.dart';
 
 /// The letter to the members of a body about to vote on a council decision:
 /// the user's notes for the AI, the drafted letter (editable), then their
-/// own mail app. Pops with true when the user taps "Fertig". MeinImpact
-/// never sends anything itself.
+/// own mail app. Pops with true when the user taps "Fertig" (or iOS reports
+/// the mail as sent). MeinImpact never sends anything itself.
 class LetterScreen extends StatefulWidget {
   const LetterScreen({
     required this.opportunity,
     required this.repository,
     required this.onViewPaper,
+    this.sendMail = FlutterEmailSender.send,
     super.key,
   });
 
@@ -24,6 +25,8 @@ class LetterScreen extends StatefulWidget {
   final OpportunityRepository repository;
   // Opens the Ratsvorlage itself (in-app browser or new tab).
   final VoidCallback onViewPaper;
+  // The platform mail composer; replaceable in tests.
+  final Future<EmailSendResult> Function(Email email) sendMail;
 
   /// Opens the letter for [opportunity]; true when the user marked it done.
   static Future<bool> open(
@@ -115,12 +118,30 @@ class _LetterScreenState extends State<LetterScreen> {
 
   String get _subject => 'Ratsvorlage: ${widget.opportunity.title}';
 
+  // The platform composer: inside the app on iOS (Apple Mail account), an
+  // email app on Android that hands back to us after sending, `mailto:`
+  // elsewhere. Only iOS reports a sent mail; that counts as "Fertig".
   Future<void> _openMailApp() async {
-    // Built by hand: Uri.queryParameters encodes spaces as "+", which mail
-    // apps show literally.
-    final query = 'subject=${Uri.encodeComponent(_subject)}'
-        '&body=${Uri.encodeComponent(_letter.text.trim())}';
-    await launchUrl(Uri.parse('mailto:${_to.join(',')}?$query'));
+    final EmailSendResult result;
+    try {
+      result = await widget.sendMail(
+        Email(subject: _subject, body: _letter.text.trim(), recipients: _to),
+      );
+    } on FlutterEmailSenderNotAvailableException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Keine Mail-App gefunden. Kopiere Brief und Adressen in dein '
+            'Webmail.',
+          ),
+        ),
+      );
+      return;
+    }
+    if (result == EmailSendResult.sent && mounted) {
+      Navigator.of(context).pop(true);
+    }
   }
 
   // Selected addresses in the offices' (alphabetical) order, all openly in

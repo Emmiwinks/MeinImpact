@@ -33,6 +33,7 @@ from meinimpact.infrastructure.pipeline.ingestion import (
     IngestionSummary,
     run_ingestion,
 )
+from meinimpact.services.recipients import is_local_body
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +95,9 @@ async def sync_council_members(
 ) -> None:
     """Refreshes the members letters go to, at most once a week (a full
     OParl walk takes about ten minutes). Fraktionen without a known office
-    address are reported on the admin page."""
+    address are reported on the admin page, unless their members only sit
+    on district and village councils, where letters list names only (seen
+    live: Fraktionen dissolved in 2024 that OParl still shows there)."""
     last = await repository.last_synced(body.source_id)
     if last is not None and now - last < MEMBER_SYNC_INTERVAL:
         return
@@ -105,7 +108,9 @@ async def sync_council_members(
         {
             m.fraktion_name or m.fraktion_url
             for m in members
-            if m.fraktion_url and m.fraktion_url not in FRAKTION_OFFICES
+            if m.fraktion_url
+            and m.fraktion_url not in FRAKTION_OFFICES
+            and not is_local_body(m.organization_name)
         }
     )
     summary.errors.extend(f"Fraktion ohne Büro-Adresse: {name}" for name in unknown)

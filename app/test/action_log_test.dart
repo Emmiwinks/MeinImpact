@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_email_sender/flutter_email_sender.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meinimpact/l10n/app_localizations.dart';
@@ -209,6 +210,98 @@ void main() {
             .value,
         isFalse,
       );
+    });
+
+    group('Mail-App', () {
+      Future<bool?> openAndSend(
+        WidgetTester tester,
+        Future<EmailSendResult> Function(Email) sendMail,
+      ) async {
+        bool? result;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Builder(
+              builder: (context) => TextButton(
+                onPressed: () async =>
+                    result = await Navigator.of(context).push<bool>(
+                  MaterialPageRoute(
+                    builder: (_) => LetterScreen(
+                      opportunity: _decision(),
+                      repository: _LetterRepository(
+                        recipients: const LetterRecipients(
+                          offices: [
+                            FraktionOffice(
+                              fraktion: 'CDU-Fraktion',
+                              email: 'cdu-fraktion@dresden.de',
+                            ),
+                            FraktionOffice(
+                              fraktion: 'SPD-Fraktion',
+                              email: 'spd-fraktion@dresden.de',
+                            ),
+                          ],
+                        ),
+                      ),
+                      onViewPaper: () {},
+                      sendMail: sendMail,
+                    ),
+                  ),
+                ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        );
+        await tester.tap(find.text('open'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Brief erstellen'));
+        await tester.pumpAndSettle();
+        await tester.dragUntilVisible(
+          find.text('Mail-App'),
+          find.byType(ListView),
+          const Offset(0, -200),
+        );
+        await tester.tap(find.text('Mail-App'));
+        await tester.pumpAndSettle();
+        return result;
+      }
+
+      testWidgets('carries letter and offices; a sent mail counts as Fertig',
+          (tester) async {
+        Email? sent;
+        final result = await openAndSend(tester, (email) async {
+          sent = email;
+          return EmailSendResult.sent;
+        });
+
+        expect(sent!.recipients, [
+          'cdu-fraktion@dresden.de',
+          'spd-fraktion@dresden.de',
+        ]);
+        expect(sent!.subject, 'Ratsvorlage: Soll der Radweg gebaut werden?');
+        expect(sent!.body, startsWith('Sehr geehrte Damen und Herren,'));
+        expect(result, isTrue);
+      });
+
+      testWidgets('an unknown outcome leaves Fertig to the user',
+          (tester) async {
+        final result = await openAndSend(
+          tester,
+          (_) async => EmailSendResult.unknown,
+        );
+
+        expect(result, isNull);
+        expect(find.text('Fertig'), findsOneWidget);
+      });
+
+      testWidgets('without a mail app the user is pointed to copying',
+          (tester) async {
+        await openAndSend(
+          tester,
+          (_) async => throw const FlutterEmailSenderNotAvailableException(),
+        );
+
+        expect(find.textContaining('Keine Mail-App gefunden'), findsOneWidget);
+      });
     });
 
     testWidgets('district councils show names and no addresses',
