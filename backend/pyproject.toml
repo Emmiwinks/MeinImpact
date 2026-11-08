@@ -16,6 +16,7 @@ dependencies = [
     "httpx>=0.28.0",
     "pgvector>=0.3.6",
     "pydantic-settings>=2.6.0",
+    "pypdf>=5.1.0",
     "PyJWT>=2.10.0",
     "sqlalchemy[asyncio]>=2.0.36",
     "structlog>=24.4.0",

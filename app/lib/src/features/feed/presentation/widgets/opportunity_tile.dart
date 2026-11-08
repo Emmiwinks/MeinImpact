@@ -217,5 +217,9 @@ _SourceStyle _sourceStyle(String sourceOrg) => switch (sourceOrg) {
           AppColors.blueText,
           Icons.account_balance_outlined,
         ),
+      'Ratsinformationssystem Dresden' => const _SourceStyle(
+          AppColors.green,
+          Icons.gavel_outlined,
+        ),
       _ => const _SourceStyle(AppColors.mutedText, Icons.public_outlined),
     };

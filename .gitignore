@@ -8,6 +8,7 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 backend/.venv/
+backend/scripts/dryrun_output/
 
 # Environment and secrets
 .env

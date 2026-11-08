@@ -12,6 +12,7 @@ from meinimpact.infrastructure.listings.model import Region
 from meinimpact.infrastructure.listings.source import DetailReader, ListingSource
 from meinimpact.infrastructure.listings.sources import (
     eu_have_your_say,
+    oparl,
     openpetition,
     sachsen_beteiligung,
     weact,
@@ -19,6 +20,10 @@ from meinimpact.infrastructure.listings.sources import (
 from meinimpact.infrastructure.listings.sources.eu_have_your_say import (
     EuHaveYourSayDetailReader,
     EuHaveYourSaySource,
+)
+from meinimpact.infrastructure.listings.sources.oparl import (
+    OParlDetailReader,
+    OParlSource,
 )
 from meinimpact.infrastructure.listings.sources.openpetition import (
     OpenPetitionDetailReader,
@@ -42,6 +47,7 @@ SOURCE_NAMES: Mapping[str, str] = {
     sachsen_beteiligung.SOURCE_ID: "Beteiligungsportal Sachsen",
     eu_have_your_say.SOURCE_ID: "EU-Kommission: Ihre Meinung zählt",
     weact.SOURCE_ID: "WeAct",
+    oparl.DRESDEN.source_id: "Ratsinformationssystem Dresden",
 }
 
 
@@ -51,6 +57,7 @@ def default_sources(http: PoliteHttpClient) -> list[ListingSource]:
         SachsenBeteiligungSource(http),
         EuHaveYourSaySource(http),
         WeActSource(http),
+        OParlSource(http, oparl.DRESDEN),
     ]
 
 
@@ -63,4 +70,5 @@ def default_detail_readers(http: PoliteHttpClient) -> dict[str, DetailReader]:
     return {
         openpetition.SOURCE_ID: OpenPetitionDetailReader(http),
         eu_have_your_say.SOURCE_ID: EuHaveYourSayDetailReader(http),
+        oparl.DRESDEN.source_id: OParlDetailReader(http, oparl.DRESDEN),
     }

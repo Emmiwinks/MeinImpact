@@ -28,6 +28,7 @@ class ActionKind(StrEnum):
     PUBLIC_DISPLAY = "public_display"  # Öffentliche Auslegung (Bauleitplanung)
     SURVEY = "survey"
     EVENT = "event"
+    DECISION = "decision"  # upcoming council vote: write to its members
     NOTICE = "notice"  # Bekanntmachung, Beschluss: informational only
     OTHER = "other"
 

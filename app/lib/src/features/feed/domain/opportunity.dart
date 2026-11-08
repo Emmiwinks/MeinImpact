@@ -7,6 +7,8 @@ enum OpportunityKind {
   publicDisplay('public_display', 'Planauslegung', 'Plan ansehen & mitreden'),
   survey('survey', 'Umfrage', 'An Umfrage teilnehmen'),
   event('event', 'Veranstaltung', 'Zur Veranstaltung'),
+  // An upcoming council vote; closesOn is the meeting day.
+  decision('decision', 'Abstimmung im Rat', 'Vorlage ansehen'),
   notice('notice', 'Bekanntmachung', 'Zur Quelle'),
   other('other', 'Beteiligung', 'Zur Quelle');
 

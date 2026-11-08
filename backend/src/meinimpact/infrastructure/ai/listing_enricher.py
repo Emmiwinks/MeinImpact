@@ -45,7 +45,7 @@ from meinimpact.infrastructure.ai.taxonomy import (
 from meinimpact.infrastructure.geo.districts import DistrictMatcher
 from meinimpact.infrastructure.listings.model import Listing, Region
 
-ENRICHMENT_VERSION = "10"
+ENRICHMENT_VERSION = "12"
 
 
 _MAX_DETAIL_CHARS = 4000
@@ -168,7 +168,9 @@ eine öffentliche oder politische Entscheidung einwirken kann, z.B.:
 Petition unterschreiben, Stellungnahme/Einwendung zu einem Plan abgeben
 (z.B. Bebauungsplan-Auslegung), an einer Konsultation oder Bürgerumfrage zu
 öffentlicher Planung/Politik teilnehmen, an einem öffentlichen Bürgerdialog
-zu einem Vorhaben teilnehmen. Und das Thema muss für eine Privatperson
+zu einem Vorhaben teilnehmen, oder vor einer anstehenden Entscheidung im
+Stadtrat, einem Ausschuss, Stadtbezirks- oder Ortschaftsrat den Mitgliedern
+schreiben (Ratsvorlage). Und das Thema muss für eine Privatperson
 verständlich und nachvollziehbar relevant sein.
 is_participation = false z.B. bei: Immobilien-Besichtigungen oder
 -Verkäufen, Stellen- und Referentenausschreibungen, internen Schulungen oder
@@ -177,6 +179,22 @@ Informationsveranstaltungen nur für Fachgruppen, Förderprogramm-Infos,
 Bekanntmachungen ohne Beteiligungsmöglichkeit, Fachumfragen für bestimmte
 Branchen, hochtechnischen Rechtsakten ohne erkennbaren Bezug zum Alltag
 (z.B. Zulassungen einzelner Stoffe, Zollkontingente).
+
+Ratsvorlagen ("Art laut Quelle" beginnt mit "Ratsvorlage"): Hier ist die
+Beteiligungsmöglichkeit IMMER gegeben, denn man kann den Mitgliedern des
+Gremiums vor der Sitzung schreiben. Begründe false bei Ratsvorlagen NIE
+mit fehlender Beteiligungsmöglichkeit. Entscheide nur: Würden Menschen in
+der Stadt oder im Stadtteil die Folgen spüren oder darüber mitreden
+wollen? Dann true, auch bei Strategien, Haushalten und Satzungen, z.B.
+Haushaltssatzung, Schulbau-Strategie, Veränderungssperre für einen
+Bebauungsplan, Zukunft des städtischen Klinikums, Regeln für
+Stadtteilfeste, Umbau von Bahnübergängen, Schatten auf Spielplätzen.
+false nur bei Verwaltungsroutine: Vergaben und Ausschreibungen,
+Rahmenverträge für Beschaffung, Besetzung von Gremien,
+Mittelübertragungen ohne erkennbares Vorhaben, Jahresabschlüsse,
+Entschädigung von Ratsmitgliedern, Grundstücksgeschäfte, Personalien,
+reine Informationsvorlagen, Zuschüsse an einzelne Vereine für deren
+interne Zwecke.
 Wenn false: alle Felder außer is_participation, reason und scope leer lassen.
 
 scope = wo das Thema für Menschen zählt: "dresden" (Stadt Dresden),

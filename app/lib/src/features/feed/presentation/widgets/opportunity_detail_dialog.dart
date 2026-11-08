@@ -146,7 +146,14 @@ List<String> _facts(Opportunity opportunity, int? daysLeft) {
   return [
     if (opportunity.isAnnounced && opensOn != null)
       'Ab ${opensOn.day}.${opensOn.month}.${opensOn.year}',
-    if (daysLeft != null) daysLeft == 0 ? 'Endet heute' : 'Noch $daysLeft Tage',
+    if (daysLeft != null)
+      opportunity.kind == OpportunityKind.decision
+          ? switch (daysLeft) {
+              0 => 'Abstimmung heute',
+              1 => 'Abstimmung morgen',
+              _ => 'Abstimmung in $daysLeft Tagen',
+            }
+          : (daysLeft == 0 ? 'Endet heute' : 'Noch $daysLeft Tage'),
     if (support != null)
       goal != null
           ? '$support von $goal Unterstützer:innen'
