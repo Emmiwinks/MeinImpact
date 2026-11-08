@@ -64,7 +64,9 @@ async def main() -> None:
         async with PoliteHttpClient() as http:
             print("reading agendas ...", flush=True)
             listings = await OParlSource(http, DRESDEN).fetch(observed_at=observed_at)
-            print(f"{len(listings)} upcoming papers; reading PDFs + enriching", flush=True)
+            print(
+                f"{len(listings)} upcoming papers; reading PDFs + enriching", flush=True
+            )
             reader = OParlDetailReader(http, DRESDEN)
 
             async def one(listing: Listing) -> None:
@@ -94,7 +96,9 @@ async def main() -> None:
         await completer.aclose()
 
     shown = [r for r in rows if r["enrichment"].get("is_relevant")]  # type: ignore[attr-defined]
-    print(f"\nupcoming papers: {len(rows)}  shown: {len(shown)}  filtered: {len(rows) - len(shown)}")
+    print(
+        f"\nupcoming papers: {len(rows)}  shown: {len(shown)}  filtered: {len(rows) - len(shown)}"
+    )
     print("by body:", Counter(r["listing"]["organizer"] for r in rows).most_common())  # type: ignore[index]
 
     _OUTPUT_DIR.mkdir(exist_ok=True)
