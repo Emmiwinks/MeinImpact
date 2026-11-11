@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../app/theme/mi_theme.dart';
 import '../feed/domain/mdb.dart';
 import '../feed/domain/user_profile.dart';
 import '../feed/presentation/widgets/app_colors.dart';
@@ -160,9 +161,15 @@ class _DemographicScreenState extends State<DemographicScreen> {
                         },
                       ),
                       const SizedBox(height: 28),
-                      LebenslagenPicker(
-                        selected: _lebenslagen,
-                        onChanged: (ids) => setState(() => _lebenslagen = ids),
+                      // The picker is already on the card table (it is
+                      // shared with Profil); light until onboarding moves.
+                      Theme(
+                        data: miTheme(Brightness.light),
+                        child: LebenslagenPicker(
+                          selected: _lebenslagen,
+                          onChanged: (ids) =>
+                              setState(() => _lebenslagen = ids),
+                        ),
                       ),
                     ],
                   ),

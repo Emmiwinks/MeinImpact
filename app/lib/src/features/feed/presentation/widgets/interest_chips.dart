@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/theme/mi_theme.dart';
 import '../../domain/interest_config.dart';
 import '../../domain/interest_weights.dart';
 import '../../domain/topic_tags.g.dart';
-import 'app_colors.dart';
-import 'components/text_badges.dart';
 
 /// "Deine Themen": every topic tag as a chip. A tap cycles normal -> mehr ->
 /// weniger -> normal and sets a manual level (it never decays). Topics the
@@ -34,28 +33,44 @@ class InterestChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.mi;
+    final text = Theme.of(context).textTheme;
     final at = now ?? DateTime.now();
+    final muted = text.bodyMedium?.copyWith(color: colors.onTableMuted);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SectionLabel(label: 'Deine Themen'),
-        const SizedBox(height: 4),
-        Text(
-          'Tippe auf ein Thema: mehr, weniger oder normal. Dein Feed lernt '
-          'außerdem aus dem, was du öffnest (markiert mit ✦). Ausgeblendet '
-          'wird nie etwas.',
-          style: Theme.of(context)
-              .textTheme
-              .bodySmall
-              ?.copyWith(color: AppColors.mutedText),
+        Text('Deine Themen', style: text.titleLarge),
+        const SizedBox(height: MiSpace.sm),
+        Text.rich(
+          TextSpan(
+            style: muted,
+            children: [
+              const TextSpan(
+                text: 'Tippe auf ein Thema: mehr, weniger oder normal. Dein '
+                    'Feed lernt außerdem aus dem, was du öffnest (markiert '
+                    'mit ',
+              ),
+              WidgetSpan(
+                alignment: PlaceholderAlignment.middle,
+                child: Icon(
+                  _learnedIcon,
+                  size: 16,
+                  color: colors.onTableMuted,
+                  semanticLabel: 'Funkel-Symbol',
+                ),
+              ),
+              const TextSpan(text: '). Ausgeblendet wird nie etwas.'),
+            ],
+          ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: MiSpace.md),
         Wrap(
-          spacing: 8,
-          runSpacing: 8,
+          spacing: MiSpace.sm,
+          runSpacing: MiSpace.sm,
           children: [
             for (final tag in kTopicTags)
-              _TopicChip(
+              TopicChip(
                 tag: tag,
                 level: interests.manual[tag],
                 learned: interests.learnedOf(tag, at, config) >=
@@ -71,12 +86,18 @@ class InterestChips extends StatelessWidget {
   }
 }
 
-class _TopicChip extends StatelessWidget {
-  const _TopicChip({
+const _learnedIcon = Icons.auto_awesome;
+
+/// Normal: an outlined pill. Mehr: the amber "selected" fill with ink text.
+/// Weniger: muted. The level is also spelled out, so it never rests on
+/// colour alone.
+class TopicChip extends StatelessWidget {
+  const TopicChip({
     required this.tag,
     required this.level,
     required this.learned,
     required this.onTap,
+    super.key,
   });
 
   final String tag;
@@ -86,21 +107,43 @@ class _TopicChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (suffix, color) = switch (level) {
-      InterestLevel.more => (' · mehr', AppColors.greenDark),
-      InterestLevel.less => (' · weniger', AppColors.mutedText),
-      null => ('', AppColors.ink),
-    };
+    final colors = context.mi;
+    final more = level == InterestLevel.more;
+    final less = level == InterestLevel.less;
+    final foreground = more
+        ? colors.onCard
+        : less
+            ? colors.onTableMuted
+            : colors.onTable;
+    final suffix = more
+        ? ' · mehr'
+        : less
+            ? ' · weniger'
+            : '';
     return ActionChip(
       key: ValueKey('topic-$tag'),
-      label: Text('${learned ? '✦ ' : ''}$tag$suffix'),
+      avatar: learned ? Icon(_learnedIcon, size: 16, color: foreground) : null,
+      label: Text('$tag$suffix'),
       onPressed: onTap,
-      backgroundColor:
-          level == InterestLevel.more ? AppColors.greenWash : AppColors.surface,
-      side: BorderSide(
-        color: level == null ? AppColors.subtleBorder : color,
+      // Compact to look at; the padded tap target keeps 48dp.
+      visualDensity: VisualDensity.compact,
+      backgroundColor: more ? colors.topics[2] : Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      shape: StadiumBorder(
+        side: BorderSide(
+          color: more
+              ? colors.topics[2]
+              : less
+                  ? colors.keyline
+                  : colors.onTableMuted,
+        ),
       ),
-      labelStyle: TextStyle(color: color, fontWeight: FontWeight.w600),
+      labelStyle: TextStyle(
+        fontFamily: MiFonts.text,
+        fontSize: 14,
+        fontWeight: FontWeight.w700,
+        color: foreground,
+      ),
     );
   }
 }

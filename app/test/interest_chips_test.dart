@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:meinimpact/src/app/theme/mi_theme.dart';
 import 'package:meinimpact/src/features/feed/data/opportunity_relevance_ranker.dart';
 import 'package:meinimpact/src/features/feed/domain/interest_config.dart';
 import 'package:meinimpact/src/features/feed/domain/interest_weights.dart';
@@ -117,6 +118,7 @@ void main() {
       InterestWeights? changed;
       await tester.pumpWidget(
         MaterialApp(
+          theme: miTheme(Brightness.dark),
           home: Scaffold(
             body: SingleChildScrollView(
               child: InterestChips(

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/theme/mi_theme.dart';
 import '../../domain/lebenslage.dart';
 import '../../domain/lebenslagen_catalog.g.dart';
 import '../../domain/lebenslagen_search.dart';
-import 'app_colors.dart';
 
 /// "Was ist dir wichtig?": the Lebenslagen picker, shared between onboarding
 /// (`DemographicScreen`) and the always-editable Profil tab
@@ -55,8 +55,8 @@ class _LebenslagenPickerState extends State<LebenslagenPicker> {
 
   Widget _chips(Iterable<Lebenslage> items) {
     return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+      spacing: MiSpace.sm,
+      runSpacing: MiSpace.sm,
       children: [
         for (final item in items)
           _LebenslageChip(
@@ -70,38 +70,32 @@ class _LebenslagenPickerState extends State<LebenslagenPicker> {
 
   @override
   Widget build(BuildContext context) {
-    final muted = Theme.of(context)
-        .textTheme
-        .bodySmall
-        ?.copyWith(color: AppColors.mutedText);
+    final colors = context.mi;
+    final text = Theme.of(context).textTheme;
+    final muted = text.bodyMedium?.copyWith(color: colors.onTableMuted);
     final query = _search.text.trim();
     final results = searchLebenslagen(query);
+    final fieldBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(MiRadius.chip),
+      borderSide: BorderSide(color: colors.keyline),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'Was ist dir wichtig?',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-        ),
-        const SizedBox(height: 4),
+        Text('Was ist dir wichtig?', style: text.titleLarge),
+        const SizedBox(height: MiSpace.sm),
         Text(
           'Wähle, was dich betrifft oder dir am Herzen liegt, auch wenn es '
           'um andere geht. Alles, was du hier auswählst, bleibt auf deinem '
           'Gerät und wird nie übertragen.',
           style: muted,
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: MiSpace.xs),
         Row(
           children: [
-            const Icon(
-              Icons.lock_outline,
-              size: 13,
-              color: AppColors.mutedText,
-            ),
-            const SizedBox(width: 4),
+            Icon(Icons.lock_outline, size: 16, color: colors.onTableMuted),
+            const SizedBox(width: MiSpace.xs),
             Expanded(
               child: Text(
                 'Erscheint nicht in deiner Profil-Übersicht.',
@@ -110,33 +104,32 @@ class _LebenslagenPickerState extends State<LebenslagenPicker> {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: MiSpace.base),
         TextField(
           controller: _search,
+          style: text.bodyLarge,
           decoration: InputDecoration(
             hintText: 'Suchen, z. B. Beruf oder Lebenslage',
-            prefixIcon: const Icon(Icons.search),
+            hintStyle: muted,
+            prefixIcon: Icon(Icons.search, color: colors.onTableMuted),
             suffixIcon: query.isEmpty
                 ? null
                 : IconButton(
                     tooltip: 'Suche leeren',
+                    color: colors.onTableMuted,
                     icon: const Icon(Icons.close),
                     onPressed: _search.clear,
                   ),
-            isDense: true,
             filled: true,
-            fillColor: AppColors.surface,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.subtleBorder),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.subtleBorder),
+            fillColor: colors.tableRaised,
+            border: fieldBorder,
+            enabledBorder: fieldBorder,
+            focusedBorder: fieldBorder.copyWith(
+              borderSide: BorderSide(color: colors.onTableMuted, width: 1.5),
             ),
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: MiSpace.lg),
         if (query.isNotEmpty)
           results.isEmpty
               ? Text('Nichts gefunden.', style: muted)
@@ -151,7 +144,7 @@ class _LebenslagenPickerState extends State<LebenslagenPicker> {
               ),
               child: _chips(kLebenslagen.where((i) => i.area == area)),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: MiSpace.lg),
           ],
       ],
     );
@@ -173,16 +166,13 @@ class _AreaSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = Text(
-      area,
-      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
-    );
+    final colors = context.mi;
+    final text = Theme.of(context).textTheme;
+    final title = Text(area, style: text.titleMedium);
     if (!collapsible) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [title, const SizedBox(height: 8), child],
+        children: [title, const SizedBox(height: MiSpace.md), child],
       );
     }
     return Theme(
@@ -192,14 +182,15 @@ class _AreaSection extends StatelessWidget {
         title: title,
         subtitle: Text(
           'Oder oben nach deinem Beruf suchen',
-          style: Theme.of(context)
-              .textTheme
-              .bodySmall
-              ?.copyWith(color: AppColors.mutedText),
+          style: text.bodyMedium?.copyWith(color: colors.onTableMuted),
         ),
         initiallyExpanded: initiallyExpanded,
+        iconColor: colors.onTable,
+        collapsedIconColor: colors.onTableMuted,
+        textColor: colors.onTable,
+        collapsedTextColor: colors.onTable,
         tilePadding: EdgeInsets.zero,
-        childrenPadding: const EdgeInsets.only(bottom: 4),
+        childrenPadding: const EdgeInsets.only(bottom: MiSpace.xs),
         expandedAlignment: Alignment.centerLeft,
         children: [child],
       ),
@@ -207,6 +198,10 @@ class _AreaSection extends StatelessWidget {
   }
 }
 
+/// Picked: the amber "selected" fill with ink text and a check (or the lock
+/// for private groups), so the state never rests on colour alone. A pill of
+/// its own rather than a FilterChip, so long labels ("Wohnungslos oder von
+/// Wohnungslosigkeit bedroht") wrap instead of being cut off.
 class _LebenslageChip extends StatelessWidget {
   const _LebenslageChip({
     required this.item,
@@ -220,26 +215,59 @@ class _LebenslageChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FilterChip(
-      label: Text(item.label),
-      selected: selected,
-      onSelected: (_) => onTap(),
-      showCheckmark: false,
-      avatar: item.isPrivate
-          ? Icon(
-              Icons.lock_outline,
-              size: 15,
-              color: selected ? AppColors.greenDark : AppColors.mutedText,
-            )
-          : null,
-      selectedColor: AppColors.greenWash,
-      backgroundColor: AppColors.surface,
+    final colors = context.mi;
+    final foreground = selected ? colors.onCard : colors.onTable;
+    final icon = item.isPrivate
+        ? Icons.lock_outline
+        : selected
+            ? Icons.check
+            : null;
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(MiRadius.chip),
       side: BorderSide(
-        color: selected ? AppColors.green : AppColors.subtleBorder,
+        color: selected ? colors.topics[2] : colors.onTableMuted,
       ),
-      labelStyle: TextStyle(
-        color: selected ? AppColors.greenDark : AppColors.ink,
-        fontWeight: FontWeight.w600,
+    );
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: Material(
+        color: selected ? colors.topics[2] : Colors.transparent,
+        shape: shape,
+        child: InkWell(
+          customBorder: shape,
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: MiSpace.base,
+                vertical: MiSpace.sm,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (icon != null) ...[
+                    Icon(icon, size: 16, color: foreground),
+                    const SizedBox(width: MiSpace.sm - 2),
+                  ],
+                  Flexible(
+                    child: Text(
+                      item.label,
+                      style: TextStyle(
+                        fontFamily: MiFonts.text,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        height: 1.25,
+                        color: foreground,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

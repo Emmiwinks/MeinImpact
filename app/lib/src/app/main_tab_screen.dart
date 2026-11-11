@@ -8,7 +8,6 @@ import '../features/feed/domain/opportunity.dart';
 import '../features/feed/domain/opportunity_repository.dart';
 import '../features/feed/domain/user_profile.dart';
 import '../features/feed/presentation/aktionen_tab.dart';
-import '../features/feed/presentation/widgets/app_colors.dart';
 import '../features/feed/presentation/widgets/profile_column.dart';
 import '../features/tracking/domain/action_log.dart';
 import '../features/tracking/wirkung_tab.dart';
@@ -70,13 +69,11 @@ class _MainTabScreenState extends State<MainTabScreen> {
     final unseen = widget.doneActions.length - _seenDone;
 
     final tabs = [
-      _Legacy(
-        child: _ProfileTab(
-          profile: effectiveProfile,
-          onEdit: widget.onEditProfile,
-          onLebenslagenChanged: widget.onLebenslagenChanged,
-          onInterestsChanged: widget.onInterestsChanged,
-        ),
+      _ProfileTab(
+        profile: effectiveProfile,
+        onEdit: widget.onEditProfile,
+        onLebenslagenChanged: widget.onLebenslagenChanged,
+        onInterestsChanged: widget.onInterestsChanged,
       ),
       AktionenTab(
         opportunityRepository: widget.opportunityRepository,
@@ -140,20 +137,6 @@ class _MainTabScreenState extends State<MainTabScreen> {
   }
 }
 
-/// A tab that has not moved to the card table yet: its old light look,
-/// whatever the phone's setting.
-class _Legacy extends StatelessWidget {
-  const _Legacy({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) => Theme(
-        data: legacyTheme(),
-        child: ColoredBox(color: AppColors.canvas, child: child),
-      );
-}
-
 class _ProfileTab extends StatelessWidget {
   const _ProfileTab({
     required this.profile,
@@ -170,7 +153,7 @@ class _ProfileTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(18, 20, 18, 28),
+      padding: const EdgeInsets.only(top: MiSpace.lg, bottom: MiSpace.xl),
       child: ProfileColumn(
         profile: profile,
         onEdit: onEdit ?? () {},

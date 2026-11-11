@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/theme/mi_theme.dart';
+import '../../domain/interest_config.dart';
 import '../../domain/interest_weights.dart';
 import '../../domain/lebenslage.dart';
+import '../../domain/topic_tags.g.dart';
 import '../../domain/user_profile.dart';
-import 'app_colors.dart';
 import 'interest_chips.dart';
 import 'lebenslagen_picker.dart';
-import 'components/surface_card.dart';
-import 'components/text_badges.dart';
 
+/// The Profil tab on the card table: the user's values, what matters to
+/// them and their topics, as sections on the table divided by keylines.
+/// Only what is set shows here; the full lists open in a sheet.
 class ProfileColumn extends StatelessWidget {
   const ProfileColumn({
     required this.profile,
@@ -25,244 +28,554 @@ class ProfileColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = profile;
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _ProfileCard(
-          profile: profile,
-          onEdit: onEdit,
-          onLebenslagenChanged: onLebenslagenChanged,
-          onInterestsChanged: onInterestsChanged,
+        _Section(
+          first: true,
+          child: _ValuesSection(profile: p, onEdit: onEdit),
+        ),
+        if (p != null) ...[
+          _Section(
+            child: _LebenslagenSection(
+              selected: p.lebenslagen,
+              onChanged: onLebenslagenChanged,
+            ),
+          ),
+          _Section(
+            child: _TopicsSection(
+              interests: p.interests,
+              onChanged: onInterestsChanged,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// One block on the table, below a keyline like the rows in "Alle
+/// Aktionen" and Wirkung.
+class _Section extends StatelessWidget {
+  const _Section({required this.child, this.first = false});
+
+  final Widget child;
+  final bool first;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        MiSpace.lg,
+        first ? 0 : MiSpace.lg,
+        MiSpace.lg,
+        MiSpace.lg,
+      ),
+      decoration: first
+          ? null
+          : BoxDecoration(
+              border: Border(top: BorderSide(color: context.mi.keyline)),
+            ),
+      child: child,
+    );
+  }
+}
+
+/// A heading with an optional text button at its end.
+class _Heading extends StatelessWidget {
+  const _Heading(this.title, {this.action, this.onAction});
+
+  final String title;
+  final String? action;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(title, style: Theme.of(context).textTheme.titleLarge),
+        ),
+        if (action != null)
+          TextButton(onPressed: onAction, child: Text(action!)),
+      ],
+    );
+  }
+}
+
+/// An outlined pill on the table for a secondary step ("Fragebogen
+/// ausfüllen", "Themen anpassen").
+class _OutlinedPill extends StatelessWidget {
+  const _OutlinedPill({required this.label, required this.onPressed});
+
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.mi;
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: colors.onTable,
+        side: BorderSide(color: colors.onTableMuted),
+        minimumSize: const Size.fromHeight(52),
+        shape: const StadiumBorder(),
+        textStyle: const TextStyle(
+          fontFamily: MiFonts.text,
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+      child: Text(label),
+    );
+  }
+}
+
+/// Opens [child] in a sheet on the card table. Routes do not inherit the
+/// tab's theme, so it is handed on.
+Future<void> _showTableSheet(BuildContext context, Widget child) {
+  final theme = Theme.of(context);
+  final colors = context.mi;
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    showDragHandle: true,
+    backgroundColor: colors.table,
+    builder: (_) => Theme(
+      data: theme,
+      child: DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.9,
+        maxChildSize: 0.95,
+        builder: (context, controller) => SingleChildScrollView(
+          controller: controller,
+          padding: const EdgeInsets.fromLTRB(
+            MiSpace.lg,
+            0,
+            MiSpace.lg,
+            MiSpace.xl,
+          ),
+          child: child,
+        ),
+      ),
+    ),
+  );
+}
+
+// ── Deine Werte ─────────────────────────────────────────────────────────
+
+/// One value axis with its two poles, worded like the answers in the
+/// questionnaire: -2 is the left answer, +2 the right one.
+class _Axis {
+  const _Axis(this.name, this.left, this.right);
+
+  final String name;
+  final String left;
+  final String right;
+}
+
+const _wirtschaft = _Axis('Wirtschaft', 'Umverteilung', 'Freier Markt');
+const _diplomatie = _Axis('Diplomatie', 'National', 'International');
+const _freiheit = _Axis('Freiheit', 'Bürgerrechte', 'Sicherheit');
+const _wandel = _Axis('Wandel', 'Bewahren', 'Verändern');
+
+class _ValuesSection extends StatelessWidget {
+  const _ValuesSection({required this.profile, required this.onEdit});
+
+  final UserProfile? profile;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.mi;
+    final text = Theme.of(context).textTheme;
+    final p = profile;
+    final answered = p != null && p.answeredCount > 0;
+    final axes = answered
+        ? [
+            (_wirtschaft, p.axisEqualityMarkets),
+            (_diplomatie, p.axisNationGlobe),
+            (_freiheit, p.axisLibertyAuthority),
+            (_wandel, p.axisTraditionProgress),
+          ]
+        : const <(_Axis, double)>[];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _Heading('Deine Werte'),
+        const SizedBox(height: MiSpace.base),
+        if (answered)
+          for (var i = 0; i < axes.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: MiSpace.md),
+              child: _AxisBlock(
+                axis: axes[i].$1,
+                value: axes[i].$2,
+                // The colour belongs to the axis, never to a side.
+                face: colors.topics[i % colors.topics.length],
+              ),
+            )
+        else ...[
+          Text(
+            'Noch nicht ausgefüllt.',
+            style: text.bodyMedium?.copyWith(color: colors.onTableMuted),
+          ),
+          const SizedBox(height: MiSpace.base),
+        ],
+        _OutlinedPill(
+          label:
+              answered ? 'Fragebogen erneut ausfüllen' : 'Fragebogen ausfüllen',
+          onPressed: onEdit,
         ),
       ],
     );
   }
 }
 
-class _ProfileCard extends StatelessWidget {
-  const _ProfileCard({
-    required this.profile,
-    required this.onEdit,
-    required this.onLebenslagenChanged,
-    required this.onInterestsChanged,
+/// One axis as a coloured block: its name, both poles, and where the user
+/// stands, with a bar from the centre to the marker showing how far they
+/// lean. The marker slides out from the centre when the block first shows.
+class _AxisBlock extends StatelessWidget {
+  const _AxisBlock({
+    required this.axis,
+    required this.value,
+    required this.face,
   });
 
-  final UserProfile? profile;
-  final VoidCallback onEdit;
-  final ValueChanged<Set<String>> onLebenslagenChanged;
-  final ValueChanged<InterestWeights> onInterestsChanged;
+  final _Axis axis;
+  final double value; // -2.0 to +2.0
+  final Color face;
+
+  String get _reading {
+    final v = value.clamp(-2.0, 2.0);
+    if (v.abs() < 0.5) return 'ausgeglichen';
+    final pole = v < 0 ? axis.left : axis.right;
+    return v.abs() < 1.25 ? 'eher $pole' : 'klar $pole';
+  }
 
   @override
   Widget build(BuildContext context) {
-    final p = profile;
-
-    return SurfaceCard(
-      color: AppColors.surface,
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'MeinImpact',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: AppColors.ink,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.4,
-                ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            'Dein wöchentlicher Beitrag zur Demokratie.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.mutedText,
-                ),
-          ),
-          if (p != null && p.answeredCount > 0) ...[
-            const SizedBox(height: 20),
-            SectionLabel(label: 'Deine Werte'),
-            const SizedBox(height: 10),
-            _AxisBar(label: 'Wirtschaft', value: p.axisEqualityMarkets),
-            const SizedBox(height: 6),
-            _AxisBar(label: 'Diplomatie', value: p.axisNationGlobe),
-            const SizedBox(height: 6),
-            _AxisBar(label: 'Freiheit', value: p.axisLibertyAuthority),
-            const SizedBox(height: 6),
-            _AxisBar(label: 'Wandel', value: p.axisTraditionProgress),
-          ],
-          const SizedBox(height: 18),
-          SizedBox(
-            height: 42,
-            child: OutlinedButton(
-              onPressed: onEdit,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.ink,
-                side: const BorderSide(color: AppColors.subtleBorder),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: const Text(
-                'Fragebogen erneut ausfüllen',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+    final colors = context.mi;
+    final text = Theme.of(context).textTheme;
+    final ink = colors.onCard;
+    final pole = text.labelMedium?.copyWith(
+      color: ink,
+      fontWeight: FontWeight.w800,
+    );
+    return Semantics(
+      label: '${axis.name}: $_reading, zwischen ${axis.left} und '
+          '${axis.right}',
+      excludeSemantics: true,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(
+          MiSpace.base + 2,
+          MiSpace.base,
+          MiSpace.base + 2,
+          MiSpace.base,
+        ),
+        decoration: BoxDecoration(
+          color: face,
+          borderRadius: BorderRadius.circular(MiRadius.card - 8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              axis.name,
+              style: text.titleLarge?.copyWith(
+                fontSize: 16,
+                letterSpacing: -0.02 * 16,
+                color: ink,
               ),
             ),
-          ),
-          if (p != null) ...[
-            const SizedBox(height: 24),
-            _LebenslagenSection(
-              selected: p.lebenslagen,
-              onChanged: onLebenslagenChanged,
+            const SizedBox(height: MiSpace.md),
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: value.clamp(-2.0, 2.0) / 2),
+              duration:
+                  MiMotion.reduced(context) ? Duration.zero : MiMotion.flight,
+              curve: MiMotion.ease,
+              builder: (context, t, _) =>
+                  _AxisTrack(position: t, ink: ink, stock: colors.cardStock),
             ),
-            const SizedBox(height: 24),
-            InterestChips(
-              interests: p.interests,
-              onChanged: onInterestsChanged,
+            const SizedBox(height: MiSpace.sm),
+            Row(
+              children: [
+                Expanded(child: Text(axis.left, style: pole)),
+                const SizedBox(width: MiSpace.sm),
+                Expanded(
+                  child: Text(
+                    axis.right,
+                    style: pole,
+                    textAlign: TextAlign.end,
+                  ),
+                ),
+              ],
             ),
           ],
-        ],
+        ),
       ),
     );
   }
 }
 
-/// The profile overview of what matters to the user, with the picker behind
-/// "Bearbeiten". Private Lebenslagen are left out of the overview (the
-/// picker itself shows them, it is where they are edited).
-class _LebenslagenSection extends StatefulWidget {
+/// The track of an axis: five steps, the centre marked, an ink bar from
+/// the centre to the marker. [position] runs from -1 (left pole) to +1.
+class _AxisTrack extends StatelessWidget {
+  const _AxisTrack({
+    required this.position,
+    required this.ink,
+    required this.stock,
+  });
+
+  final double position;
+  final Color ink;
+  final Color stock;
+
+  static const _height = 28.0;
+  static const _marker = 28.0;
+  static const _bar = 8.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: _height,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // The marker's centre runs between the two ends of the track.
+          final span = constraints.maxWidth - _marker;
+          double x(double p) => _marker / 2 + span * (p + 1) / 2;
+          final centre = x(0);
+          final at = x(position);
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              // The track.
+              Positioned(
+                left: 0,
+                right: 0,
+                top: (_height - _bar) / 2,
+                height: _bar,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: ink.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(MiRadius.chip),
+                  ),
+                ),
+              ),
+              // Five steps, the centre one taller.
+              for (var step = -2; step <= 2; step++)
+                Positioned(
+                  left: x(step / 2) - 1.5,
+                  top: step == 0 ? 2 : (_height - 14) / 2,
+                  width: 3,
+                  height: step == 0 ? _height - 4 : 14,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: ink.withValues(alpha: step == 0 ? 0.7 : 0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+              // The lean: from the centre to the marker.
+              Positioned(
+                left: at < centre ? at : centre,
+                width: (at - centre).abs(),
+                top: (_height - _bar) / 2,
+                height: _bar,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: ink,
+                    borderRadius: BorderRadius.circular(MiRadius.chip),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: at - _marker / 2,
+                top: (_height - _marker) / 2,
+                width: _marker,
+                height: _marker,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: stock,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: ink, width: 4),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ── Dir wichtig ─────────────────────────────────────────────────────────
+
+/// The picked public Lebenslagen; the picker opens in a sheet. Private ones
+/// are left out of the overview (the picker itself shows them, it is where
+/// they are edited).
+class _LebenslagenSection extends StatelessWidget {
   const _LebenslagenSection({required this.selected, required this.onChanged});
 
   final Set<String> selected;
   final ValueChanged<Set<String>> onChanged;
 
-  @override
-  State<_LebenslagenSection> createState() => _LebenslagenSectionState();
-}
-
-class _LebenslagenSectionState extends State<_LebenslagenSection> {
-  bool _editing = false;
+  void _edit(BuildContext context) {
+    var current = selected;
+    _showTableSheet(
+      context,
+      StatefulBuilder(
+        builder: (context, setSheetState) => LebenslagenPicker(
+          selected: current,
+          onChanged: (ids) {
+            setSheetState(() => current = ids);
+            onChanged(ids);
+          },
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (_editing) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          LebenslagenPicker(
-            selected: widget.selected,
-            onChanged: widget.onChanged,
-          ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: () => setState(() => _editing = false),
-              child: const Text('Fertig'),
-            ),
-          ),
-        ],
-      );
-    }
+    final colors = context.mi;
+    final text = Theme.of(context).textTheme;
     final shown = [
-      for (final id in widget.selected)
+      for (final id in selected)
         if (lebenslageById[id] case final item? when !item.isPrivate) item,
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            const Expanded(child: SectionLabel(label: 'Dir wichtig')),
-            TextButton(
-              onPressed: () => setState(() => _editing = true),
-              child: const Text('Bearbeiten'),
-            ),
-          ],
+        _Heading(
+          'Dir wichtig',
+          action: 'Bearbeiten',
+          onAction: () => _edit(context),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: MiSpace.sm),
         if (shown.isEmpty)
           Text(
-            widget.selected.isEmpty
+            selected.isEmpty
                 ? 'Noch nichts ausgewählt. Damit zeigen wir dir passendere '
                     'Themen.'
                 : 'Deine Auswahl ist gespeichert.',
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: AppColors.mutedText),
+            style: text.bodyMedium?.copyWith(color: colors.onTableMuted),
           )
         else
           Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [for (final item in shown) MetaChip(label: item.label)],
+            spacing: MiSpace.sm,
+            runSpacing: MiSpace.sm,
+            children: [for (final item in shown) _TableChip(item.label)],
           ),
       ],
     );
   }
 }
 
-class _AxisBar extends StatelessWidget {
-  const _AxisBar({required this.label, required this.value});
+/// A read-only pill on the table, like the kind chips in Wirkung.
+class _TableChip extends StatelessWidget {
+  const _TableChip(this.label);
 
   final String label;
-  final double value; // -2.0 to +2.0
 
   @override
   Widget build(BuildContext context) {
-    // Normalise to 0–1 for the bar (0 = full left, 0.5 = centre, 1 = full right)
-    final fill = ((value + 2) / 4).clamp(0.0, 1.0);
+    final colors = context.mi;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: MiSpace.md,
+        vertical: MiSpace.xs + 2,
+      ),
+      decoration: ShapeDecoration(
+        shape: StadiumBorder(side: BorderSide(color: colors.onTableMuted)),
+      ),
+      child: Text(label, style: Theme.of(context).textTheme.labelMedium),
+    );
+  }
+}
 
-    return Row(
+// ── Deine Themen ────────────────────────────────────────────────────────
+
+/// Only the topics that steer the feed: set to mehr or weniger, or learned.
+/// Every topic is one tap away in a sheet.
+class _TopicsSection extends StatelessWidget {
+  const _TopicsSection({required this.interests, required this.onChanged});
+
+  final InterestWeights interests;
+  final ValueChanged<InterestWeights> onChanged;
+
+  static const _config = InterestConfig();
+
+  void _edit(BuildContext context) {
+    var current = interests;
+    _showTableSheet(
+      context,
+      StatefulBuilder(
+        builder: (context, setSheetState) => InterestChips(
+          interests: current,
+          onChanged: (next) {
+            setSheetState(() => current = next);
+            onChanged(next);
+          },
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.mi;
+    final text = Theme.of(context).textTheme;
+    final now = DateTime.now();
+    bool learned(String tag) =>
+        interests.learnedOf(tag, now, _config) >= _config.reasonThreshold;
+    int rank(String tag) => switch (interests.manual[tag]) {
+          InterestLevel.more => 0,
+          InterestLevel.less => 2,
+          null => 1,
+        };
+    final active = [
+      for (final tag in kTopicTags)
+        if (interests.manual[tag] != null || learned(tag)) tag,
+    ]..sort((a, b) => rank(a).compareTo(rank(b)));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SizedBox(
-          width: 76,
-          child: Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.mutedText,
-                  fontSize: 11,
+        _Heading(
+          'Deine Themen',
+          action: 'Anpassen',
+          onAction: () => _edit(context),
+        ),
+        const SizedBox(height: MiSpace.sm),
+        if (active.isEmpty)
+          Text(
+            'Noch nichts eingestellt. Dein Feed lernt aus dem, was du '
+            'öffnest.',
+            style: text.bodyMedium?.copyWith(color: colors.onTableMuted),
+          )
+        else
+          Wrap(
+            spacing: MiSpace.sm,
+            runSpacing: MiSpace.sm,
+            children: [
+              for (final tag in active)
+                TopicChip(
+                  tag: tag,
+                  level: interests.manual[tag],
+                  learned: learned(tag),
+                  onTap: () => onChanged(
+                    interests.withManual(
+                      tag,
+                      InterestChips.next(interests.manual[tag]),
+                    ),
+                  ),
                 ),
+            ],
           ),
-        ),
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return Stack(
-                children: [
-                  Container(
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: AppColors.subtleBorder,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                  // Centre line
-                  Positioned(
-                    left: constraints.maxWidth / 2 - 1,
-                    child: Container(
-                      width: 2,
-                      height: 6,
-                      color: AppColors.border,
-                    ),
-                  ),
-                  // Value indicator
-                  Positioned(
-                    left: (constraints.maxWidth * fill - 5).clamp(
-                      0,
-                      constraints.maxWidth - 10,
-                    ),
-                    child: Container(
-                      width: 10,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: AppColors.green,
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        ),
       ],
     );
   }
