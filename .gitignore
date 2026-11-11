@@ -29,6 +29,15 @@ app/android/.gradle/
 app/ios/Pods/
 app/macos/Pods/
 
+# Installed agent skills (impeccable, flutter-design, mobile-app-design-mastery)
+.claude/
+.agents/
+.github/agents/
+.github/hooks/
+.github/skills/
+skills-lock.json
+.impeccable/config.local.json
+
 # IDE and OS files
 .idea/
 .vscode/
