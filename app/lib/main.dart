@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'src/app/meinimpact_app.dart';
 import 'src/core/network/api_client.dart';
@@ -22,6 +23,7 @@ const _kBaseUrl = _kConfiguredBaseUrl != ''
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  _registerFontLicenses();
 
   final tokenStore = SecureTokenStore();
   final apiClient = ApiClient(
@@ -52,4 +54,20 @@ void main() async {
       initialActionLog: initialActionLog,
     ),
   );
+}
+
+// The bundled fonts are under the SIL Open Font License, which asks that
+// the licence ships with them; it shows on the system licence page.
+void _registerFontLicenses() {
+  for (final (family, file) in [
+    ('Unbounded', 'Unbounded-OFL.txt'),
+    ('Albert Sans', 'AlbertSans-OFL.txt'),
+  ]) {
+    LicenseRegistry.addLicense(() async* {
+      yield LicenseEntryWithLineBreaks(
+        [family],
+        await rootBundle.loadString('assets/fonts/$file'),
+      );
+    });
+  }
 }

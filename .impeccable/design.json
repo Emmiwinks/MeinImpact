@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-11T12:00:00Z",
+  "title": "Design System: MeinImpact",
+  "extensions": {
+    "colorMeta": {
+      "table-ink": { "role": "primary", "displayName": "Table Ink", "canonical": "#101820", "tonalRamp": ["#0A1016", "#101820", "#1B2632", "#2C3846", "#4A5560", "#7A8590", "#B9C0C8", "#E4E8EC"] },
+      "ink": { "role": "primary", "displayName": "Ink", "canonical": "#101820", "tonalRamp": ["#0A1016", "#101820", "#1B2632", "#2C3846", "#4A5560", "#7A8590", "#B9C0C8", "#E4E8EC"] },
+      "card-stock": { "role": "primary", "displayName": "Card Stock", "canonical": "#F4F1EA", "tonalRamp": ["#2A2722", "#4A463E", "#6E695E", "#948E81", "#B9B3A6", "#D8D3C8", "#F4F1EA", "#FBFAF6"] },
+      "table-stone": { "role": "neutral", "displayName": "Peach Cream", "canonical": "#FFF1E3", "tonalRamp": ["#1E2328", "#3A4148", "#58616A", "#7A838C", "#9CA4AC", "#C0C6CC", "#E4E8EC", "#F7F8F9"] },
+      "ink-muted": { "role": "neutral", "displayName": "Ink Muted", "canonical": "#4A5560", "tonalRamp": ["#151A20", "#252D35", "#36404A", "#4A5560", "#66717C", "#87919B", "#AEB6BE", "#D8DDE2"] },
+      "stock-muted": { "role": "neutral", "displayName": "Stock Muted", "canonical": "#B9C0C8", "tonalRamp": ["#22272D", "#3B424A", "#58606A", "#77808A", "#98A0A9", "#B9C0C8", "#D6DBE0", "#EFF1F3"] },
+      "keyline-on-ink": { "role": "neutral", "displayName": "Keyline on Ink", "canonical": "#F4F1EA1F" },
+      "keyline-on-stone": { "role": "neutral", "displayName": "Keyline on Stone", "canonical": "#10182026" },
+      "topic-coral": { "role": "secondary", "displayName": "Topic Coral", "canonical": "#FF5A5F", "tonalRamp": ["#3D0F11", "#6B1A1E", "#9E262B", "#D23A3F", "#FF5A5F", "#FF878A", "#FFB5B6", "#FFE3E3"] },
+      "topic-teal": { "role": "secondary", "displayName": "Topic Teal", "canonical": "#2EC4B6", "tonalRamp": ["#082E2B", "#0F4F4A", "#187470", "#22998F", "#2EC4B6", "#6DD8CD", "#A8E9E2", "#DDF7F4"] },
+      "topic-amber": { "role": "secondary", "displayName": "Topic Amber", "canonical": "#FFBF3C", "tonalRamp": ["#3A2A06", "#62470C", "#8E6714", "#C48E1E", "#FFBF3C", "#FFD277", "#FFE4AE", "#FFF5DF"] },
+      "topic-violet": { "role": "secondary", "displayName": "Topic Violet", "canonical": "#8C84FF", "tonalRamp": ["#1C1A45", "#2F2B72", "#463FA3", "#6C63FF", "#8C84FF", "#AEA8FF", "#CFCBFF", "#EEEDFF"] }
+    },
+    "typographyMeta": {
+      "headline": { "displayName": "Headline", "purpose": "Screen headings; the Für-dich screen has none." },
+      "card-title": { "displayName": "Card Title", "purpose": "Card questions (stepping 21, 18, 16px to fit five lines), message titles, pushed-screen app bar titles." },
+      "title": { "displayName": "Title", "purpose": "List-row titles and argument headings on the card back." },
+      "body-strong": { "displayName": "Body Strong", "purpose": "The reason line on the card front." },
+      "body": { "displayName": "Body", "purpose": "Summaries, arguments, counts, explanations." },
+      "label-button": { "displayName": "Button Label", "purpose": "Filled pill buttons." },
+      "label-text-button": { "displayName": "Text Button Label", "purpose": "Text buttons on the table." },
+      "label": { "displayName": "Label", "purpose": "Kind and deadline line, fact chips, card back header strip." },
+      "nav-label": { "displayName": "Navigation Label", "purpose": "Bottom navigation destinations." }
+    },
+    "shadows": [
+      { "name": "card-on-table-dark", "value": "0 14px 30px #00000099", "purpose": "Every action card on the ink table, including the card in flight." },
+      { "name": "card-on-table-light", "value": "0 14px 30px #10182033", "purpose": "Every action card on the stone table." },
+      { "name": "deck-card-dark", "value": "0 8px 16px #00000099", "purpose": "Face-down deck cards on loading and message states (dark)." },
+      { "name": "deck-card-light", "value": "0 8px 16px #10182033", "purpose": "Face-down deck cards on loading and message states (light)." }
+    ],
+    "motion": [
+      { "name": "ease", "value": "cubic-bezier(0.25, 1, 0.5, 1)", "purpose": "Ease-out quart: fan snap and card flip." },
+      { "name": "ease-flight", "value": "cubic-bezier(0.32, 0, 0.67, 0)", "purpose": "Ease-in cubic: a played card accelerating toward the Wirkung destination." },
+      { "name": "quick", "value": "160ms", "purpose": "Page dot changes." },
+      { "name": "settle", "value": "280ms", "purpose": "Fan snapping to a card after a swipe." },
+      { "name": "flip", "value": "300ms", "purpose": "Card turning over on the Y axis." },
+      { "name": "flight", "value": "520ms", "purpose": "Played card flying onto the Wirkung pile." },
+      { "name": "reduced", "value": "0ms", "purpose": "When the system disables animations, every motion is an instant cut." }
+    ],
+    "breakpoints": []
+  },
+  "components": [
+    {
+      "name": "Play Button",
+      "kind": "button",
+      "refersTo": "button-play",
+      "description": "Full-width ink pill on a card, labelled with the concrete action.",
+      "html": "<button class=\"ds-btn-play\">Petition unterschreiben</button>",
+      "css": ".ds-btn-play { background: #101820; color: #F4F1EA; min-height: 52px; width: 100%; padding: 12px 24px; border: none; border-radius: 999px; font-family: 'Albert Sans', sans-serif; font-size: 16px; font-weight: 800; cursor: pointer; transition: background 160ms cubic-bezier(0.25,1,0.5,1); } .ds-btn-play:hover { background: #1B2632; } .ds-btn-play:active { background: #2C3846; } .ds-btn-play:focus-visible { outline: 3px solid #FFBF3C; outline-offset: 2px; }"
+    },
+    {
+      "name": "Button on the Table",
+      "kind": "button",
+      "refersTo": "button-on-table",
+      "description": "Inverted pill for message states directly on the table (dark mode shown).",
+      "html": "<div style=\"background:#101820;padding:24px\"><button class=\"ds-btn-table\">Nochmal versuchen</button></div>",
+      "css": ".ds-btn-table { background: #F4F1EA; color: #101820; min-height: 52px; min-width: 200px; padding: 12px 24px; border: none; border-radius: 999px; font-family: 'Albert Sans', sans-serif; font-size: 16px; font-weight: 800; cursor: pointer; transition: background 160ms; } .ds-btn-table:hover { background: #FFFFFF; } .ds-btn-table:focus-visible { outline: 3px solid #FFBF3C; outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Button",
+      "kind": "button",
+      "refersTo": "button-text",
+      "description": "Text-only pill target on the table, such as \"Alle 7 ansehen\".",
+      "html": "<div style=\"background:#101820;padding:16px\"><button class=\"ds-btn-text\">Alle 7 ansehen</button></div>",
+      "css": ".ds-btn-text { background: transparent; color: #F4F1EA; min-height: 48px; min-width: 48px; padding: 0 12px; border: none; border-radius: 999px; font-family: 'Albert Sans', sans-serif; font-size: 15px; font-weight: 800; cursor: pointer; transition: background 160ms; } .ds-btn-text:hover { background: #F4F1EA14; } .ds-btn-text:focus-visible { outline: 3px solid #FFBF3C; outline-offset: 2px; }"
+    },
+    {
+      "name": "Fact Chip",
+      "kind": "chip",
+      "refersTo": "fact-chip",
+      "description": "Ink-outlined pill on the card back holding one registry fact.",
+      "html": "<div style=\"background:#F4F1EA;padding:16px;display:flex;gap:8px;flex-wrap:wrap\"><span class=\"ds-chip-fact\">Bis 23.11.2026</span><span class=\"ds-chip-fact\">1840 von 2500 Unterstützer:innen</span></div>",
+      "css": ".ds-chip-fact { display: inline-block; padding: 6px 12px; border: 1px solid #101820; border-radius: 999px; color: #101820; font-family: 'Albert Sans', sans-serif; font-size: 13px; font-weight: 700; line-height: 1.3; }"
+    },
+    {
+      "name": "Action Card (front)",
+      "kind": "card",
+      "refersTo": "action-card",
+      "description": "The playing card: topic art in a stock margin, question, reason, kind and deadline, play button.",
+      "html": "<div style=\"background:#101820;padding:32px\"><article class=\"ds-card\"><div class=\"ds-card-art\"><svg viewBox=\"0 0 100 100\" preserveAspectRatio=\"xMidYMid slice\" width=\"100%\" height=\"100%\"><rect width=\"100\" height=\"100\" fill=\"#2EC4B6\"/><circle cx=\"75\" cy=\"25\" r=\"12\" fill=\"#FFBF3C\"/><circle cx=\"38\" cy=\"104\" r=\"42\" fill=\"#101820\"/><circle cx=\"29\" cy=\"82\" r=\"7\" fill=\"#F4F1EA\"/><circle cx=\"47\" cy=\"85\" r=\"5.5\" fill=\"#F4F1EA\"/></svg></div><div class=\"ds-card-body\"><h3 class=\"ds-card-title\">Sollen Blitzer vor Kitas und Schulen kommen?</h3><p class=\"ds-card-why\">Dein Kind ist auf dem Schulweg sicherer, wenn Autos dort langsamer fahren.</p><p class=\"ds-card-meta\">Petition · noch 12 Tage</p><button class=\"ds-card-play\">Petition unterschreiben</button></div></article></div>",
+      "css": ".ds-card { width: 320px; background: #F4F1EA; border: 1px solid #F4F1EA1F; border-radius: 26px; box-shadow: 0 14px 30px #00000099; overflow: hidden; color: #101820; font-family: 'Albert Sans', sans-serif; } .ds-card-art { margin: 10px 10px 0; height: 180px; border-radius: 18px; overflow: hidden; } .ds-card-body { padding: 18px 20px 20px; } .ds-card-title { margin: 0; font-family: 'Unbounded', sans-serif; font-weight: 800; font-size: 21px; line-height: 1.1; letter-spacing: -0.02em; } .ds-card-why { margin: 8px 0 0; font-size: 16px; font-weight: 600; line-height: 1.35; } .ds-card-meta { margin: 16px 0 0; font-size: 13px; font-weight: 700; line-height: 1.3; color: #4A5560; } .ds-card-play { margin-top: 12px; width: 100%; min-height: 52px; padding: 12px 24px; border: none; border-radius: 999px; background: #101820; color: #F4F1EA; font-family: 'Albert Sans', sans-serif; font-size: 16px; font-weight: 800; cursor: pointer; } .ds-card-play:hover { background: #1B2632; } .ds-card-play:focus-visible { outline: 3px solid #FFBF3C; outline-offset: 2px; }"
+    },
+    {
+      "name": "All Actions Row",
+      "kind": "custom",
+      "refersTo": "list-row",
+      "description": "A row in \"Alle Aktionen\": small card thumbnail, title, reason, kind and deadline. No in-hand marker.",
+      "html": "<div class=\"ds-row\"><div class=\"ds-row-thumb\"><svg viewBox=\"0 0 100 100\" width=\"100%\" height=\"100%\"><rect width=\"100\" height=\"100\" fill=\"#FF5A5F\"/><rect x=\"0\" y=\"88\" width=\"100\" height=\"12\" fill=\"#101820\"/><rect x=\"26\" y=\"45\" width=\"48\" height=\"43\" fill=\"#F4F1EA\"/><polygon points=\"18,48 50,16 82,48\" fill=\"#101820\"/><rect x=\"42\" y=\"58\" width=\"16\" height=\"16\" fill=\"#2EC4B6\"/></svg></div><div><div class=\"ds-row-title\">Soll Dresden mehr Sozialwohnungen bauen?</div><div class=\"ds-row-why\">Weil du „Mieter:in“ angegeben hast</div><div class=\"ds-row-meta\">Beteiligung · noch 5 Tage</div></div></div>",
+      "css": ".ds-row { display: flex; gap: 16px; align-items: flex-start; padding: 16px 24px; background: #101820; border-top: 1px solid #F4F1EA1F; color: #F4F1EA; font-family: 'Albert Sans', sans-serif; cursor: pointer; transition: background 160ms; } .ds-row:hover { background: #1B2632; } .ds-row-thumb { flex: none; width: 50px; height: 50px; padding: 3px; background: #F4F1EA; border-radius: 14px; } .ds-row-thumb svg { display: block; border-radius: 11px; } .ds-row-title { font-size: 17px; font-weight: 700; line-height: 1.25; } .ds-row-why { margin-top: 4px; font-size: 15px; font-weight: 500; line-height: 1.4; color: #B9C0C8; } .ds-row-meta { margin-top: 8px; font-size: 13px; font-weight: 700; line-height: 1.3; color: #B9C0C8; }"
+    },
+    {
+      "name": "Navigation Bar",
+      "kind": "nav",
+      "refersTo": "nav-bar",
+      "description": "Three-destination bottom bar on the table with an amber pill indicator.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item\"><span class=\"ds-nav-icon\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 20c0-4 4-6 8-6s8 2 8 6\"/></svg></span>Mein Profil</a><a class=\"ds-nav-item ds-nav-item--active\"><span class=\"ds-nav-icon\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"currentColor\"><rect x=\"9\" y=\"4\" width=\"11\" height=\"15\" rx=\"2\" transform=\"rotate(15 14 11)\"/><path d=\"M4 8l3-1v11z\"/></svg></span>Meine Aktionen</a><a class=\"ds-nav-item\"><span class=\"ds-nav-icon\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M3 17l5-6 4 4 4-6 5 5\"/></svg></span>Meine Wirkung</a></nav>",
+      "css": ".ds-nav { display: flex; height: 72px; background: #101820; font-family: 'Albert Sans', sans-serif; } .ds-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #B9C0C8; font-size: 12px; font-weight: 700; text-decoration: none; cursor: pointer; } .ds-nav-icon { display: flex; align-items: center; justify-content: center; width: 64px; height: 32px; border-radius: 999px; transition: background 160ms; } .ds-nav-item:hover .ds-nav-icon { background: #F4F1EA14; } .ds-nav-item--active { color: #F4F1EA; } .ds-nav-item--active .ds-nav-icon { background: #FFBF3C; color: #101820; } .ds-nav-item:focus-visible { outline: 3px solid #FFBF3C; outline-offset: -3px; }"
+    },
+    {
+      "name": "Face-down Deck",
+      "kind": "custom",
+      "refersTo": "action-card",
+      "description": "Three slightly fanned face-down cards for loading, empty and error states.",
+      "html": "<div style=\"background:#101820;padding:32px;display:flex;justify-content:center\"><div class=\"ds-deck\"><span class=\"ds-deck-card\" style=\"background:#2EC4B6;transform:rotate(-12.6deg)\"></span><span class=\"ds-deck-card\" style=\"background:#8C84FF;transform:rotate(11.5deg)\"></span><span class=\"ds-deck-card\" style=\"background:#FF5A5F\"></span></div></div>",
+      "css": ".ds-deck { position: relative; width: 180px; height: 150px; } .ds-deck-card { position: absolute; left: 44px; top: 9px; width: 92px; height: 132px; border: 4px solid #F4F1EA; border-radius: 14px; box-sizing: border-box; box-shadow: 0 8px 16px #00000099; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Card Table",
+    "overview": "MeinImpact deals the user's civic actions as a hand of playing cards on a table, not as a feed. The table is the screen: deep ink in dark mode, pale stone in light mode, always following the phone's setting. On it lie cards of warm, light card stock, each carrying a flat geometric picture of its topic on one of four bright topic colours. A big, chunky display face sets the questions; a friendly grotesque carries everything else. The feel is a tabletop game for a few minutes on the phone: tactile, bright, a little playful, and plain about the facts.\n\nDensity is low and deliberate. One card is read at a time, upright and large; the next ones peek out behind it, rotated and dimmed, so the hand reads as a hand. Detail is on the card's back, one tap away, never in front. Depth comes from cards lying on the table with soft shadows; everything that is not a card (rows, chips, buttons, the navigation bar) stays flat.\n\nMaterial is the building kit underneath (navigation bar, back gesture, ripples, 48dp targets), not the visual language. Android ships first; iOS gets the same custom look.",
+    "keyCharacteristics": [
+      "Ink or stone table, light card stock, four rotating topic colours.",
+      "Unbounded ExtraBold for headings and card questions; Albert Sans for all other text.",
+      "Generous 26px card corners, pill buttons and chips, soft downward shadows on cards only.",
+      "Ink text on every light surface and every topic colour.",
+      "Motion is physical (fan, flip, flight) and cuts to instant when the system disables animations."
+    ],
+    "rules": [
+      { "name": "The Rotating Suit Rule", "body": "Topic colours are assigned by topic index, never by meaning. No colour stands for a party, a position, urgency or success, and no screen adds a fifth.", "section": "colors" },
+      { "name": "The Ink-On-Everything Rule", "body": "Text on card stock and on any topic colour is always ink. Never set white or stock text on a topic colour, and never use a topic colour as a text colour.", "section": "colors" },
+      { "name": "The One Amber Rule", "body": "Interface chrome has one accent, amber: the selected navigation indicator and text selection. Buttons are ink or stock, never coloured.", "section": "colors" },
+      { "name": "The Fit-Don't-Cut Rule", "body": "A card question is never truncated mid-thought at normal sizes: it is set at the largest of 21, 18 or 16px that fits five lines, honouring the system text scale. Ellipsis is the last resort.", "section": "typography" },
+      { "name": "The One Loud Voice Rule", "body": "Unbounded is reserved for headings and card questions. Body, labels, buttons and navigation are always Albert Sans.", "section": "typography" },
+      { "name": "The Lying-On-The-Table Rule", "body": "Only cards cast shadows, and shadows are always soft and straight down. A hard, offset or coloured shadow does not belong to this world.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do take every colour from the card-table tokens: table, card stock, ink, the two muted text colours, keylines and the four topic colours.",
+      "Do derive a card's colour and art from its main topic via the rotation, so the same topic always looks the same.",
+      "Do set all text on card stock and topic colours in ink.",
+      "Do set card questions in Unbounded and fit them by stepping 21, 18, 16px over five lines before truncating.",
+      "Do name the concrete action on every play button.",
+      "Do give every motion an instant-cut path for reduced motion, and keep targets at 48dp or more.",
+      "Do follow the system light or dark setting on every card-table screen."
+    ],
+    "donts": [
+      "Don't put an eyebrow or kicker line above a heading.",
+      "Don't let one colour dominate a screen or attach a topic colour to a party, position or verdict.",
+      "Don't give shadows to anything but cards, and never use hard or offset shadows.",
+      "Don't set body text, labels or buttons in Unbounded.",
+      "Don't show a card's facts or arguments on its front; they live on the back.",
+      "Don't mark cards in \"Alle Aktionen\" as already in the hand, with an icon or a label."
+    ]
+  }
+}

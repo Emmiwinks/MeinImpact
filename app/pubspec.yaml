@@ -26,3 +26,25 @@ dev_dependencies:
 flutter:
   generate: true
   uses-material-design: true
+  # Bundled, never fetched at runtime (no request to Google per user).
+  # Licences: assets/fonts/*-OFL.txt, registered in main.dart.
+  assets:
+    - assets/fonts/Unbounded-OFL.txt
+    - assets/fonts/AlbertSans-OFL.txt
+  fonts:
+    - family: Unbounded
+      fonts:
+        - asset: assets/fonts/Unbounded-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Unbounded-ExtraBold.ttf
+          weight: 800
+    - family: AlbertSans
+      fonts:
+        - asset: assets/fonts/AlbertSans-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/AlbertSans-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/AlbertSans-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/AlbertSans-ExtraBold.ttf
+          weight: 800

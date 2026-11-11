@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:meinimpact/l10n/app_localizations.dart';
 
+import '../../../app/theme/mi_theme.dart';
 import '../../tracking/domain/action_log.dart';
 import '../data/opportunity_relevance_ranker.dart';
 import '../domain/interest_config.dart';
@@ -10,12 +10,9 @@ import '../domain/opportunity.dart';
 import '../domain/opportunity_repository.dart';
 import '../domain/user_profile.dart';
 import 'action_browser_screen.dart';
+import 'hand/hand_view.dart';
 import 'letter_screen.dart';
-import 'widgets/feed_error.dart';
 import 'widgets/get_the_app_sheet.dart';
-import 'widgets/loading_card.dart';
-import 'widgets/opportunity_detail_dialog.dart';
-import 'widgets/opportunity_panel.dart';
 
 /// Opens an opportunity's source and resolves to true when the user marked
 /// it done there.
@@ -33,12 +30,12 @@ typedef LetterOpener = Future<bool> Function(
   required VoidCallback onViewPaper,
 });
 
-/// The "Aktionen" tab — the current run's opportunities (see
+/// The "Für dich" tab — the current run's opportunities (see
 /// OpportunityRepository.pool, "one run, one feed"), ranked on-device by
-/// personal relevance. Fetches the pool once per tab instance; ranking is
-/// a pure, cheap client-side transform re-applied whenever the profile
-/// changes, not a network concern. Actions the user marked done leave the
-/// feed.
+/// personal relevance and dealt as a hand of cards (HandView). Fetches the
+/// pool once per tab instance; ranking is a pure, cheap client-side
+/// transform re-applied whenever the profile changes, not a network
+/// concern. Actions the user marked done leave the hand.
 class AktionenTab extends StatefulWidget {
   const AktionenTab({
     required this.opportunityRepository,
@@ -75,12 +72,19 @@ class AktionenTab extends StatefulWidget {
 
 class _AktionenTabState extends State<AktionenTab> {
   late Future<List<RankedOpportunity>> _future;
-  int? _selectedIndex;
 
   @override
   void initState() {
     super.initState();
     _future = _load();
+  }
+
+  void _reload() {
+    setState(() {
+      // The FutureBuilder only listens from the next frame on; a failure
+      // before then is still shown, not reported as unhandled.
+      _future = _load()..ignore();
+    });
   }
 
   Future<List<RankedOpportunity>> _load() async {
@@ -91,72 +95,92 @@ class _AktionenTabState extends State<AktionenTab> {
     return ranker.rank(pool, widget.profile);
   }
 
-  void _open(List<RankedOpportunity> opportunities, int index) {
-    setState(() => _selectedIndex = index);
-    final l10n = AppLocalizations.of(context);
-    final opportunity = opportunities[index].opportunity;
-    widget.onInterestSignal?.call(opportunity, InterestSignal.opened);
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => OpportunityDetailDialog(
-        l10n: l10n,
-        ranked: opportunities[index],
-        onTakeAction: () => _takeAction(opportunity),
-      ),
-    ).then((_) {
-      if (mounted) setState(() => _selectedIndex = null);
-    });
-  }
-
-  Future<void> _takeAction(Opportunity opportunity) async {
+  // Opens the action; true once the user marked it done. Logging it waits
+  // for [_complete], after the card has landed on the Wirkung pile.
+  Future<bool> _takeAction(Opportunity opportunity) async {
     // The web build is a teaser: taking part happens in the app.
     if (widget.isWeb) {
       await GetTheAppSheet.show(context);
-      return;
+      return false;
     }
     if (opportunity.kind == OpportunityKind.decision) {
-      final done = await widget.openLetter(
+      return widget.openLetter(
         context,
         opportunity,
         repository: widget.opportunityRepository,
         onViewPaper: () => widget.openAction(context, opportunity),
       );
-      if (done && mounted) _complete(opportunity, ActionVia.letter);
-      return;
     }
-    final done = await widget.openAction(context, opportunity);
-    if (done && mounted) _complete(opportunity, ActionVia.inAppBrowser);
+    return widget.openAction(context, opportunity);
   }
 
-  // No confirmation step: the action leaves the feed right away and a short
-  // message says so.
-  void _complete(Opportunity opportunity, ActionVia via) {
-    widget.onActionDone?.call(opportunity, via);
-    widget.onInterestSignal?.call(opportunity, InterestSignal.acted);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Stark, erledigt!')),
+  void _complete(Opportunity opportunity) {
+    widget.onActionDone?.call(
+      opportunity,
+      opportunity.kind == OpportunityKind.decision
+          ? ActionVia.letter
+          : ActionVia.inAppBrowser,
     );
+    widget.onInterestSignal?.call(opportunity, InterestSignal.acted);
   }
 
   @override
   Widget build(BuildContext context) {
+    final hand = _buildHand();
+    // On the card table already when inside the app shell.
+    return Theme.of(context).extension<MiColors>() != null
+        ? hand
+        : Theme(
+            data: miTheme(MediaQuery.platformBrightnessOf(context)),
+            child: hand,
+          );
+  }
+
+  Widget _buildHand() {
     return FutureBuilder<List<RankedOpportunity>>(
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
-          return const LoadingCard();
+          return const HandLoading();
         }
         if (snapshot.hasError) {
-          return FeedError(message: snapshot.error.toString());
+          debugPrint('Pool loading failed: ${snapshot.error}');
+          return HandMessage(
+            title: 'Deine Karten konnten nicht geladen werden.',
+            body: 'Prüf deine Internetverbindung und versuch es noch einmal.',
+            actionLabel: 'Nochmal versuchen',
+            onAction: _reload,
+          );
         }
+        final pool = snapshot.data ?? const <RankedOpportunity>[];
         final opportunities = [
-          for (final ranked in snapshot.data ?? const <RankedOpportunity>[])
+          for (final ranked in pool)
             if (!widget.doneIds.contains(ranked.opportunity.id)) ranked,
         ];
-        return OpportunityPanel(
+        if (opportunities.isEmpty) {
+          return pool.isEmpty
+              ? const HandMessage(
+                  title: 'Gerade gibt es keine offenen Aktionen.',
+                  body: 'Neue kommen dazu, sobald Stadt, Land oder EU sie '
+                      'veröffentlichen.',
+                )
+              : const HandMessage(
+                  title: 'Du hast alle Karten gespielt.',
+                  body: 'Unter Wirkung siehst du, was aus deinen Aktionen '
+                      'wird.',
+                );
+        }
+        return HandView(
           opportunities: opportunities,
-          selectedIndex: _selectedIndex ?? -1,
-          onSelect: (index) => _open(opportunities, index),
+          actionLabel: (opportunity) => widget.isWeb
+              ? 'In der App mitmachen'
+              : opportunity.kind.callToAction,
+          onPlay: (ranked) => _takeAction(ranked.opportunity),
+          onPlayed: (ranked) => _complete(ranked.opportunity),
+          onOpened: (ranked) => widget.onInterestSignal?.call(
+            ranked.opportunity,
+            InterestSignal.opened,
+          ),
         );
       },
     );

@@ -3,7 +3,7 @@ import 'package:meinimpact/src/features/feed/data/opportunity_relevance_ranker.d
 import 'package:meinimpact/src/features/feed/domain/lebenslagen_search.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity.dart';
 import 'package:meinimpact/src/features/feed/domain/user_profile.dart';
-import 'package:meinimpact/src/features/feed/presentation/widgets/opportunity_tile.dart';
+import 'package:meinimpact/src/features/feed/presentation/hand/action_card.dart';
 
 Opportunity _opportunity({
   String id = 'opp-1',
@@ -399,13 +399,13 @@ void main() {
             interestTag: tag,
           );
 
-      expect(cardReason(ranked('eltern')), 'Passt zu deinen Themen: Eltern');
-      expect(cardReason(ranked('lgbtq')), 'Passt zu deinen Themen');
+      expect(whyLine(ranked('eltern')), 'Weil du „Eltern“ angegeben hast');
+      expect(whyLine(ranked('lgbtq')), 'Weil es zu deinen Angaben passt');
       expect(
-        cardReason(ranked(null, tag: 'Umwelt/Natur')),
+        whyLine(ranked(null, tag: 'Umwelt/Natur')),
         'Weil du dich für Umwelt/Natur interessierst',
       );
-      expect(cardReason(ranked(null)), isNull);
+      expect(whyLine(ranked(null)), isNull);
     });
 
     test('unscored opportunities count as average appeal', () {

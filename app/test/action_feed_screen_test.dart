@@ -16,9 +16,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.bySemanticsLabel(RegExp('^Karte 1 von 1')), findsOneWidget);
     expect(find.text('Petition zum Klimaschutz'), findsOneWidget);
-    // Source registry and kind of participation, straight from the registry.
-    expect(find.text('WeAct · Petition'), findsOneWidget);
+    // Kind of participation, straight from the registry.
+    expect(find.text('Petition'), findsOneWidget);
 
     // No invented score or time-estimate text anywhere.
     expect(find.textContaining('Bewertung'), findsNothing);
@@ -28,17 +29,23 @@ void main() {
     expect(find.byKey(const Key('languageSelector')), findsNothing);
   });
 
-  testWidgets('opening an opportunity shows its action button', (
+  testWidgets('turning a card over shows its source and action button', (
     tester,
   ) async {
     await tester.pumpWidget(
       MeinImpactApp(opportunityRepository: _PoolRepository()),
     );
     await tester.pumpAndSettle();
+    expect(find.text('Petition unterschreiben'), findsOneWidget);
 
     await tester.tap(find.text('Petition zum Klimaschutz'));
     await tester.pumpAndSettle();
 
+    expect(find.text('Petition · WeAct'), findsOneWidget);
+    expect(
+      find.text('Eine Petition fordert mehr Klimaschutz.'),
+      findsOneWidget,
+    );
     expect(find.text('Petition unterschreiben'), findsOneWidget);
   });
 
@@ -48,19 +55,21 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Noch keine Themen verfügbar.'), findsOneWidget);
+    expect(find.text('Gerade gibt es keine offenen Aktionen.'), findsOneWidget);
   });
 
-  testWidgets('renders pool-loading errors', (tester) async {
-    await tester.pumpWidget(
-      MeinImpactApp(opportunityRepository: _FailingRepository()),
-    );
+  testWidgets('renders pool-loading errors and retries', (tester) async {
+    final repository = _FailingRepository();
+    await tester.pumpWidget(MeinImpactApp(opportunityRepository: repository));
     await tester.pumpAndSettle();
 
     expect(
-      find.textContaining('Empfehlungen konnten nicht geladen werden:'),
+      find.text('Deine Karten konnten nicht geladen werden.'),
       findsOneWidget,
     );
+    await tester.tap(find.text('Nochmal versuchen'));
+    await tester.pumpAndSettle();
+    expect(repository.calls, 2);
   });
 
   testWidgets('bottom navigation has three tabs and switches to Wirkung', (
@@ -73,10 +82,10 @@ void main() {
 
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.text('Mein Profil'), findsOneWidget);
-    expect(find.text('Meine Themen'), findsOneWidget);
-    expect(find.text('Meine Wirkung'), findsOneWidget);
+    expect(find.text('Meine Aktionen'), findsOneWidget);
+    expect(find.text('Mein Impact'), findsOneWidget);
 
-    await tester.tap(find.text('Meine Wirkung'));
+    await tester.tap(find.text('Mein Impact'));
     await tester.pumpAndSettle();
 
     // No action done yet: the tab explains how it fills.
@@ -146,8 +155,11 @@ class _EmptyRepository implements OpportunityRepository {
 }
 
 class _FailingRepository implements OpportunityRepository {
+  int calls = 0;
+
   @override
   Future<List<Opportunity>> pool() async {
+    calls++;
     throw StateError('Backend unavailable');
   }
 

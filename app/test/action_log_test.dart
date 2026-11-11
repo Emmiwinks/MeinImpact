@@ -79,7 +79,7 @@ void main() {
       await _takeAction(tester, 'Petition zum Klimaschutz');
 
       expect(find.text('Petition zum Klimaschutz'), findsNothing);
-      expect(find.text('Stark, erledigt!'), findsOneWidget);
+      expect(find.text('Du hast alle Karten gespielt.'), findsOneWidget);
       expect(harness.signals, [InterestSignal.opened, InterestSignal.acted]);
       expect(harness.done, {'petition-1': ActionVia.inAppBrowser});
     });
@@ -92,7 +92,11 @@ void main() {
 
       await _takeAction(tester, 'Petition zum Klimaschutz');
 
-      expect(find.text('Petition zum Klimaschutz'), findsOneWidget);
+      // The card is still in the hand, turned over as the user left it.
+      expect(
+        find.text('Eine Petition fordert mehr Klimaschutz.'),
+        findsOneWidget,
+      );
       expect(harness.signals, [InterestSignal.opened]);
       expect(harness.done, isEmpty);
     });
@@ -369,10 +373,11 @@ void main() {
   });
 }
 
+// Turns the card over, then plays it from its back.
 Future<void> _takeAction(WidgetTester tester, String title) async {
   await tester.tap(find.text(title));
   await tester.pumpAndSettle();
-  await tester.tap(find.byType(ElevatedButton));
+  await tester.tap(find.byType(FilledButton));
   await tester.pumpAndSettle();
 }
 
@@ -452,7 +457,7 @@ class _HarnessState extends State<_Harness> {
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       home: Scaffold(
-        body: SingleChildScrollView(
+        body: SizedBox.expand(
           child: AktionenTab(
             opportunityRepository: _LetterRepository(
               opportunities: widget.opportunities ?? [_petition()],

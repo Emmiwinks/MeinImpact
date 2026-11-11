@@ -14,6 +14,7 @@ import '../features/onboarding/value_profile_screen.dart';
 import '../features/tracking/data/action_log_store.dart';
 import '../features/tracking/domain/action_log.dart';
 import 'main_tab_screen.dart';
+import 'theme/mi_theme.dart';
 
 /// Hardcoded stand-in Lebenslagen, used by the "Beispiel-Profil übernehmen"
 /// onboarding shortcut. Deliberately not configurable: it exists to skip
@@ -174,19 +175,9 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1FA37A),
-        ).copyWith(
-          surface: const Color(0xFFFFFCF7),
-        ),
-        scaffoldBackgroundColor: const Color(0xFFFAF7F0),
-        textTheme: ThemeData.light().textTheme.apply(
-              bodyColor: const Color(0xFF28241F),
-              displayColor: const Color(0xFF28241F),
-            ),
-        useMaterial3: true,
-      ),
+      // Screens move to the card table (miTheme) one by one; the rest,
+      // including routes they push, keep the old look until then.
+      theme: legacyTheme(),
       home: _buildHome(),
     );
   }

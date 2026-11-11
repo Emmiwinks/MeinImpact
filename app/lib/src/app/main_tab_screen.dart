@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:meinimpact/l10n/app_localizations.dart';
 
 import '../features/feed/domain/interest_config.dart';
@@ -11,8 +12,9 @@ import '../features/feed/presentation/widgets/app_colors.dart';
 import '../features/feed/presentation/widgets/profile_column.dart';
 import '../features/tracking/domain/action_log.dart';
 import '../features/tracking/wirkung_tab.dart';
+import 'theme/mi_theme.dart';
 
-/// App root: three bottom-navigation tabs (Profil, Aktionen, Wirkung — no
+/// App root: three bottom-navigation tabs (Profil, Meine Aktionen, Wirkung — no
 /// language switcher, no side-by-side desktop layout; a plain, modern
 /// mobile-style tab bar).
 class MainTabScreen extends StatefulWidget {
@@ -50,21 +52,32 @@ class MainTabScreen extends StatefulWidget {
 }
 
 class _MainTabScreenState extends State<MainTabScreen> {
-  int _tabIndex = 1; // default to Aktionen — the primary "what now" screen
+  int _tabIndex = 1; // default to Meine Aktionen — the primary "what now" screen
+  // Done actions the user has not looked at in Wirkung yet; the Wirkung tab
+  // shows their count where played cards land.
+  late int _seenDone = widget.doneActions.length;
+
+  void _select(int index) => setState(() {
+        _tabIndex = index;
+        if (index == 2) _seenDone = widget.doneActions.length;
+      });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final effectiveProfile = widget.profile ?? MainTabScreen._fallbackProfile;
+    final unseen = widget.doneActions.length - _seenDone;
 
     final tabs = [
-      _ProfileTab(
-        profile: effectiveProfile,
-        onEdit: widget.onEditProfile,
-        onLebenslagenChanged: widget.onLebenslagenChanged,
-        onInterestsChanged: widget.onInterestsChanged,
+      _Legacy(
+        child: _ProfileTab(
+          profile: effectiveProfile,
+          onEdit: widget.onEditProfile,
+          onLebenslagenChanged: widget.onLebenslagenChanged,
+          onInterestsChanged: widget.onInterestsChanged,
+        ),
       ),
-      _AktionenScaffoldTab(
+      AktionenTab(
         opportunityRepository: widget.opportunityRepository,
         profile: effectiveProfile,
         onInterestSignal: widget.onInterestSignal,
@@ -73,40 +86,73 @@ class _MainTabScreenState extends State<MainTabScreen> {
         interestConfig: widget.interestConfig,
       ),
       // Scrolls itself, for pull-to-refresh.
-      WirkungTab(
-        opportunityRepository: widget.opportunityRepository,
-        doneActions: widget.doneActions,
+      _Legacy(
+        child: WirkungTab(
+          opportunityRepository: widget.opportunityRepository,
+          doneActions: widget.doneActions,
+        ),
       ),
     ];
 
-    return Scaffold(
-      backgroundColor: AppColors.canvas,
-      body: SafeArea(
-        child: IndexedStack(index: _tabIndex, children: tabs),
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tabIndex,
-        onDestinationSelected: (index) => setState(() => _tabIndex = index),
-        destinations: [
-          NavigationDestination(
-            icon: const Icon(Icons.person_outline),
-            selectedIcon: const Icon(Icons.person),
-            label: l10n.tabProfile,
+    // The card table follows the phone's light or dark setting, and so do
+    // the status bar icons above it.
+    final brightness = MediaQuery.platformBrightnessOf(context);
+    return Theme(
+      data: miTheme(brightness),
+      child: Builder(
+        builder: (context) => AnnotatedRegion<SystemUiOverlayStyle>(
+          value: brightness == Brightness.dark
+              ? SystemUiOverlayStyle.light
+              : SystemUiOverlayStyle.dark,
+          child: Scaffold(
+            backgroundColor: context.mi.table,
+            body: SafeArea(
+              child: IndexedStack(index: _tabIndex, children: tabs),
+            ),
+            bottomNavigationBar: NavigationBar(
+              selectedIndex: _tabIndex,
+              onDestinationSelected: _select,
+              destinations: [
+                NavigationDestination(
+                  icon: const Icon(Icons.person_outline),
+                  selectedIcon: const Icon(Icons.person),
+                  label: l10n.tabProfile,
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.style_outlined),
+                  selectedIcon: const Icon(Icons.style),
+                  label: l10n.tabActions,
+                ),
+                NavigationDestination(
+                  icon: Badge(
+                    isLabelVisible: unseen > 0,
+                    label: Text('$unseen'),
+                    child: const Icon(Icons.timeline_outlined),
+                  ),
+                  selectedIcon: const Icon(Icons.timeline),
+                  label: l10n.tabImpact,
+                ),
+              ],
+            ),
           ),
-          NavigationDestination(
-            icon: const Icon(Icons.bolt_outlined),
-            selectedIcon: const Icon(Icons.bolt),
-            label: l10n.tabActions,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.timeline_outlined),
-            selectedIcon: const Icon(Icons.timeline),
-            label: l10n.tabImpact,
-          ),
-        ],
+        ),
       ),
     );
   }
+}
+
+/// A tab that has not moved to the card table yet: its old light look,
+/// whatever the phone's setting.
+class _Legacy extends StatelessWidget {
+  const _Legacy({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Theme(
+        data: legacyTheme(),
+        child: ColoredBox(color: AppColors.canvas, child: child),
+      );
 }
 
 class _ProfileTab extends StatelessWidget {
@@ -131,40 +177,6 @@ class _ProfileTab extends StatelessWidget {
         onEdit: onEdit ?? () {},
         onLebenslagenChanged: onLebenslagenChanged ?? (_) {},
         onInterestsChanged: onInterestsChanged ?? (_) {},
-      ),
-    );
-  }
-}
-
-class _AktionenScaffoldTab extends StatelessWidget {
-  const _AktionenScaffoldTab({
-    required this.opportunityRepository,
-    required this.profile,
-    required this.onInterestSignal,
-    required this.doneIds,
-    required this.onActionDone,
-    required this.interestConfig,
-  });
-
-  final OpportunityRepository opportunityRepository;
-  final UserProfile profile;
-  final void Function(Opportunity opportunity, InterestSignal signal)?
-      onInterestSignal;
-  final Set<String> doneIds;
-  final void Function(Opportunity opportunity, ActionVia via)? onActionDone;
-  final InterestConfig interestConfig;
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(18, 20, 18, 28),
-      child: AktionenTab(
-        opportunityRepository: opportunityRepository,
-        profile: profile,
-        onInterestSignal: onInterestSignal,
-        doneIds: doneIds,
-        onActionDone: onActionDone,
-        interestConfig: interestConfig,
       ),
     );
   }
