@@ -34,7 +34,8 @@ are not built. What the user asked for (next work item):
   `scripts/dryrun_impact_news.py`). Second dry run on 25 actions: relevant
   hits on the first rung for 16; press-style queries work, formal names
   and paper numbers do not. Small local petitions often have no press at
-  all. Provisional, waiting for the user's hand review.
+  all. User skimmed the report and accepted it as is (2026-11-11); still
+  a small sample, so watch the first real results.
 - **Roadmap: contacts of whoever is responsible**, so an action without
   news still offers a next step ("hier nachfragen"). Office addresses
   only, and only addresses that literally appear on an official page or
