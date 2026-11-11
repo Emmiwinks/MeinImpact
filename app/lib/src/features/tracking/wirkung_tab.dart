@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../app/theme/mi_theme.dart';
 import '../feed/domain/opportunity_repository.dart';
-import '../feed/presentation/widgets/app_colors.dart';
-import '../feed/presentation/widgets/components/check_mark.dart';
-import '../feed/presentation/widgets/components/surface_card.dart';
-import '../feed/presentation/widgets/components/text_badges.dart';
+import '../feed/presentation/hand/hand_view.dart';
+import '../feed/presentation/hand/topic_art.dart';
+import 'data/starred_actions_store.dart';
 import 'domain/action_log.dart';
 import 'domain/impact_news.dart';
 
@@ -16,15 +17,16 @@ Future<void> _openInAppBrowser(Uri url) async {
   await launchUrl(url, mode: LaunchMode.inAppBrowserView);
 }
 
-/// "Wirkung" tab: every action the user marked done, newest first, each
-/// with what Mein Impact found about it. The whole news feed is fetched and
-/// matched here on the device, so the server never learns which actions
-/// these are. Pull down to reload.
+/// "Wirkung" tab: the pile of played cards. Every action the user marked
+/// done, newest first, each with what Mein Impact found about it. The whole
+/// news feed is fetched and matched here on the device, so the server never
+/// learns which actions these are. Pull down to reload.
 class WirkungTab extends StatefulWidget {
   const WirkungTab({
     required this.opportunityRepository,
     this.doneActions = const [],
     this.openLink = _openInAppBrowser,
+    this.starredStore = const StarredActionsStore(),
     super.key,
   });
 
@@ -32,6 +34,7 @@ class WirkungTab extends StatefulWidget {
   // The action log, oldest first.
   final List<ActionLogEntry> doneActions;
   final LinkOpener openLink;
+  final StarredActionsStore starredStore;
 
   @override
   State<WirkungTab> createState() => _WirkungTabState();
@@ -41,11 +44,13 @@ class _WirkungTabState extends State<WirkungTab> {
   ImpactNewsFeed? _feed;
   bool _loading = true;
   bool _failed = false;
+  Set<String> _starred = {};
 
   @override
   void initState() {
     super.initState();
     _load();
+    _loadStarred();
   }
 
   Future<void> _load() async {
@@ -67,9 +72,33 @@ class _WirkungTabState extends State<WirkungTab> {
     }
   }
 
+  Future<void> _loadStarred() async {
+    final starred = await widget.starredStore.load();
+    if (!mounted) return;
+    setState(() => _starred = starred);
+  }
+
+  void _toggleStar(String opportunityId) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      _starred = {..._starred};
+      if (!_starred.remove(opportunityId)) _starred.add(opportunityId);
+    });
+    widget.starredStore.save(_starred);
+  }
+
   @override
   Widget build(BuildContext context) {
     final actions = widget.doneActions.reversed.toList(growable: false);
+    if (actions.isEmpty) {
+      return const HandMessage(
+        title: 'Noch keine Aktion erledigt',
+        body: 'Wenn du bei einer Aktion auf „Fertig“ tippst, landet sie '
+            'hier, und wir verfolgen, was daraus wird.',
+      );
+    }
+
+    final colors = context.mi;
     final feed = _feed ?? const ImpactNewsFeed();
     final withNews = actions.where((a) {
       final items = feed[a.opportunityId]?.items ?? const [];
@@ -77,34 +106,26 @@ class _WirkungTabState extends State<WirkungTab> {
     }).length;
 
     return RefreshIndicator(
-      color: AppColors.green,
+      color: colors.onCard,
+      backgroundColor: colors.cardStock,
       onRefresh: _load,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(18, 20, 18, 28),
+        padding: const EdgeInsets.only(top: MiSpace.lg, bottom: MiSpace.xl),
         children: [
-          _Header(doneCount: actions.length, withNewsCount: withNews),
-          const SizedBox(height: 18),
-          if (actions.isEmpty)
-            const _EmptyState()
-          else ...[
-            if (_failed) ...[
-              const _LoadError(),
-              const SizedBox(height: 12),
-            ],
-            SectionLabel(label: 'Deine Aktionen'),
-            const SizedBox(height: 10),
-            for (final action in actions) ...[
-              _ActionCard(
-                action: action,
-                news: feed[action.opportunityId],
-                loading: _loading,
-                failed: _failed,
-                openLink: widget.openLink,
-              ),
-              const SizedBox(height: 12),
-            ],
-          ],
+          _Header(actions: actions, withNewsCount: withNews),
+          if (_failed) const _LoadError(),
+          const SizedBox(height: MiSpace.lg),
+          for (final action in actions)
+            _ActionRow(
+              action: action,
+              news: feed[action.opportunityId],
+              loading: _loading,
+              failed: _failed,
+              starred: _starred.contains(action.opportunityId),
+              onStar: () => _toggleStar(action.opportunityId),
+              openLink: widget.openLink,
+            ),
         ],
       ),
     );
@@ -112,105 +133,42 @@ class _WirkungTabState extends State<WirkungTab> {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.doneCount, required this.withNewsCount});
+  const _Header({required this.actions, required this.withNewsCount});
 
-  final int doneCount;
+  // Newest first.
+  final List<ActionLogEntry> actions;
   final int withNewsCount;
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    return SurfaceCard(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    final colors = context.mi;
+    final text = Theme.of(context).textTheme;
+    final count = actions.length;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: MiSpace.lg),
+      child: Row(
         children: [
-          Text(
-            'Wirkung',
-            style: textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.4,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Was aus deinen Aktionen wird: Berichte und Stellungnahmen, '
-            'die wir dazu finden.',
-            style: textTheme.bodyMedium?.copyWith(
-              color: AppColors.mutedText,
-              height: 1.3,
-            ),
-          ),
-          if (doneCount > 0) ...[
-            const SizedBox(height: 16),
-            Row(
+          _PlayedPile(actions: actions),
+          const SizedBox(width: MiSpace.base),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: _Stat(
-                    value: doneCount,
-                    label: doneCount == 1
-                        ? 'Aktion erledigt'
-                        : 'Aktionen erledigt',
-                    color: AppColors.greenWash,
-                    textColor: AppColors.greenDark,
-                  ),
+                Text(
+                  count == 1 ? '1 Aktion erledigt' : '$count Aktionen erledigt',
+                  style: text.titleLarge,
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _Stat(
-                    value: withNewsCount,
-                    label: 'mit Berichten',
-                    color: AppColors.warmSurface,
-                    textColor: AppColors.amberText,
+                const SizedBox(height: MiSpace.xs),
+                Text(
+                  withNewsCount == 0
+                      ? 'Noch keine Berichte dazu'
+                      : '$withNewsCount davon mit Berichten',
+                  style: text.bodyLarge?.copyWith(
+                    color: colors.onTableMuted,
                   ),
                 ),
               ],
             ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _Stat extends StatelessWidget {
-  const _Stat({
-    required this.value,
-    required this.label,
-    required this.color,
-    required this.textColor,
-  });
-
-  final int value;
-  final String label;
-  final Color color;
-  final Color textColor;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '$value',
-            style: textTheme.headlineMedium?.copyWith(
-              color: textColor,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          Text(
-            label,
-            style: textTheme.labelMedium?.copyWith(
-              color: textColor,
-              fontWeight: FontWeight.w700,
-            ),
           ),
         ],
       ),
@@ -218,30 +176,64 @@ class _Stat extends StatelessWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+/// The last few played cards, face up on a small pile: where a card lands
+/// when it is played in the hand.
+class _PlayedPile extends StatelessWidget {
+  const _PlayedPile({required this.actions});
+
+  // Newest first.
+  final List<ActionLogEntry> actions;
+
+  // Newest upright, the ones below fanned out like a tossed pile.
+  static const _angles = [0.0, 0.26, -0.22];
+  static const _shifts = [0.0, 8.0, -7.0];
 
   @override
   Widget build(BuildContext context) {
-    return SurfaceCard(
-      color: AppColors.surfaceMuted,
-      padding: const EdgeInsets.all(18),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.flag_outlined, color: AppColors.mutedText),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Noch keine Aktion erledigt. Wenn du bei einer Aktion auf '
-              '„Fertig“ tippst, verfolgen wir hier, was daraus wird.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.mutedText,
-                    height: 1.3,
+    final colors = context.mi;
+    final top = actions.take(_angles.length).toList(growable: false);
+    return ExcludeSemantics(
+      child: SizedBox(
+        width: 84,
+        height: 84,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Oldest at the bottom, the newest card on top and upright.
+            for (var i = top.length - 1; i >= 0; i--)
+              Transform.translate(
+                offset: Offset(_shifts[i], 0),
+                child: Transform.rotate(
+                  angle: _angles[i],
+                  child: Container(
+                    width: 50,
+                    height: 68,
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: colors.cardStock,
+                      borderRadius: BorderRadius.circular(MiRadius.tile - 3),
+                      boxShadow: [
+                        BoxShadow(
+                          color: colors.shadow,
+                          blurRadius: 16,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(MiRadius.tile - 6),
+                      child: TopicArt(
+                        look: TopicLook.forTags(
+                          top[i].affectedTags,
+                          top[i].kind,
+                        ),
+                      ),
+                    ),
                   ),
-            ),
-          ),
-        ],
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -252,22 +244,30 @@ class _LoadError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      'Berichte konnten gerade nicht geladen werden. Zum Neuladen nach '
-      'unten ziehen.',
-      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppColors.amberText,
-          ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        MiSpace.lg,
+        MiSpace.base,
+        MiSpace.lg,
+        0,
+      ),
+      child: _Note(
+        icon: Icons.cloud_off_outlined,
+        text: 'Berichte konnten gerade nicht geladen werden. Zum Neuladen '
+            'nach unten ziehen.',
+      ),
     );
   }
 }
 
-class _ActionCard extends StatefulWidget {
-  const _ActionCard({
+class _ActionRow extends StatefulWidget {
+  const _ActionRow({
     required this.action,
     required this.news,
     required this.loading,
     required this.failed,
+    required this.starred,
+    required this.onStar,
     required this.openLink,
   });
 
@@ -276,76 +276,108 @@ class _ActionCard extends StatefulWidget {
   final ImpactNewsEntry? news;
   final bool loading;
   final bool failed;
+  final bool starred;
+  final VoidCallback onStar;
   final LinkOpener openLink;
 
   @override
-  State<_ActionCard> createState() => _ActionCardState();
+  State<_ActionRow> createState() => _ActionRowState();
 }
 
-class _ActionCardState extends State<_ActionCard> {
-  static const _collapsedCount = 3;
+class _ActionRowState extends State<_ActionRow> {
+  static const _collapsedCount = 2;
   bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
+    final colors = context.mi;
+    final text = Theme.of(context).textTheme;
     final action = widget.action;
-    return SurfaceCard(
-      padding: const EdgeInsets.all(16),
+    final news = _newsSection(context);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(
+        MiSpace.lg,
+        MiSpace.lg,
+        MiSpace.sm,
+        MiSpace.lg,
+      ),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: colors.keyline)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const CheckMark(),
-              const SizedBox(width: 12),
+              CardThumbnail(
+                look: TopicLook.forTags(action.affectedTags, action.kind),
+              ),
+              const SizedBox(width: MiSpace.base),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      action.title,
-                      style: textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        height: 1.25,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
+                    Text(action.title, style: text.titleMedium),
+                    const SizedBox(height: MiSpace.sm),
                     Text(
                       '${action.kind.label} · ${action.sourceOrg} · '
                       'erledigt am ${_formatDate(action.doneAt.toLocal())}',
-                      style: textTheme.bodySmall?.copyWith(
-                        color: AppColors.mutedText,
+                      style: text.labelMedium?.copyWith(
+                        color: colors.onTableMuted,
                       ),
                     ),
                   ],
                 ),
               ),
+              // Pulled up so the star lines up with the title.
+              Transform.translate(
+                offset: const Offset(0, -MiSpace.md),
+                child: _StarButton(
+                  starred: widget.starred,
+                  onPressed: widget.onStar,
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 12),
-          ..._newsSection(context),
+          if (news.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(
+                top: MiSpace.md,
+                right: MiSpace.lg - MiSpace.sm,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: news,
+              ),
+            ),
         ],
       ),
     );
   }
 
   List<Widget> _newsSection(BuildContext context) {
+    final colors = context.mi;
     final news = widget.news;
     if (news == null) {
       if (widget.loading) {
-        return const [
-          LinearProgressIndicator(
-            minHeight: 2,
-            color: AppColors.green,
-            backgroundColor: Colors.transparent,
+        return [
+          Semantics(
+            label: 'Berichte werden geladen',
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(MiRadius.chip),
+              child: LinearProgressIndicator(
+                minHeight: 3,
+                color: colors.onTableMuted,
+                backgroundColor: colors.keyline,
+              ),
+            ),
           ),
         ];
       }
       if (widget.failed) return const [];
-      return [
-        const _NewsNote(
+      return const [
+        _Note(
           icon: Icons.search,
           text: 'Wir suchen bald nach Berichten dazu.',
         ),
@@ -353,7 +385,7 @@ class _ActionCardState extends State<_ActionCard> {
     }
     if (news.items.isEmpty) {
       return [
-        _NewsNote(
+        _Note(
           icon: Icons.schedule,
           text: 'Noch keine Berichte gefunden (zuletzt gesucht am '
               '${_formatDate(news.checkedAt.toLocal())}). '
@@ -367,8 +399,8 @@ class _ActionCardState extends State<_ActionCard> {
     return [
       if (items.every((i) => i.isBackground))
         const Padding(
-          padding: EdgeInsets.only(bottom: 8),
-          child: _NewsNote(
+          padding: EdgeInsets.only(bottom: MiSpace.sm),
+          child: _Note(
             icon: Icons.info_outline,
             text: 'Noch nichts direkt dazu. Hintergrund zum Thema:',
           ),
@@ -379,7 +411,10 @@ class _ActionCardState extends State<_ActionCard> {
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton(
-            style: TextButton.styleFrom(foregroundColor: AppColors.greenDark),
+            // Label in line with the text inside the tiles above.
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: MiSpace.base),
+            ),
             onPressed: () => setState(() => _expanded = !_expanded),
             child: Text(
               _expanded
@@ -398,26 +433,70 @@ class _ActionCardState extends State<_ActionCard> {
   }
 }
 
-class _NewsNote extends StatelessWidget {
-  const _NewsNote({required this.icon, required this.text});
+/// Follow an action: the user wants to hear when something new turns up
+/// about it. Marked like the selected destination in the navigation bar:
+/// an amber pill with an ink star, the interface's one "selected" accent.
+class _StarButton extends StatelessWidget {
+  const _StarButton({required this.starred, required this.onPressed});
+
+  final bool starred;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.mi;
+    final reduced = MiMotion.reduced(context);
+    return IconButton(
+      onPressed: onPressed,
+      isSelected: starred,
+      tooltip: starred ? 'Nicht mehr folgen' : 'Folgen',
+      style: IconButton.styleFrom(
+        backgroundColor: starred ? colors.topics[2] : Colors.transparent,
+        foregroundColor: starred ? colors.onCard : colors.onTableMuted,
+        // A 40dp disc; the padded tap target keeps 48dp to hit.
+        minimumSize: const Size(40, 40),
+        padding: EdgeInsets.zero,
+        tapTargetSize: MaterialTapTargetSize.padded,
+      ),
+      icon: AnimatedSwitcher(
+        duration: reduced ? Duration.zero : MiMotion.quick,
+        switchInCurve: Curves.easeOutBack,
+        transitionBuilder: (child, animation) =>
+            ScaleTransition(scale: animation, child: child),
+        child: Icon(
+          starred ? Icons.star_rounded : Icons.star_outline_rounded,
+          key: ValueKey(starred),
+          size: 24,
+        ),
+      ),
+    );
+  }
+}
+
+class _Note extends StatelessWidget {
+  const _Note({required this.icon, required this.text});
 
   final IconData icon;
   final String text;
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.mi;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 16, color: AppColors.mutedText),
-        const SizedBox(width: 8),
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Icon(icon, size: 18, color: colors.onTableMuted),
+        ),
+        const SizedBox(width: MiSpace.sm),
         Expanded(
           child: Text(
             text,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.mutedText,
-                  height: 1.3,
-                ),
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: colors.onTableMuted),
           ),
         ),
       ],
@@ -425,6 +504,7 @@ class _NewsNote extends StatelessWidget {
   }
 }
 
+/// One report, flat on the table: only cards cast shadows.
 class _NewsTile extends StatelessWidget {
   const _NewsTile({required this.item, required this.onTap});
 
@@ -433,75 +513,78 @@ class _NewsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
+    final colors = context.mi;
+    final text = Theme.of(context).textTheme;
     final host = Uri.tryParse(item.url)?.host.replaceFirst('www.', '') ?? '';
     final published = item.publishedOn;
     final meta = [
       if (host.isNotEmpty) host,
       if (published != null) _formatDate(published),
     ].join(' · ');
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(MiRadius.tile),
+      side: BorderSide(color: colors.keyline),
+    );
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: MiSpace.sm),
       child: Material(
-        color: AppColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(16),
+        color: colors.tableRaised,
+        shape: shape,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          customBorder: shape,
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.fromLTRB(
+              MiSpace.base,
+              MiSpace.md,
+              MiSpace.base,
+              MiSpace.md,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (item.isStatement || item.isBackground)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Pill(
-                      label: item.isStatement ? 'Stellungnahme' : 'Hintergrund',
-                      color: item.isStatement
-                          ? AppColors.blueText
-                          : AppColors.mutedText,
+                    padding: const EdgeInsets.only(bottom: MiSpace.sm),
+                    child: _KindChip(
+                      item.isStatement ? 'Stellungnahme' : 'Hintergrund',
                     ),
                   ),
                 Text(
                   item.title,
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
-                  style: textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    height: 1.25,
-                  ),
+                  style: text.bodyLarge,
                 ),
                 if (item.snippet.isNotEmpty) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: MiSpace.xs),
                   Text(
                     item.snippet,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: textTheme.bodySmall?.copyWith(
-                      color: AppColors.mutedText,
-                      height: 1.3,
+                    style: text.bodyMedium?.copyWith(
+                      color: colors.onTableMuted,
                     ),
                   ),
                 ],
                 if (meta.isNotEmpty) ...[
-                  const SizedBox(height: 6),
+                  const SizedBox(height: MiSpace.sm),
                   Row(
                     children: [
                       Expanded(
                         child: Text(
                           meta,
                           overflow: TextOverflow.ellipsis,
-                          style: textTheme.labelSmall?.copyWith(
-                            color: AppColors.mutedText,
-                            fontWeight: FontWeight.w700,
+                          style: text.labelMedium?.copyWith(
+                            color: colors.onTableMuted,
                           ),
                         ),
                       ),
-                      const Icon(
+                      const SizedBox(width: MiSpace.sm),
+                      Icon(
                         Icons.open_in_new,
-                        size: 14,
-                        color: AppColors.mutedText,
+                        size: 16,
+                        color: colors.onTableMuted,
                       ),
                     ],
                   ),
@@ -510,6 +593,30 @@ class _NewsTile extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// What kind of report this is, as an outlined pill like the card back's
+/// fact chips: information, not a colour-coded verdict.
+class _KindChip extends StatelessWidget {
+  const _KindChip(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.mi;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(MiRadius.chip),
+        border: Border.all(color: colors.onTableMuted),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelMedium,
       ),
     );
   }

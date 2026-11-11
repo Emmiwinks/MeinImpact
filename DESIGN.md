@@ -170,7 +170,7 @@ A neutral ink-and-stock base with four saturated topic colours that rotate by to
 
 **The Ink-On-Everything Rule.** Text on card stock and on any topic colour is always ink. Never set white or stock text on a topic colour, and never use a topic colour as a text colour.
 
-**The One Amber Rule.** Interface chrome has one accent, amber: the selected navigation indicator and text selection. Buttons are ink or stock, never coloured.
+**The One Amber Rule.** Interface chrome has one accent, amber: the selected navigation indicator, a starred action in Wirkung, and text selection. Buttons are ink or stock, never coloured.
 
 ## Typography
 
@@ -203,6 +203,10 @@ The fan ends: after the last action card comes a closing card (card stock, the f
 
 "Alle Aktionen" is a plain list on the table: an explanatory body line, then full-width rows separated by keylines, each with a 56px thumbnail card, the title, up to two lines of reason and the kind and deadline line.
 
+"Mein Impact" (the Wirkung tab) is the pile the played cards land on. No headline (the tab names it): the header is the played pile (the last three played cards face up, 50 by 68px with a 3px stock rim, newest upright on top, the ones below fanned out) beside the count in Card Title ("4 Aktionen erledigt") and a muted Body Strong line ("1 davon mit Berichten" or "Noch keine Berichte dazu"). No explanatory line (user: not necessary). Below it, one keyline-separated row per played action, newest first, with 24px above and below so each action reads as its own block, laid out like an "Alle Aktionen" row (thumbnail, Title, the kind, source and done-date line) with the star at the right, level with the title. Under each row sit its reports as flat news tiles, up to two, then a text button for the rest. While loading, the row shows a thin muted progress line. When nothing is found yet, or the search has not run, it shows a muted note with an icon. (Tried and rejected: each action as a face-up card with reports inside. User: too much like the hand's cards, and the action was hard to tell apart from its reports.)
+
+The **star** follows an action: the user wants to hear when something new turns up (push comes later; for now the star is only kept on the device, encrypted). Unstarred it is a muted outline star; starred it is marked like the selected navigation destination, a 40dp amber disc with a filled ink star, inside a 48dp target. A selection haptic accompanies it, and the star pops in with a short scale (instant under reduced motion). Stars go on actions only, never on single reports (user decision). With no played cards the tab shows the face-down deck message instead.
+
 ## Elevation & Depth
 
 Depth is reserved for things lying on the table. Cards and the face-down deck cast soft, blurred shadows straight down; their stacking in the fan (offset, rotation, slight scale-down, dimmed content) does the rest. Everything that is not a card is flat: no shadow on rows, chips, buttons, app bars or the navigation bar, and no Material surface tint.
@@ -230,6 +234,10 @@ Big, solid and named after the act.
 
 ### Chips
 - **Fact chip (card back):** transparent fill, 1px ink outline, pill, 6px 12px padding, Label type in ink. Registry facts only (dates, supporter count, place, districts); support counts are information, never a ranking claim.
+- **Kind chip (news tile):** the same pill on the table, 1px on-table-muted outline, Label type in the on-table colour: "Stellungnahme" or "Hintergrund". Plain news carries no chip. No colour coding by kind.
+
+### News tile
+A report about a played action, flat on the table (not a card, so no shadow): raised table fill (#243242 dark, light enough to separate clearly from the ink table; #FFF8F0 light) with a keyline border, 14px corners, 16px 12px padding. It holds the optional kind chip, the title (Body Strong, up to three lines), the snippet (Body, muted, up to two lines) and a muted Label line with source host, date and an open-in-new icon. Tapping it opens the article in the in-app browser.
 
 ### Cards / Containers
 - **Action card:** card stock with a keyline border and the card shadow, 26px corners, 20px inner inset. **Front:** topic art band on top, then the question (Card Title), one reason line (Body Strong), the kind and deadline line (Label, ink muted), the play button. **Back:** a topic-colour header strip with kind and source plus a close button ("Karte umdrehen"), the summary, fact chips, "Dafür spricht" and "Dagegen spricht" with small ink dot bullets, content fading out above the play button.
@@ -270,4 +278,4 @@ There is no weekly dealing: the hand is always the current top five and refills 
 
 ## Migration note
 
-Only the Für-dich tab, the app shell with its navigation bar, and "Alle Aktionen" are on the card table. Profil, Wirkung, onboarding, the letter screen and the in-app browser still render with the old light look (`legacyTheme()` and `AppColors`, green seed on cream) regardless of the system setting. That look is not part of this system; those screens move to the card-table tokens in later passes.
+The Für-dich tab, the app shell with its navigation bar, "Alle Aktionen" and Mein Impact (Wirkung) are on the card table. Profil, onboarding, the letter screen and the in-app browser still render with the old light look (`legacyTheme()` and `AppColors`, green seed on cream) regardless of the system setting. That look is not part of this system; those screens move to the card-table tokens in later passes.

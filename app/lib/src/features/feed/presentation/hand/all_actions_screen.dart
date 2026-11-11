@@ -75,21 +75,7 @@ class _Row extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // A small card: art in a rim of card stock, so ink grounds in
-            // the art never run into the ink table.
-            Container(
-              width: 56,
-              height: 56,
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                color: colors.cardStock,
-                borderRadius: BorderRadius.circular(MiRadius.tile),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(MiRadius.tile - 3),
-                child: TopicArt(look: TopicLook.of(opportunity)),
-              ),
-            ),
+            CardThumbnail(look: TopicLook.of(opportunity)),
             const SizedBox(width: MiSpace.base),
             Expanded(
               child: Column(

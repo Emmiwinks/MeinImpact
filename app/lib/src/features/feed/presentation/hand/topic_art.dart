@@ -13,14 +13,16 @@ import '../../domain/topic_tags.g.dart';
 class TopicLook {
   const TopicLook._(this.tag, this.index);
 
-  factory TopicLook.of(Opportunity opportunity) {
-    final tag = opportunity.affectedTags.isEmpty
-        ? null
-        : opportunity.affectedTags.first;
+  factory TopicLook.of(Opportunity opportunity) =>
+      TopicLook.forTags(opportunity.affectedTags, opportunity.kind);
+
+  /// For a snapshot of an opportunity, such as a done action in the log.
+  factory TopicLook.forTags(List<String> affectedTags, OpportunityKind kind) {
+    final tag = affectedTags.isEmpty ? null : affectedTags.first;
     final index = tag == null ? -1 : kTopicTags.indexOf(tag);
     return TopicLook._(
       index < 0 ? null : tag,
-      index < 0 ? opportunity.kind.index : index,
+      index < 0 ? kind.index : index,
     );
   }
 
@@ -55,6 +57,32 @@ class TopicArt extends StatelessWidget {
           stock: colors.cardStock,
         ),
         child: const SizedBox.expand(),
+      ),
+    );
+  }
+}
+
+/// A small card for list rows: the art in a rim of card stock, so ink
+/// grounds in the art never run into the ink table.
+class CardThumbnail extends StatelessWidget {
+  const CardThumbnail({required this.look, this.size = 56, super.key});
+
+  final TopicLook look;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: context.mi.cardStock,
+        borderRadius: BorderRadius.circular(MiRadius.tile),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(MiRadius.tile - 3),
+        child: TopicArt(look: look),
       ),
     );
   }

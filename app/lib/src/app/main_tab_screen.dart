@@ -52,7 +52,8 @@ class MainTabScreen extends StatefulWidget {
 }
 
 class _MainTabScreenState extends State<MainTabScreen> {
-  int _tabIndex = 1; // default to Meine Aktionen — the primary "what now" screen
+  int _tabIndex =
+      1; // default to Meine Aktionen — the primary "what now" screen
   // Done actions the user has not looked at in Wirkung yet; the Wirkung tab
   // shows their count where played cards land.
   late int _seenDone = widget.doneActions.length;
@@ -86,11 +87,9 @@ class _MainTabScreenState extends State<MainTabScreen> {
         interestConfig: widget.interestConfig,
       ),
       // Scrolls itself, for pull-to-refresh.
-      _Legacy(
-        child: WirkungTab(
-          opportunityRepository: widget.opportunityRepository,
-          doneActions: widget.doneActions,
-        ),
+      WirkungTab(
+        opportunityRepository: widget.opportunityRepository,
+        doneActions: widget.doneActions,
       ),
     ];
 

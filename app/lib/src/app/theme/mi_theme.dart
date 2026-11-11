@@ -46,7 +46,8 @@ class MiColors extends ThemeExtension<MiColors> {
 
   static const dark = MiColors(
     table: _ink,
-    tableRaised: Color(0xFF1B2632),
+    // Light enough to read as its own surface on the ink table.
+    tableRaised: Color(0xFF243242),
     onTable: _stock,
     onTableMuted: Color(0xFFB9C0C8),
     cardStock: _stock,
