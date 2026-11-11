@@ -181,6 +181,9 @@ class OpportunityRecord(Base):
         DateTime(timezone=True), nullable=False
     )
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    # Day someone first marked this done in the app. Only this one mark,
+    # no count, no device, no person: it decides what Mein Impact follows.
+    tracked_since: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     # Enrichment (all null/empty until enriched)
     enrichment_input_hash: Mapped[str | None] = mapped_column(

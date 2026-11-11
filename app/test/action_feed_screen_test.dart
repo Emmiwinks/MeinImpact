@@ -117,6 +117,9 @@ class _PoolRepository implements OpportunityRepository {
   @override
   Future<LetterRecipients> letterRecipients(String opportunityId) async =>
       const LetterRecipients();
+
+  @override
+  Future<void> markTracked(String opportunityId) async {}
 }
 
 class _EmptyRepository implements OpportunityRepository {
@@ -133,6 +136,9 @@ class _EmptyRepository implements OpportunityRepository {
   @override
   Future<LetterRecipients> letterRecipients(String opportunityId) async =>
       const LetterRecipients();
+
+  @override
+  Future<void> markTracked(String opportunityId) async {}
 }
 
 class _FailingRepository implements OpportunityRepository {
@@ -151,4 +157,7 @@ class _FailingRepository implements OpportunityRepository {
   @override
   Future<LetterRecipients> letterRecipients(String opportunityId) async =>
       const LetterRecipients();
+
+  @override
+  Future<void> markTracked(String opportunityId) async {}
 }

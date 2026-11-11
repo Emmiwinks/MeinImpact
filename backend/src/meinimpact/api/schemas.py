@@ -487,6 +487,16 @@ class NewsResponse(BaseModel):
     news: list[NewsItemResponse]
 
 
+class TrackedRequest(BaseModel):
+    """The app's anonymous "someone did this" mark.
+
+    The id travels in the body so access logs never show which opportunity
+    was done.
+    """
+
+    opportunity_id: UUID
+
+
 # ── Letters ───────────────────────────────────────────────────────────────────
 
 

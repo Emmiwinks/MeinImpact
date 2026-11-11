@@ -10,6 +10,8 @@ Write side, used by the ingestion pipeline:
 
 Read side: `list_open()` serves the feed, applying the feed policy below.
 
+`mark_tracked()` records the app's anonymous "someone did this" mark.
+
 The repository never commits; the caller owns the transaction boundaries.
 """
 
@@ -18,7 +20,7 @@ from collections.abc import Collection, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from meinimpact.domain.entities import Opportunity
@@ -167,6 +169,14 @@ class PostgresOpportunityRepository:
     async def get(self, opportunity_id: uuid.UUID) -> Opportunity | None:
         record = await self._session.get(OpportunityRecord, opportunity_id)
         return _to_domain(record) if record is not None else None
+
+    async def mark_tracked(self, opportunity_id: uuid.UUID, today: date) -> bool:
+        result = await self._session.execute(
+            update(OpportunityRecord)
+            .where(OpportunityRecord.id == opportunity_id)
+            .values(tracked_since=func.coalesce(OpportunityRecord.tracked_since, today))
+        )
+        return result.rowcount == 1
 
     async def _records_for(
         self, source_ids: Collection[str]

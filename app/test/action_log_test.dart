@@ -498,6 +498,9 @@ class _LetterRepository implements OpportunityRepository {
       recipients;
 
   @override
+  Future<void> markTracked(String opportunityId) async {}
+
+  @override
   Future<List<Opportunity>> pool() async => opportunities;
 
   @override

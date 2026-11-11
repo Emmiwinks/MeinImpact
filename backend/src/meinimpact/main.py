@@ -34,10 +34,28 @@ from meinimpact.services.ingestion_runs import IngestionRuns, run_scheduler
 
 logger = logging.getLogger(__name__)
 
+# Requests the access log must never show, so no log line ties a caller's
+# address to having done an action.
+_UNLOGGED_PATHS = frozenset({"/v1/opportunities/tracked"})
+
+
+class _SkipUnloggedPaths(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        # uvicorn's access record args: client, method, path, version, status
+        args = record.args
+        if isinstance(args, tuple) and len(args) >= 3:
+            return str(args[2]).split("?", 1)[0] not in _UNLOGGED_PATHS
+        return True
+
+
+_skip_unlogged_paths = _SkipUnloggedPaths()
+
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     """Creates and configures the FastAPI app."""
     resolved_settings = settings or get_settings()
+    # addFilter ignores a filter that is already attached
+    logging.getLogger("uvicorn.access").addFilter(_skip_unlogged_paths)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:

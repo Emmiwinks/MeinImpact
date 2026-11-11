@@ -46,6 +46,14 @@ class RemoteOpportunityRepository implements OpportunityRepository {
   }
 
   @override
+  Future<void> markTracked(String opportunityId) async {
+    // The id goes in the body: the server's access log never shows it.
+    await _apiClient.postJson('/v1/opportunities/tracked', {
+      'opportunity_id': opportunityId,
+    });
+  }
+
+  @override
   Stream<String> streamLetter(String opportunityId, {String? notes}) async* {
     final events = _apiClient.postSse('/v1/letters/stream', {
       'opportunity_id': opportunityId,

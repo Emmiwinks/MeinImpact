@@ -20,4 +20,8 @@ abstract interface class OpportunityRepository {
 
   /// Who a letter about a council decision goes to.
   Future<LetterRecipients> letterRecipients(String opportunityId);
+
+  /// Tells the server that someone did [opportunityId], so Mein Impact
+  /// follows it. Anonymous: only the id is sent, nothing about the user.
+  Future<void> markTracked(String opportunityId);
 }

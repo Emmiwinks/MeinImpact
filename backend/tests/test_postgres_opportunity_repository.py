@@ -222,3 +222,18 @@ async def test_get_returns_one_opportunity_by_id(db_session: AsyncSession) -> No
     assert found is not None
     assert found.id == record.id
     assert await repository.get(uuid.uuid4()) is None
+
+
+async def test_mark_tracked_keeps_the_first_day(db_session: AsyncSession) -> None:
+    repository = PostgresOpportunityRepository(db_session)
+    await repository.sync(
+        [make_listing("a")], complete_source_ids={"src"}, observed_at=NOW
+    )
+    record = await _record(db_session, "a")
+
+    assert await repository.mark_tracked(record.id, TODAY)
+    assert await repository.mark_tracked(record.id, TODAY + timedelta(days=3))
+    await db_session.refresh(record)
+
+    assert record.tracked_since == TODAY
+    assert not await repository.mark_tracked(uuid.uuid4(), TODAY)

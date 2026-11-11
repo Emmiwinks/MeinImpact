@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:meinimpact/l10n/app_localizations.dart';
 
@@ -78,6 +80,7 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
   }
 
   Future<void> _onActionDone(Opportunity opportunity, ActionVia via) async {
+    if (_actionLog.isDone(opportunity.id)) return;
     final updated = _actionLog.withDone(
       ActionLogEntry.fromOpportunity(
         opportunity,
@@ -86,6 +89,13 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
       ),
     );
     setState(() => _actionLog = updated);
+    // Best effort: offline, the mark is lost and Mein Impact just doesn't
+    // follow this one. Never blocks or fails the user's "Fertig".
+    unawaited(
+      widget._opportunityRepository
+          .markTracked(opportunity.id)
+          .catchError((Object _) {}),
+    );
     await widget._actionLogStore?.save(updated);
   }
 

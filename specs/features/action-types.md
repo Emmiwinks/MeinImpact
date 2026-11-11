@@ -56,12 +56,18 @@ Decided with the user for the MVP:
   `letter`) and a snapshot (title, kind, source, link, deadline, tags) so
   Mein Impact can show actions that have left the pool. Ids are stable:
   rows are upserted on (source_id, external_id). Lost on Android
-  uninstall; no server copy by design.
-- **No server-side record of done actions (user decided 2026-11-08),** not
-  even an anonymous counter. Whether Mein Impact needs aggregate counts is
-  to be discussed later; if it comes back, the conditions were: count
-  only (no token or time per event), shown from ~5 upward, delayed
-  increments, privacy-policy note on transient IP processing.
+  uninstall; no server copy of the log by design.
+- **One anonymous mark per done opportunity (user decided 2026-11-11,
+  replaces the 2026-11-08 "nothing on the server"):** on the first
+  "Fertig" the app sends `POST /v1/opportunities/tracked` with the
+  `opportunity_id`, best effort (lost when offline). The server sets
+  `opportunities.tracked_since` to the first day and keeps nothing else:
+  no count, no device, no person. The line drawn: never store anything
+  that ties a person or device to an action. So the id travels in the
+  body, and the uvicorn access log skips that path (`main.py`). Purpose:
+  Mein Impact follows outcomes and news only for tracked opportunities
+  (deep search for few instead of shallow for all 170+). Outcome pushes
+  stay local: the app matches a public outcome feed against its own log.
 - **Letter pop-up for decisions (built 2026-11-08):** CTA "Brief
   schreiben" opens a full-screen letter view: an optional "Was ist dir
   wichtig?" field (max 1000 chars, sent as `notes`; nothing from the

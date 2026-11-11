@@ -3,7 +3,8 @@
 One opportunity is one registry entry (a petition, a consultation, a
 Bauleitplan display...), so the pool response already carries everything
 the feed card and its detail view need. No separate detail endpoint; only
-council decisions have one more: the recipients of a letter.
+council decisions have one more: the recipients of a letter. `tracked`
+takes the app's anonymous mark that someone did an opportunity.
 """
 
 from datetime import UTC, datetime
@@ -47,6 +48,29 @@ async def get_opportunity_pool(
         ],
         generated_at=now,
     )
+
+
+@router.post("/tracked")
+async def mark_tracked(
+    request: schemas.TrackedRequest,
+    opportunity_repository: repositories.OpportunityRepository = Depends(
+        get_opportunity_repository
+    ),
+) -> schemas.OkResponse:
+    """Notes that someone did an opportunity, so Mein Impact follows it.
+
+    Stores one mark per opportunity, nothing about the caller. The access
+    log skips this path (`main.py`).
+    """
+    found = await opportunity_repository.mark_tracked(
+        request.opportunity_id, datetime.now(UTC).date()
+    )
+    if not found:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Opportunity not found."
+        )
+    await opportunity_repository.commit()
+    return schemas.OkResponse()
 
 
 @router.get("/{opportunity_id}/recipients")
