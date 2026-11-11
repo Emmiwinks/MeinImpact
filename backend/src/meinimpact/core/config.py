@@ -48,6 +48,19 @@ class Settings(BaseSettings):
     # production turns it on in fly.toml. The interval is set on /admin.
     ingestion_scheduler_enabled: bool = False
     ingestion_check_minutes: int = 15
+    # Mein Impact news for tracked opportunities (services/impact_news.py).
+    # Off by default like ingestion; fly.toml turns it on.
+    impact_news_enabled: bool = False
+    impact_news_check_minutes: int = 60
+    impact_news_daily_budget_eur: float = 1.0
+    # Search an opportunity again at most this often
+    impact_news_recheck_days: int = 7
+    # Prices looked up 2026-11-11 in USD, counted 1:1 as EUR (overstates a
+    # little, the safe side for a budget). Tavily pay-as-you-go, basic
+    # search = 1 credit; Mistral Medium 3.5 per million tokens.
+    tavily_eur_per_credit: float = 0.008
+    mistral_extraction_eur_per_m_input: float = 1.5
+    mistral_extraction_eur_per_m_output: float = 7.5
 
     model_config = SettingsConfigDict(
         env_file=".env",

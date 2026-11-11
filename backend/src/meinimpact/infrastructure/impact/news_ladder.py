@@ -21,7 +21,7 @@ engine entity pages: they crowded out the press in the first dry run.
 import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from typing import Any, Protocol
 from urllib.parse import urlparse
 
@@ -64,6 +64,17 @@ EXCLUDED_DOMAINS = (
 HIT_KINDS = frozenset({"news", "statement", "social", "action_page", "other"})
 
 _SNIPPET_CHARS = 600
+# News can come out a little before an action opens (announcements)
+_LEAD_DAYS = 30
+# Without an opening date, the action may have run long before we saw it
+_UNKNOWN_START_DAYS = 180
+
+
+def search_since(opens_on: date | None, first_seen: date) -> date:
+    """The earliest day a hit can be about the action."""
+    if opens_on is not None:
+        return opens_on - timedelta(days=_LEAD_DAYS)
+    return first_seen - timedelta(days=_UNKNOWN_START_DAYS)
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,6 +159,8 @@ class TavilySearch:
         self._api_key = api_key
         self._max_results = max_results
         self._client = client or httpx.AsyncClient(timeout=30.0)
+        # A basic search costs one credit when Tavily answers it
+        self.credits = 0
 
     async def aclose(self) -> None:
         await self._client.aclose()
@@ -173,6 +186,7 @@ class TavilySearch:
                 json=payload,
             )
             response.raise_for_status()
+            self.credits += 1
             results = response.json().get("results") or []
         except Exception as error:
             logger.warning("Tavily search failed for %r: %s", query[:60], error)

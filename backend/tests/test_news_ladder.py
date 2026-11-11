@@ -165,6 +165,7 @@ async def test_tavily_sends_date_country_exclusions_and_parses_hits() -> None:
         "Imbisspavillons", since=date(2026, 5, 1), exclude_domains=["x.com"]
     )
 
+    assert search.credits == 1
     assert sent["start_date"] == "2026-05-01"
     assert sent["country"] == "germany"
     assert sent["exclude_domains"] == ["x.com"]
@@ -183,9 +184,7 @@ async def test_tavily_failure_is_no_hits() -> None:
         transport=httpx.MockTransport(lambda _: httpx.Response(500))
     )
 
-    assert (
-        await TavilySearch("key", client=client).search(
-            "x", since=date(2026, 5, 1), exclude_domains=[]
-        )
-        == []
-    )
+    search = TavilySearch("key", client=client)
+
+    assert await search.search("x", since=date(2026, 5, 1), exclude_domains=[]) == []
+    assert search.credits == 0

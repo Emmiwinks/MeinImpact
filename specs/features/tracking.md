@@ -40,9 +40,22 @@ are not built. What the user asked for (next work item):
   `opportunity_news` keeps every relevant hit with its rung, one row per
   URL and opportunity, accumulating across runs; `opportunities.news_checked_at`
   says when the ladder last ran. The app is shown every specific hit, else
-  one background hit (`ImpactNews.shown`). Still open: scheduled run for
-  tracked opportunities with a daily budget, endpoint, Mein Impact view,
-  deploy (migrations 0019 and 0020 and the Tavily key on Fly).
+  one background hit (`ImpactNews.shown`).
+- **Built: scheduled news search** (`services/impact_news.py`, hourly when
+  `MEINIMPACT_IMPACT_NEWS_ENABLED`, on in fly.toml). Only tracked, relevant
+  opportunities; never-searched first, then the longest waiting; each at
+  most every 7 days. Daily budget 1 EUR (user, 2026-11-11), measured:
+  Tavily credits used plus the tokens Mistral reports, priced with the
+  rates in `config.py` (looked up 2026-11-11, USD counted 1:1 as EUR) and
+  recorded in `api_spend` (endpoint `impact_news`). Before each search the
+  round keeps back the worst case of one search (0.084 EUR), so the day
+  stays under budget. A failed search is given back and ends the round.
+- **Built: `GET /v1/opportunities/news`**, one feed with the shown news of
+  every searched opportunity. Deliberately no per-opportunity request: it
+  would tell the server which action the caller did; the app picks its
+  own actions on the device.
+- Still open: Mein Impact view in the app; deploy (migrations 0019 and
+  0020, `MEINIMPACT_TAVILY_API_KEY` as a Fly secret).
 - **Roadmap: contacts of whoever is responsible**, so an action without
   news still offers a next step ("hier nachfragen"). Office addresses
   only, and only addresses that literally appear on an official page or

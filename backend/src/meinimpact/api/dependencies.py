@@ -27,6 +27,9 @@ from meinimpact.infrastructure.database import Database
 from meinimpact.infrastructure.feedback.postgres_feedback_repository import (
     PostgresFeedbackRepository,
 )
+from meinimpact.infrastructure.impact.postgres_news_repository import (
+    PostgresImpactNewsRepository,
+)
 from meinimpact.infrastructure.news.dummy_news_repository import DummyNewsRepository
 from meinimpact.infrastructure.opportunities.postgres_opportunity_repository import (
     PostgresOpportunityRepository,
@@ -123,6 +126,13 @@ def get_council_repository(
 ) -> PostgresCouncilRepository:
     """Returns the PostgreSQL-backed council member repository."""
     return PostgresCouncilRepository(session)
+
+
+def get_impact_news_repository(
+    session: AsyncSession = Depends(get_db_session),
+) -> PostgresImpactNewsRepository:
+    """Returns the PostgreSQL-backed Mein Impact news repository."""
+    return PostgresImpactNewsRepository(session)
 
 
 def get_action_stats_repository(

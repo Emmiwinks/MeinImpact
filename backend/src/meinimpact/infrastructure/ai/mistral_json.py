@@ -44,6 +44,9 @@ class MistralJsonCompleter:
         self._attempts = attempts
         self._client = client or httpx.AsyncClient(timeout=60.0)
         self._sleep = sleep
+        # Totals over this completer's life, as reported by Mistral
+        self.prompt_tokens = 0
+        self.completion_tokens = 0
 
     async def aclose(self) -> None:
         await self._client.aclose()
@@ -57,7 +60,11 @@ class MistralJsonCompleter:
             "messages": [{"role": "user", "content": prompt}],
         }
         response = await self._post_with_retry(body)
-        content = response.json()["choices"][0]["message"]["content"]
+        data = response.json()
+        usage = data.get("usage") or {}
+        self.prompt_tokens += int(usage.get("prompt_tokens") or 0)
+        self.completion_tokens += int(usage.get("completion_tokens") or 0)
+        content = data["choices"][0]["message"]["content"]
         parsed = json.loads(content)
         if not isinstance(parsed, dict):
             raise ValueError(f"expected a JSON object, got {type(parsed).__name__}")

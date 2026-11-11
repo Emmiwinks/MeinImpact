@@ -159,7 +159,7 @@ async def save_schedule(
 
 def _session_token(settings: Settings) -> str:
     now = datetime.now(UTC)
-    return jwt.encode(
+    token = jwt.encode(
         {
             "sub": "admin",
             "aud": _AUDIENCE,
@@ -169,6 +169,8 @@ def _session_token(settings: Settings) -> str:
         _signing_key(settings),
         algorithm="HS256",
     )
+    # The stubs allow bytes (PyJWT 1); see security/tokens.py
+    return token.decode("utf-8") if isinstance(token, bytes) else token
 
 
 def _signed_in(request: Request, settings: Settings) -> bool:

@@ -171,12 +171,13 @@ class PostgresOpportunityRepository:
         return _to_domain(record) if record is not None else None
 
     async def mark_tracked(self, opportunity_id: uuid.UUID, today: date) -> bool:
-        result = await self._session.execute(
+        updated = await self._session.scalar(
             update(OpportunityRecord)
             .where(OpportunityRecord.id == opportunity_id)
             .values(tracked_since=func.coalesce(OpportunityRecord.tracked_since, today))
+            .returning(OpportunityRecord.id)
         )
-        return result.rowcount == 1
+        return updated is not None
 
     async def _records_for(
         self, source_ids: Collection[str]

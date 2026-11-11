@@ -30,6 +30,7 @@ from meinimpact.core.middleware import (
     SecurityHeadersMiddleware,
 )
 from meinimpact.infrastructure.mdb.wks_service import WksService
+from meinimpact.services.impact_news import run_news_scheduler
 from meinimpact.services.ingestion_runs import IngestionRuns, run_scheduler
 
 logger = logging.getLogger(__name__)
@@ -79,12 +80,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 )
             )
 
+        # Mein Impact news within the daily budget; claims in the database
+        # keep two machines off the same opportunity (services/impact_news).
+        news_scheduler: asyncio.Task[None] | None = None
+        if resolved_settings.impact_news_enabled:
+            news_scheduler = asyncio.create_task(
+                run_news_scheduler(
+                    resolved_settings,
+                    get_database(resolved_settings),
+                    timedelta(minutes=resolved_settings.impact_news_check_minutes),
+                )
+            )
+
         yield
 
-        if scheduler is not None:
-            scheduler.cancel()
-            with suppress(asyncio.CancelledError):
-                await scheduler
+        for task in (scheduler, news_scheduler):
+            if task is not None:
+                task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await task
 
     app = FastAPI(
         title=resolved_settings.app_name,

@@ -497,6 +497,35 @@ class TrackedRequest(BaseModel):
     opportunity_id: UUID
 
 
+class ImpactNewsItemResponse(BaseModel):
+    # "exact"/"issue": about the action's concrete matter; "background":
+    # the overarching topic, shown as background only
+    level: str
+    # "news" or "statement" (also "social", "other")
+    kind: str
+    title: str
+    url: str
+    snippet: str
+    published_on: date | None
+
+
+class ImpactNewsEntryResponse(BaseModel):
+    opportunity_id: UUID
+    checked_at: datetime
+    # Empty: searched, nothing found ("Noch keine Berichte")
+    items: list[ImpactNewsItemResponse]
+
+
+class ImpactNewsFeedResponse(BaseModel):
+    """News for every tracked opportunity searched so far.
+
+    One feed for everyone: the app picks its own actions on the device, so
+    no request names an action the caller did.
+    """
+
+    opportunities: list[ImpactNewsEntryResponse]
+
+
 # ── Letters ───────────────────────────────────────────────────────────────────
 
 

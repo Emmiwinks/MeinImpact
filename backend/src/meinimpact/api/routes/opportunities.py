@@ -4,7 +4,8 @@ One opportunity is one registry entry (a petition, a consultation, a
 Bauleitplan display...), so the pool response already carries everything
 the feed card and its detail view need. No separate detail endpoint; only
 council decisions have one more: the recipients of a letter. `tracked`
-takes the app's anonymous mark that someone did an opportunity.
+takes the app's anonymous mark that someone did an opportunity; `news`
+serves what Mein Impact found on all tracked ones.
 """
 
 from datetime import UTC, datetime
@@ -15,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from meinimpact.api import schemas
 from meinimpact.api.dependencies import (
     get_council_repository,
+    get_impact_news_repository,
     get_opportunity_repository,
     require_principal,
 )
@@ -22,6 +24,9 @@ from meinimpact.domain import repositories
 from meinimpact.infrastructure.council.offices import FRAKTION_OFFICES
 from meinimpact.infrastructure.council.postgres_council_repository import (
     PostgresCouncilRepository,
+)
+from meinimpact.infrastructure.impact.postgres_news_repository import (
+    PostgresImpactNewsRepository,
 )
 from meinimpact.infrastructure.listings.model import ActionKind
 from meinimpact.services.recipients import resolve_recipients
@@ -71,6 +76,39 @@ async def mark_tracked(
         )
     await opportunity_repository.commit()
     return schemas.OkResponse()
+
+
+@router.get("/news")
+async def get_impact_news(
+    news_repository: PostgresImpactNewsRepository = Depends(get_impact_news_repository),
+) -> schemas.ImpactNewsFeedResponse:
+    """News on every tracked opportunity, for the app's Mein Impact view.
+
+    The whole feed, never one opportunity: asking for one would tell the
+    server which action the caller did.
+    """
+    feed = await news_repository.feed()
+    return schemas.ImpactNewsFeedResponse(
+        opportunities=[
+            schemas.ImpactNewsEntryResponse(
+                opportunity_id=opportunity_id,
+                checked_at=news.checked_at,
+                items=[
+                    schemas.ImpactNewsItemResponse(
+                        level=i.level,
+                        kind=i.kind,
+                        title=i.title,
+                        url=i.url,
+                        snippet=i.snippet,
+                        published_on=i.published_on,
+                    )
+                    for i in news.shown
+                ],
+            )
+            for opportunity_id, news in feed.items()
+            if news.checked_at is not None
+        ]
+    )
 
 
 @router.get("/{opportunity_id}/recipients")

@@ -50,6 +50,24 @@ async def test_returns_the_json_object_and_requests_json_mode() -> None:
     assert body["messages"] == [{"role": "user", "content": "prompt"}]
 
 
+async def test_adds_up_the_reported_token_usage() -> None:
+    def used(prompt: int, completion: int) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{"message": {"content": "{}"}}],
+                "usage": {"prompt_tokens": prompt, "completion_tokens": completion},
+            },
+        )
+
+    completer, _ = _completer([used(900, 120), used(1100, 80)], [])
+
+    await completer.complete_json("a")
+    await completer.complete_json("b")
+
+    assert (completer.prompt_tokens, completer.completion_tokens) == (2000, 200)
+
+
 async def test_retries_rate_limits_with_backoff() -> None:
     sleeps: list[float] = []
     completer, requests = _completer(

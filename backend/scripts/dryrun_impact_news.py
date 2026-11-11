@@ -20,7 +20,7 @@ import json
 import random
 import sys
 from dataclasses import asdict
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -36,22 +36,15 @@ from meinimpact.infrastructure.impact.news_ladder import (
     LadderResult,
     NewsLadder,
     TavilySearch,
+    search_since,
 )
 from meinimpact.infrastructure.models import OpportunityRecord
 
 _OUTPUT_DIR = Path(__file__).parent / "dryrun_output"
 _CONCURRENCY = 3
 _SUMMARY_CHARS = 800
-# News can come out a little before an action opens (announcements)
-_LEAD_DAYS = 30
-# Without an opening date, the action may have run long before we saw it
+# Council decisions from the dry-run file: their start is unknown
 _UNKNOWN_START_DAYS = 180
-
-
-def _since(opens_on: date | None, first_seen: date) -> date:
-    if opens_on is not None:
-        return opens_on - timedelta(days=_LEAD_DAYS)
-    return first_seen - timedelta(days=_UNKNOWN_START_DAYS)
 
 
 async def _db_sample(open_count: int) -> list[tuple[str, ImpactSubject]]:
@@ -82,7 +75,7 @@ async def _db_sample(open_count: int) -> list[tuple[str, ImpactSubject]]:
                 organizer=r.organizer,
                 locality=r.locality,
                 source_url=r.source_url,
-                since=_since(r.opens_on, r.first_seen_at.date()),
+                since=search_since(r.opens_on, r.first_seen_at.date()),
             ),
         )
         for state, r in picked
