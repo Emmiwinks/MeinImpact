@@ -24,6 +24,7 @@ class MainTabScreen extends StatefulWidget {
     this.onInterestsChanged,
     this.onInterestSignal,
     this.doneIds = const {},
+    this.doneActions = const [],
     this.onActionDone,
     this.interestConfig = const InterestConfig(),
     super.key,
@@ -37,6 +38,8 @@ class MainTabScreen extends StatefulWidget {
   final void Function(Opportunity opportunity, InterestSignal signal)?
       onInterestSignal;
   final Set<String> doneIds;
+  // The action log, oldest first.
+  final List<ActionLogEntry> doneActions;
   final void Function(Opportunity opportunity, ActionVia via)? onActionDone;
   final InterestConfig interestConfig;
 
@@ -69,7 +72,11 @@ class _MainTabScreenState extends State<MainTabScreen> {
         onActionDone: widget.onActionDone,
         interestConfig: widget.interestConfig,
       ),
-      const _WirkungScaffoldTab(),
+      // Scrolls itself, for pull-to-refresh.
+      WirkungTab(
+        opportunityRepository: widget.opportunityRepository,
+        doneActions: widget.doneActions,
+      ),
     ];
 
     return Scaffold(
@@ -159,18 +166,6 @@ class _AktionenScaffoldTab extends StatelessWidget {
         onActionDone: onActionDone,
         interestConfig: interestConfig,
       ),
-    );
-  }
-}
-
-class _WirkungScaffoldTab extends StatelessWidget {
-  const _WirkungScaffoldTab();
-
-  @override
-  Widget build(BuildContext context) {
-    return const SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(18, 20, 18, 28),
-      child: WirkungTab(),
     );
   }
 }

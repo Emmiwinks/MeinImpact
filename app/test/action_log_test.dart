@@ -13,6 +13,7 @@ import 'package:meinimpact/src/features/feed/presentation/aktionen_tab.dart';
 import 'package:meinimpact/src/features/feed/presentation/letter_screen.dart';
 import 'package:meinimpact/src/features/tracking/data/action_log_store.dart';
 import 'package:meinimpact/src/features/tracking/domain/action_log.dart';
+import 'package:meinimpact/src/features/tracking/domain/impact_news.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -499,6 +500,9 @@ class _LetterRepository implements OpportunityRepository {
 
   @override
   Future<void> markTracked(String opportunityId) async {}
+
+  @override
+  Future<ImpactNewsFeed> impactNews() async => const ImpactNewsFeed();
 
   @override
   Future<List<Opportunity>> pool() async => opportunities;

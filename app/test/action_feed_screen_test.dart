@@ -5,6 +5,7 @@ import 'package:meinimpact/src/features/feed/domain/letter_recipients.dart';
 import 'package:meinimpact/src/features/feed/domain/mdb.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity_repository.dart';
+import 'package:meinimpact/src/features/tracking/domain/impact_news.dart';
 
 void main() {
   testWidgets('renders opportunities from the pool, no fabricated stats', (
@@ -78,11 +79,8 @@ void main() {
     await tester.tap(find.text('Meine Wirkung'));
     await tester.pumpAndSettle();
 
-    // Distinctive mockup body text — not shown as a real stat, per the
-    // "no made-up facts" rule extending to the mockup tab too.
-    expect(find.textContaining('noch nicht angebunden'), findsOneWidget);
-    // SectionLabel renders its text upper-cased.
-    expect(find.text('BEISPIELANSICHT'), findsOneWidget);
+    // No action done yet: the tab explains how it fills.
+    expect(find.textContaining('Noch keine Aktion erledigt'), findsOneWidget);
   });
 }
 
@@ -120,6 +118,9 @@ class _PoolRepository implements OpportunityRepository {
 
   @override
   Future<void> markTracked(String opportunityId) async {}
+
+  @override
+  Future<ImpactNewsFeed> impactNews() async => const ImpactNewsFeed();
 }
 
 class _EmptyRepository implements OpportunityRepository {
@@ -139,6 +140,9 @@ class _EmptyRepository implements OpportunityRepository {
 
   @override
   Future<void> markTracked(String opportunityId) async {}
+
+  @override
+  Future<ImpactNewsFeed> impactNews() async => const ImpactNewsFeed();
 }
 
 class _FailingRepository implements OpportunityRepository {
@@ -160,4 +164,7 @@ class _FailingRepository implements OpportunityRepository {
 
   @override
   Future<void> markTracked(String opportunityId) async {}
+
+  @override
+  Future<ImpactNewsFeed> impactNews() async => const ImpactNewsFeed();
 }

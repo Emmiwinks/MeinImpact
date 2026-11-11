@@ -1,3 +1,4 @@
+import '../../tracking/domain/impact_news.dart';
 import 'letter_recipients.dart';
 import 'mdb.dart';
 import 'opportunity.dart';
@@ -24,4 +25,8 @@ abstract interface class OpportunityRepository {
   /// Tells the server that someone did [opportunityId], so Mein Impact
   /// follows it. Anonymous: only the id is sent, nothing about the user.
   Future<void> markTracked(String opportunityId);
+
+  /// The news on every tracked opportunity. Always the whole feed, so the
+  /// server never learns which actions this user did.
+  Future<ImpactNewsFeed> impactNews();
 }

@@ -197,6 +197,7 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
       return MainTabScreen(
         opportunityRepository: widget._opportunityRepository,
         doneIds: _actionLog.doneIds,
+        doneActions: _actionLog.entries,
         onActionDone: _onActionDone,
       );
     }
@@ -213,6 +214,7 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
         onInterestsChanged: _onInterestsChanged,
         onInterestSignal: _onInterestSignal,
         doneIds: _actionLog.doneIds,
+        doneActions: _actionLog.entries,
         onActionDone: _onActionDone,
         interestConfig: widget._interestConfig,
       );

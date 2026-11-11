@@ -1,4 +1,5 @@
 import '../../../core/network/api_client.dart';
+import '../../tracking/domain/impact_news.dart';
 import '../domain/letter_recipients.dart';
 import '../domain/mdb.dart';
 import '../domain/opportunity.dart';
@@ -51,6 +52,12 @@ class RemoteOpportunityRepository implements OpportunityRepository {
     await _apiClient.postJson('/v1/opportunities/tracked', {
       'opportunity_id': opportunityId,
     });
+  }
+
+  @override
+  Future<ImpactNewsFeed> impactNews() async {
+    final response = await _apiClient.getJson('/v1/opportunities/news');
+    return ImpactNewsFeed.fromJson(response);
   }
 
   @override

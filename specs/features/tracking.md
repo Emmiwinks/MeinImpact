@@ -54,8 +54,15 @@ are not built. What the user asked for (next work item):
   every searched opportunity. Deliberately no per-opportunity request: it
   would tell the server which action the caller did; the app picks its
   own actions on the device.
-- Still open: Mein Impact view in the app; deploy (migrations 0019 and
-  0020, `MEINIMPACT_TAVILY_API_KEY` as a Fly secret).
+- **Built: the Wirkung tab** (`app/lib/src/features/tracking/wirkung_tab.dart`).
+  Lists every action in the on-device log, newest first, and matches the
+  whole news feed against it on the device. Per action: the shown news
+  (statements and background labelled), "Noch keine Berichte gefunden"
+  with the last search date, or "Wir suchen bald" when not searched yet.
+  A failed feed still lists the actions. Pull down to reload.
+- Deploy: migrations 0019 and 0020 run with the release command;
+  `MEINIMPACT_TAVILY_API_KEY` must be set as a Fly secret (without it the
+  round logs a warning and searches nothing).
 - **Roadmap: contacts of whoever is responsible**, so an action without
   news still offers a next step ("hier nachfragen"). Office addresses
   only, and only addresses that literally appear on an official page or
