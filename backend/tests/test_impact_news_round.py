@@ -9,7 +9,6 @@ from typing import Any
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
-from listing_fakes import NOW, make_listing
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,6 +26,7 @@ from meinimpact.infrastructure.opportunities.postgres_opportunity_repository imp
 )
 from meinimpact.main import create_app
 from meinimpact.services.impact_news import Prices, run_news_round
+from tests.listing_fakes import NOW, make_listing
 from tests.test_news_ladder import QUERIES, FakeCompleter, FakeSearch
 
 MOMENT = datetime(2030, 1, 15, 9, tzinfo=UTC)

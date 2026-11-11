@@ -581,42 +581,6 @@ def test_extract_initiative_filters_empty_entries() -> None:
 
 
 @pytest.mark.live
-async def test_fetch_hot_items_live_response_shape() -> None:
-    """Hits the real DIP API and validates the response contract.
-
-    Run with: docker compose exec api python -m pytest -m live tests/test_dip_adapter.py
-
-    Catches:
-    - API endpoint changes (URL, auth, param names)
-    - Field renames in the Vorgang schema
-    - beratungsstand value changes that would silently return 0 results
-    - URL encoding issues (the + vs %20 class of bug)
-    """
-    from meinimpact.core.config import Settings
-
-    settings = Settings()
-    if not settings.dip_api_key:
-        pytest.skip("MEINIMPACT_DIP_API_KEY not set")
-
-    adapter = DipAdapter(api_key=settings.dip_api_key)
-    items = await adapter.fetch_hot_items()
-
-    assert isinstance(items, list), "fetch_hot_items must return a list"
-    assert len(items) > 0, (
-        "Expected at least one hot item — if Bundestag is in recess this may "
-        "legitimately be empty; verify manually."
-    )
-
-    for item in items:
-        assert item["external_id"], "external_id must be non-empty"
-        assert item["title"], "title must be non-empty"
-        assert item["source"] == "dip"
-        assert item["source_url"].startswith("https://dip.bundestag.de/vorgang/")
-        assert 0.0 <= item["imminence_score"] <= 1.0
-        assert item["type"] in {"gesetzentwurf", "antrag", "petition"}
-
-
-@pytest.mark.live
 async def test_fetch_new_items_live_response_shape() -> None:
     """Hits the real DIP API via the broad (no-beratungsstand-filter) query
     used by Pipeline 1 and checks it actually surfaces the stages the old

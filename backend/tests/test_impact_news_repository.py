@@ -2,7 +2,6 @@
 
 from datetime import UTC, date, datetime, timedelta
 
-from listing_fakes import NOW, make_listing
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,6 +24,7 @@ from meinimpact.infrastructure.models import OpportunityRecord
 from meinimpact.infrastructure.opportunities.postgres_opportunity_repository import (
     PostgresOpportunityRepository,
 )
+from tests.listing_fakes import NOW, make_listing
 
 FIRST = datetime(2026, 11, 11, 6, tzinfo=UTC)
 SECOND = FIRST + timedelta(days=2)

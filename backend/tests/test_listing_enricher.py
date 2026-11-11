@@ -4,7 +4,6 @@ from dataclasses import replace
 from typing import Any
 
 import pytest
-from listing_fakes import make_listing
 
 from meinimpact.infrastructure.ai import listing_enricher
 from meinimpact.infrastructure.ai.lebenslagen import LEBENSLAGEN
@@ -24,6 +23,7 @@ from meinimpact.infrastructure.ai.taxonomy import (
 )
 from meinimpact.infrastructure.geo.districts import District, DistrictMatcher
 from meinimpact.infrastructure.listings.model import Region
+from tests.listing_fakes import make_listing
 
 
 def _relevant(**overrides: Any) -> dict[str, Any]:

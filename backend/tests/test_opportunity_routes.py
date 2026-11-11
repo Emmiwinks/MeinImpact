@@ -149,7 +149,8 @@ def test_access_log_skips_tracked_but_keeps_other_paths() -> None:
             ("10.0.0.1:5000", "POST", path, "1.1", 200),
             None,
         )
-        return access.filter(record)
+        # Since Python 3.12 a filter may hand back a changed record
+        return bool(access.filter(record))
 
     assert not logged("/v1/opportunities/tracked")
     assert logged("/v1/opportunities/pool")

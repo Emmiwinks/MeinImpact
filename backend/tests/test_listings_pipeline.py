@@ -6,8 +6,6 @@ from datetime import date
 from pathlib import Path
 
 import httpx
-from listing_fakes import NOW, BrokenSource, StaticSource
-from listing_fakes import make_listing as _listing
 
 from meinimpact.infrastructure.listings import steps
 from meinimpact.infrastructure.listings.catalog import (
@@ -18,6 +16,7 @@ from meinimpact.infrastructure.listings.catalog import (
 from meinimpact.infrastructure.listings.collector import collect
 from meinimpact.infrastructure.listings.http import CrawlPolicy, PoliteHttpClient
 from meinimpact.infrastructure.listings.model import ListingStatus, Region
+from meinimpact.infrastructure.listings.source import ListingSource
 from meinimpact.infrastructure.listings.sources.eu_have_your_say import (
     EuHaveYourSaySource,
 )
@@ -29,6 +28,8 @@ from meinimpact.infrastructure.listings.sources.sachsen_beteiligung import (
     SachsenBeteiligungSource,
 )
 from meinimpact.infrastructure.listings.sources.weact import WeActSource
+from tests.listing_fakes import NOW, BrokenSource, StaticSource
+from tests.listing_fakes import make_listing as _listing
 
 FIXTURES = Path(__file__).parent / "fixtures" / "listings"
 
@@ -59,7 +60,7 @@ async def test_collect_isolates_a_failing_source() -> None:
 
 
 async def test_registry_with_one_failed_instance_is_not_complete() -> None:
-    sources = [
+    sources: list[ListingSource] = [
         StaticSource("op:bund", [_listing("a")], source_id="op"),
         BrokenSource(source_id="op"),
         StaticSource("eu", [_listing("b")], source_id="eu"),

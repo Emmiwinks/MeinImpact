@@ -4,8 +4,6 @@ import uuid
 from collections.abc import Collection, Sequence
 from datetime import datetime
 
-from listing_fakes import NOW, BrokenSource, StaticSource, make_listing
-
 from meinimpact.infrastructure.ai.listing_enricher import (
     Enrichment,
     enrichment_input_hash,
@@ -16,6 +14,7 @@ from meinimpact.infrastructure.opportunities.postgres_opportunity_repository imp
     SyncResult,
 )
 from meinimpact.infrastructure.pipeline.ingestion import run_ingestion
+from tests.listing_fakes import NOW, BrokenSource, StaticSource, make_listing
 
 
 class FakeStore:

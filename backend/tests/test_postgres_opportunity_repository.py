@@ -9,7 +9,6 @@ from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 
 import pytest
-from listing_fakes import NOW, make_listing
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +20,7 @@ from meinimpact.infrastructure.opportunities.postgres_opportunity_repository imp
     EXPERT_ONLY_MAX_EVERYDAY_RELEVANCE,
     PostgresOpportunityRepository,
 )
+from tests.listing_fakes import NOW, make_listing
 
 LATER = NOW + timedelta(days=2)
 TODAY = date(2026, 11, 1)

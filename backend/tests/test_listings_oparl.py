@@ -9,7 +9,6 @@ from datetime import UTC, date, datetime
 from typing import Any
 
 import httpx
-from listing_fakes import make_listing
 
 from meinimpact.infrastructure.listings.http import CrawlPolicy, PoliteHttpClient
 from meinimpact.infrastructure.listings.model import ActionKind, Region
@@ -27,6 +26,7 @@ from meinimpact.infrastructure.listings.sources.oparl import (
     parse_agenda_page,
     pdf_text,
 )
+from tests.listing_fakes import make_listing
 
 NOW = datetime(2026, 11, 8, 12, 0, tzinfo=UTC)
 _BODY = "http://oparl.dresden.de/bodies/0001"

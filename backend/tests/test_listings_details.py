@@ -1,7 +1,6 @@
 """Detail readers: the full text behind thin list entries."""
 
 import httpx
-from listing_fakes import make_listing
 
 from meinimpact.infrastructure.listings.http import CrawlPolicy, PoliteHttpClient
 from meinimpact.infrastructure.listings.sources.eu_have_your_say import (
@@ -12,6 +11,7 @@ from meinimpact.infrastructure.listings.sources.openpetition import (
     OpenPetitionDetailReader,
     parse_petition_text,
 )
+from tests.listing_fakes import make_listing
 
 _PETITION_PAGE = """
 <html><body>
