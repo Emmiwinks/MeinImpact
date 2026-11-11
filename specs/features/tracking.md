@@ -36,6 +36,13 @@ are not built. What the user asked for (next work item):
   and paper numbers do not. Small local petitions often have no press at
   all. User skimmed the report and accepted it as is (2026-11-11); still
   a small sample, so watch the first real results.
+- **Built: news storage** (migration 0020, `impact/postgres_news_repository.py`).
+  `opportunity_news` keeps every relevant hit with its rung, one row per
+  URL and opportunity, accumulating across runs; `opportunities.news_checked_at`
+  says when the ladder last ran. The app is shown every specific hit, else
+  one background hit (`ImpactNews.shown`). Still open: scheduled run for
+  tracked opportunities with a daily budget, endpoint, Mein Impact view,
+  deploy (migrations 0019 and 0020 and the Tavily key on Fly).
 - **Roadmap: contacts of whoever is responsible**, so an action without
   news still offers a next step ("hier nachfragen"). Office addresses
   only, and only addresses that literally appear on an official page or

@@ -7,11 +7,13 @@ from uuid import uuid4
 
 from sqlalchemy import (
     ARRAY,
+    BigInteger,
     Boolean,
     CheckConstraint,
     Date,
     DateTime,
     ForeignKey,
+    Identity,
     Integer,
     Numeric,
     SmallInteger,
@@ -184,6 +186,10 @@ class OpportunityRecord(Base):
     # Day someone first marked this done in the app. Only this one mark,
     # no count, no device, no person: it decides what Mein Impact follows.
     tracked_since: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # When the news ladder last ran for this opportunity (OpportunityNewsRecord)
+    news_checked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Enrichment (all null/empty until enriched)
     enrichment_input_hash: Mapped[str | None] = mapped_column(
@@ -273,6 +279,42 @@ class SupportSnapshotRecord(Base):
         DateTime(timezone=True), nullable=False
     )
     support_count: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class OpportunityNewsRecord(Base):
+    """A hit the news ladder judged relevant for a tracked opportunity.
+
+    Accumulates across runs; a URL is stored once per opportunity.
+    """
+
+    __tablename__ = "opportunity_news"
+
+    __table_args__ = (
+        UniqueConstraint("opportunity_id", "url", name="uq_opportunity_news_url"),
+        CheckConstraint(
+            "level IN ('exact', 'issue', 'background')",
+            name="opportunity_news_level",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(
+        BigInteger, Identity(), primary_key=True, autoincrement=True
+    )
+    opportunity_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("opportunities.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    # Ladder rung that found it (news_ladder.LEVELS)
+    level: Mapped[str] = mapped_column(Text, nullable=False)
+    kind: Mapped[str] = mapped_column(Text, nullable=False)
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    snippet: Mapped[str] = mapped_column(Text, nullable=False)
+    published_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # The judge's one-sentence verdict, for review
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    found_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class NewsItemRecord(Base):
