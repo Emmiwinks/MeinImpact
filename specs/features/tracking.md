@@ -28,6 +28,23 @@ are not built. What the user asked for (next work item):
   (`action-types.md`) is what tells Mein Impact which actions the user
   took; it is stored on the device only.
 
+**Update 2026-11-11:**
+- **Built:** the anonymous `tracked_since` mark (`action-types.md`) and the
+  news ladder (`infrastructure/impact/news_ladder.py`, dry run
+  `scripts/dryrun_impact_news.py`). Second dry run on 25 actions: relevant
+  hits on the first rung for 16; press-style queries work, formal names
+  and paper numbers do not. Small local petitions often have no press at
+  all. Provisional, waiting for the user's hand review.
+- **Roadmap: contacts of whoever is responsible**, so an action without
+  news still offers a next step ("hier nachfragen"). Office addresses
+  only, and only addresses that literally appear on an official page or
+  in a hand table; the model may locate a contact block but never writes
+  an address. Order: council decisions (Fraktion offices and bodies
+  already exist from letters), then Beteiligungsportal consultations
+  (contact on the page we already fetch, check a few pages first), then
+  petitions (hand table recipient → contact, e.g. Landtag
+  Petitionsausschuss). EU consultations: generic contacts only, low value.
+
 ---
 
 ## Decisions
