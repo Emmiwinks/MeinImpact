@@ -1,47 +1,286 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-11T12:00:00Z",
+  "generatedAt": "2026-11-12T12:00:00Z",
   "title": "Design System: MeinImpact",
   "extensions": {
     "colorMeta": {
-      "table-ink": { "role": "primary", "displayName": "Table Ink", "canonical": "#101820", "tonalRamp": ["#0A1016", "#101820", "#1B2632", "#2C3846", "#4A5560", "#7A8590", "#B9C0C8", "#E4E8EC"] },
-      "ink": { "role": "primary", "displayName": "Ink", "canonical": "#101820", "tonalRamp": ["#0A1016", "#101820", "#1B2632", "#2C3846", "#4A5560", "#7A8590", "#B9C0C8", "#E4E8EC"] },
-      "card-stock": { "role": "primary", "displayName": "Card Stock", "canonical": "#F4F1EA", "tonalRamp": ["#2A2722", "#4A463E", "#6E695E", "#948E81", "#B9B3A6", "#D8D3C8", "#F4F1EA", "#FBFAF6"] },
-      "table-stone": { "role": "neutral", "displayName": "Peach Cream", "canonical": "#FFF1E3", "tonalRamp": ["#1E2328", "#3A4148", "#58616A", "#7A838C", "#9CA4AC", "#C0C6CC", "#E4E8EC", "#F7F8F9"] },
-      "ink-muted": { "role": "neutral", "displayName": "Ink Muted", "canonical": "#4A5560", "tonalRamp": ["#151A20", "#252D35", "#36404A", "#4A5560", "#66717C", "#87919B", "#AEB6BE", "#D8DDE2"] },
-      "stock-muted": { "role": "neutral", "displayName": "Stock Muted", "canonical": "#B9C0C8", "tonalRamp": ["#22272D", "#3B424A", "#58606A", "#77808A", "#98A0A9", "#B9C0C8", "#D6DBE0", "#EFF1F3"] },
-      "keyline-on-ink": { "role": "neutral", "displayName": "Keyline on Ink", "canonical": "#F4F1EA1F" },
-      "keyline-on-stone": { "role": "neutral", "displayName": "Keyline on Stone", "canonical": "#10182026" },
-      "topic-coral": { "role": "secondary", "displayName": "Topic Coral", "canonical": "#FF5A5F", "tonalRamp": ["#3D0F11", "#6B1A1E", "#9E262B", "#D23A3F", "#FF5A5F", "#FF878A", "#FFB5B6", "#FFE3E3"] },
-      "topic-teal": { "role": "secondary", "displayName": "Topic Teal", "canonical": "#2EC4B6", "tonalRamp": ["#082E2B", "#0F4F4A", "#187470", "#22998F", "#2EC4B6", "#6DD8CD", "#A8E9E2", "#DDF7F4"] },
-      "topic-amber": { "role": "secondary", "displayName": "Topic Amber", "canonical": "#FFBF3C", "tonalRamp": ["#3A2A06", "#62470C", "#8E6714", "#C48E1E", "#FFBF3C", "#FFD277", "#FFE4AE", "#FFF5DF"] },
-      "topic-violet": { "role": "secondary", "displayName": "Topic Violet", "canonical": "#8C84FF", "tonalRamp": ["#1C1A45", "#2F2B72", "#463FA3", "#6C63FF", "#8C84FF", "#AEA8FF", "#CFCBFF", "#EEEDFF"] }
+      "table-ink": {
+        "role": "primary",
+        "displayName": "Table Ink",
+        "canonical": "#101820",
+        "tonalRamp": [
+          "#0A1016",
+          "#101820",
+          "#1B2632",
+          "#2C3846",
+          "#4A5560",
+          "#7A8590",
+          "#B9C0C8",
+          "#E4E8EC"
+        ]
+      },
+      "table-peach": {
+        "role": "neutral",
+        "displayName": "Peach Cream",
+        "canonical": "#FFF1E3",
+        "tonalRamp": [
+          "#3A2A1C",
+          "#5E4632",
+          "#85664B",
+          "#AD8968",
+          "#D2AE8C",
+          "#EDD3B9",
+          "#FFF1E3",
+          "#FFFAF5"
+        ]
+      },
+      "card-stock": {
+        "role": "primary",
+        "displayName": "Card Stock",
+        "canonical": "#F4F1EA",
+        "tonalRamp": [
+          "#2A2722",
+          "#4A463E",
+          "#6E695E",
+          "#948E81",
+          "#B9B3A6",
+          "#D8D3C8",
+          "#F4F1EA",
+          "#FBFAF6"
+        ]
+      },
+      "card-stock-light": {
+        "role": "primary",
+        "displayName": "Card Stock (light table)",
+        "canonical": "#FFFCF8",
+        "tonalRamp": [
+          "#2E2A25",
+          "#4F4A43",
+          "#736D64",
+          "#999389",
+          "#BEB8AE",
+          "#DED9D0",
+          "#F4F1EA",
+          "#FFFCF8"
+        ]
+      },
+      "ink": {
+        "role": "primary",
+        "displayName": "Ink",
+        "canonical": "#101820",
+        "tonalRamp": [
+          "#0A1016",
+          "#101820",
+          "#1B2632",
+          "#2C3846",
+          "#4A5560",
+          "#7A8590",
+          "#B9C0C8",
+          "#E4E8EC"
+        ]
+      },
+      "ink-muted": {
+        "role": "neutral",
+        "displayName": "Ink Muted",
+        "canonical": "#4A5560",
+        "tonalRamp": [
+          "#151A20",
+          "#252D35",
+          "#36404A",
+          "#4A5560",
+          "#66717C",
+          "#87919B",
+          "#AEB6BE",
+          "#D8DDE2"
+        ]
+      },
+      "stock-muted": {
+        "role": "neutral",
+        "displayName": "Stock Muted",
+        "canonical": "#B9C0C8",
+        "tonalRamp": [
+          "#22272D",
+          "#3B424A",
+          "#58606A",
+          "#77808A",
+          "#98A0A9",
+          "#B9C0C8",
+          "#D6DBE0",
+          "#EFF1F3"
+        ]
+      },
+      "keyline-on-ink": {
+        "role": "neutral",
+        "displayName": "Keyline on Ink",
+        "canonical": "#F4F1EA1F"
+      },
+      "keyline-on-stone": {
+        "role": "neutral",
+        "displayName": "Keyline on Peach",
+        "canonical": "#10182026"
+      },
+      "topic-coral": {
+        "role": "secondary",
+        "displayName": "Topic Coral",
+        "canonical": "#FF5A5F",
+        "tonalRamp": [
+          "#3D0F11",
+          "#6B1A1E",
+          "#9E262B",
+          "#D23A3F",
+          "#FF5A5F",
+          "#FF878A",
+          "#FFB5B6",
+          "#FFE3E3"
+        ]
+      },
+      "topic-teal": {
+        "role": "secondary",
+        "displayName": "Topic Teal",
+        "canonical": "#2EC4B6",
+        "tonalRamp": [
+          "#082E2B",
+          "#0F4F4A",
+          "#187470",
+          "#22998F",
+          "#2EC4B6",
+          "#6DD8CD",
+          "#A8E9E2",
+          "#DDF7F4"
+        ]
+      },
+      "topic-amber": {
+        "role": "secondary",
+        "displayName": "Topic Amber",
+        "canonical": "#FFBF3C",
+        "tonalRamp": [
+          "#3A2A06",
+          "#62470C",
+          "#8E6714",
+          "#C48E1E",
+          "#FFBF3C",
+          "#FFD277",
+          "#FFE4AE",
+          "#FFF5DF"
+        ]
+      },
+      "topic-violet": {
+        "role": "secondary",
+        "displayName": "Topic Violet",
+        "canonical": "#8C84FF",
+        "tonalRamp": [
+          "#1C1A45",
+          "#2F2B72",
+          "#463FA3",
+          "#6C63FF",
+          "#8C84FF",
+          "#AEA8FF",
+          "#CFCBFF",
+          "#EEEDFF"
+        ]
+      }
     },
     "typographyMeta": {
-      "headline": { "displayName": "Headline", "purpose": "Screen headings; the Für-dich screen has none." },
-      "card-title": { "displayName": "Card Title", "purpose": "Card questions (stepping 21, 18, 16px to fit five lines), message titles, pushed-screen app bar titles." },
-      "title": { "displayName": "Title", "purpose": "List-row titles and argument headings on the card back." },
-      "body-strong": { "displayName": "Body Strong", "purpose": "The reason line on the card front." },
-      "body": { "displayName": "Body", "purpose": "Summaries, arguments, counts, explanations." },
-      "label-button": { "displayName": "Button Label", "purpose": "Filled pill buttons." },
-      "label-text-button": { "displayName": "Text Button Label", "purpose": "Text buttons on the table." },
-      "label": { "displayName": "Label", "purpose": "Kind and deadline line, fact chips, card back header strip." },
-      "nav-label": { "displayName": "Navigation Label", "purpose": "Bottom navigation destinations." }
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Screen headings such as \"Dein Bild\" and \"Über dich\"; the Für-dich screen has none."
+      },
+      "card-title": {
+        "displayName": "Card Title",
+        "purpose": "Card questions (stepping 21, 18, 16px to fit five lines), message titles, section headings on the table, the questionnaire prompt, the \"Alle Aktionen\" app bar title."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "List-row titles and argument headings on the card back."
+      },
+      "body-strong": {
+        "displayName": "Body Strong",
+        "purpose": "The reason line on the card front."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Summaries, arguments, counts, explanations."
+      },
+      "label-button": {
+        "displayName": "Button Label",
+        "purpose": "Filled pill buttons."
+      },
+      "label-text-button": {
+        "displayName": "Text Button Label",
+        "purpose": "Text buttons on the table."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Kind and deadline line, fact chips, card back header strip."
+      },
+      "nav-label": {
+        "displayName": "Navigation Label",
+        "purpose": "Bottom navigation destinations."
+      }
     },
     "shadows": [
-      { "name": "card-on-table-dark", "value": "0 14px 30px #00000099", "purpose": "Every action card on the ink table, including the card in flight." },
-      { "name": "card-on-table-light", "value": "0 14px 30px #10182033", "purpose": "Every action card on the stone table." },
-      { "name": "deck-card-dark", "value": "0 8px 16px #00000099", "purpose": "Face-down deck cards on loading and message states (dark)." },
-      { "name": "deck-card-light", "value": "0 8px 16px #10182033", "purpose": "Face-down deck cards on loading and message states (light)." }
+      {
+        "name": "card-on-table-dark",
+        "value": "0 14px 30px #00000099",
+        "purpose": "Every action card on the ink table, including the card in flight, the questionnaire's question card, the drafted letter and the framed Dein Bild."
+      },
+      {
+        "name": "card-on-table-light",
+        "value": "0 14px 30px #10182033",
+        "purpose": "The same objects on the peach table."
+      },
+      {
+        "name": "deck-card-dark",
+        "value": "0 8px 16px #00000099",
+        "purpose": "Face-down deck cards on loading and message states (dark)."
+      },
+      {
+        "name": "deck-card-light",
+        "value": "0 8px 16px #10182033",
+        "purpose": "Face-down deck cards on loading and message states (light)."
+      }
     ],
     "motion": [
-      { "name": "ease", "value": "cubic-bezier(0.25, 1, 0.5, 1)", "purpose": "Ease-out quart: fan snap and card flip." },
-      { "name": "ease-flight", "value": "cubic-bezier(0.32, 0, 0.67, 0)", "purpose": "Ease-in cubic: a played card accelerating toward the Wirkung destination." },
-      { "name": "quick", "value": "160ms", "purpose": "Page dot changes." },
-      { "name": "settle", "value": "280ms", "purpose": "Fan snapping to a card after a swipe." },
-      { "name": "flip", "value": "300ms", "purpose": "Card turning over on the Y axis." },
-      { "name": "flight", "value": "520ms", "purpose": "Played card flying onto the Wirkung pile." },
-      { "name": "reduced", "value": "0ms", "purpose": "When the system disables animations, every motion is an instant cut." }
+      {
+        "name": "ease",
+        "value": "cubic-bezier(0.25, 1, 0.5, 1)",
+        "purpose": "Ease-out quart (MiMotion.ease): fan snap, card flip, slider settle, picture glide, profile marker slide."
+      },
+      {
+        "name": "ease-flight",
+        "value": "cubic-bezier(0.32, 0, 0.67, 0)",
+        "purpose": "Ease-in cubic: a played card accelerating toward the Wirkung destination."
+      },
+      {
+        "name": "quick",
+        "value": "160ms",
+        "purpose": "Page dot changes and the leaned-away statement fading back."
+      },
+      {
+        "name": "settle",
+        "value": "280ms",
+        "purpose": "Fan snapping after a swipe, the answer slider settling, Dein Bild's shapes gliding to a new answer."
+      },
+      {
+        "name": "flip",
+        "value": "300ms",
+        "purpose": "Card turning over on the Y axis."
+      },
+      {
+        "name": "flight",
+        "value": "520ms",
+        "purpose": "Played card flying onto the Wirkung pile; the profile's value markers sliding out from the centre."
+      },
+      {
+        "name": "reveal",
+        "value": "1400ms",
+        "purpose": "Questionnaire reveal: the question fades down, the picture grows to the middle and the ink frame and mat close around it."
+      },
+      {
+        "name": "reduced",
+        "value": "0ms",
+        "purpose": "When the system disables animations, every motion is an instant cut."
+      }
     ],
     "breakpoints": []
   },
@@ -109,11 +348,27 @@
       "description": "Three slightly fanned face-down cards for loading, empty and error states.",
       "html": "<div style=\"background:#101820;padding:32px;display:flex;justify-content:center\"><div class=\"ds-deck\"><span class=\"ds-deck-card\" style=\"background:#2EC4B6;transform:rotate(-12.6deg)\"></span><span class=\"ds-deck-card\" style=\"background:#8C84FF;transform:rotate(11.5deg)\"></span><span class=\"ds-deck-card\" style=\"background:#FF5A5F\"></span></div></div>",
       "css": ".ds-deck { position: relative; width: 180px; height: 150px; } .ds-deck-card { position: absolute; left: 44px; top: 9px; width: 92px; height: 132px; border: 4px solid #F4F1EA; border-radius: 14px; box-sizing: border-box; box-shadow: 0 8px 16px #00000099; }"
+    },
+    {
+      "name": "Question Card with Answer Block",
+      "kind": "input",
+      "refersTo": "action-card",
+      "description": "One values question: two statements split by an \"oder\" rule, then a continuous slider in the axis colour (-2 to +2, soft centre catch) with the lean spelled out. Shown leaning to the second statement.",
+      "html": "<div class=\"ds-q-table\"><div class=\"ds-q-card\"><div class=\"ds-q-statements\"><p class=\"ds-q-st ds-q-st--away\">Der Staat sollte große Vermögen und Einkommen stärker ausgleichen.</p><div class=\"ds-q-or\"><span class=\"ds-q-rule\"></span><span class=\"ds-q-or-word\">oder</span><span class=\"ds-q-rule\"></span></div><p class=\"ds-q-st\">Wer Leistung bringt, sollte davon profitieren, mit möglichst wenig staatlichem Eingriff.</p></div><div class=\"ds-q-block\"><div class=\"ds-q-target\" role=\"slider\" tabindex=\"0\" aria-label=\"Deine Antwort zwischen den beiden Aussagen\" aria-valuetext=\"Eher die zweite Aussage\"><div class=\"ds-q-track\"><span class=\"ds-q-groove\"></span><span class=\"ds-q-centre\"></span><span class=\"ds-q-fill\"></span><span class=\"ds-q-marker\"></span></div></div><div class=\"ds-q-word\">Eher das <svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#101820\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 12h14M13 6l6 6-6 6\"/></svg></div></div></div></div>",
+      "css": ".ds-q-table { background: #101820; padding: 24px; font-family: 'Albert Sans', sans-serif; } .ds-q-card { max-width: 360px; background: #F4F1EA; border: 1px solid #F4F1EA1F; border-radius: 26px; box-shadow: 0 14px 30px #00000099; color: #101820; } .ds-q-statements { display: flex; align-items: stretch; padding: 18px 18px 16px; } .ds-q-st { flex: 1; margin: 0; font-size: 15px; font-weight: 600; line-height: 1.38; text-align: left; cursor: pointer; transition: opacity 160ms cubic-bezier(0.25,1,0.5,1); } .ds-q-st--away { opacity: 0.725; } .ds-q-st:hover { opacity: 1; } .ds-q-or { display: flex; flex-direction: column; align-items: center; margin: 0 12px; } .ds-q-rule { flex: 1; width: 1px; background: #1018201F; } .ds-q-or-word { writing-mode: vertical-rl; transform: rotate(180deg); padding: 8px 0; font-size: 13px; font-weight: 700; color: #4A5560; } .ds-q-block { margin: 0 10px 10px; padding: 4px 16px 12px; background: #FF5A5F; border-radius: 18px; } .ds-q-target { height: 48px; display: flex; align-items: center; cursor: pointer; border-radius: 999px; } .ds-q-target:focus-visible { outline: 3px solid #101820; outline-offset: 2px; } .ds-q-track { position: relative; width: 100%; height: 28px; } .ds-q-groove { position: absolute; left: 0; right: 0; top: 10px; height: 8px; border-radius: 999px; background: #10182029; } .ds-q-centre { position: absolute; left: calc(50% - 1.5px); top: 2px; width: 3px; height: 24px; border-radius: 2px; background: #101820B3; } .ds-q-fill { position: absolute; left: 50%; top: 10px; width: calc(25% - 7px); height: 8px; border-radius: 999px; background: #101820; } .ds-q-marker { position: absolute; left: calc(75% - 21px); top: 0; width: 28px; height: 28px; box-sizing: border-box; border: 4px solid #101820; border-radius: 50%; background: #F4F1EA; transition: left 280ms cubic-bezier(0.25,1,0.5,1), transform 160ms; } .ds-q-target:hover .ds-q-marker { transform: scale(1.08); } .ds-q-word { display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 20px; font-size: 14px; font-weight: 800; color: #101820; }"
+    },
+    {
+      "name": "Dein Bild (framed)",
+      "kind": "custom",
+      "refersTo": "action-card",
+      "description": "The values picture after the questionnaire's reveal: one overprinting shape per axis on a #F4F1EA sheet, in a 10px ink frame with a 14px #FFFCF8 mat, lying on the table with the card shadow.",
+      "html": "<div class=\"ds-bild-table\"><figure class=\"ds-bild-frame\"><div class=\"ds-bild-mat\"><svg class=\"ds-bild\" viewBox=\"0 0 300 300\" width=\"220\" height=\"220\"><rect width=\"300\" height=\"300\" fill=\"#F4F1EA\"/><g style=\"isolation:isolate\"><circle cx=\"182\" cy=\"125\" r=\"64\" fill=\"#FF5A5F\" style=\"mix-blend-mode:multiply\"/><path d=\"M-62 0 A62 62 0 0 1 62 0 Z\" transform=\"translate(111 230) rotate(20)\" fill=\"#2EC4B6\" style=\"mix-blend-mode:multiply\"/><rect x=\"-90\" y=\"-17\" width=\"180\" height=\"34\" rx=\"17\" transform=\"translate(168 214) rotate(-22)\" fill=\"#FFBF3C\" style=\"mix-blend-mode:multiply\"/><path d=\"M0 -58 L54 40 L-54 40 Z\" transform=\"translate(246 95) rotate(16) scale(1.08)\" fill=\"#8C84FF\" style=\"mix-blend-mode:multiply\"/><line x1=\"-120\" y1=\"0\" x2=\"120\" y2=\"0\" transform=\"translate(150 162) rotate(-4)\" stroke=\"#101820\" stroke-width=\"7\" stroke-linecap=\"round\"/></g><g fill=\"#101820\"><circle cx=\"34\" cy=\"252\" r=\"4.5\"/><circle cx=\"49\" cy=\"252\" r=\"3.5\"/><circle cx=\"64\" cy=\"252\" r=\"3.5\"/><circle cx=\"79\" cy=\"252\" r=\"5.5\"/><circle cx=\"34\" cy=\"267\" r=\"4.5\"/><circle cx=\"49\" cy=\"267\" r=\"2.5\"/><circle cx=\"64\" cy=\"267\" r=\"6.5\"/><circle cx=\"79\" cy=\"267\" r=\"3.5\"/></g></svg></div></figure><h2 class=\"ds-bild-title\">Dein Bild</h2><p class=\"ds-bild-line\">Aus deinen Antworten. Kein anderes sieht genau so aus.</p><p class=\"ds-bild-nr\">Nr. 77 822 · 12.11.2026</p></div>",
+      "css": ".ds-bild-table { background: #101820; padding: 32px 24px; display: flex; flex-direction: column; align-items: center; text-align: center; font-family: 'Albert Sans', sans-serif; color: #F4F1EA; } .ds-bild-frame { margin: 0; padding: 10px; background: #101820; border: 1px solid #F4F1EA1F; border-radius: 18px; box-shadow: 0 14px 30px #00000099; } .ds-bild-mat { padding: 14px; background: #FFFCF8; border-radius: 10px; } .ds-bild { display: block; border-radius: 13px; } .ds-bild-title { margin: 24px 0 0; font-family: 'Unbounded', sans-serif; font-weight: 800; font-size: 28px; line-height: 1.1; letter-spacing: -0.02em; } .ds-bild-line { margin: 8px 0 0; font-size: 15px; font-weight: 500; line-height: 1.4; } .ds-bild-nr { margin: 4px 0 0; font-size: 13px; font-weight: 700; line-height: 1.3; color: #B9C0C8; }"
     }
   ],
   "narrative": {
     "northStar": "The Card Table",
-    "overview": "MeinImpact deals the user's civic actions as a hand of playing cards on a table, not as a feed. The table is the screen: deep ink in dark mode, pale stone in light mode, always following the phone's setting. On it lie cards of warm, light card stock, each carrying a flat geometric picture of its topic on one of four bright topic colours. A big, chunky display face sets the questions; a friendly grotesque carries everything else. The feel is a tabletop game for a few minutes on the phone: tactile, bright, a little playful, and plain about the facts.\n\nDensity is low and deliberate. One card is read at a time, upright and large; the next ones peek out behind it, rotated and dimmed, so the hand reads as a hand. Detail is on the card's back, one tap away, never in front. Depth comes from cards lying on the table with soft shadows; everything that is not a card (rows, chips, buttons, the navigation bar) stays flat.\n\nMaterial is the building kit underneath (navigation bar, back gesture, ripples, 48dp targets), not the visual language. Android ships first; iOS gets the same custom look.",
+    "overview": "MeinImpact deals the user's civic actions as a hand of playing cards on a table, not as a feed. The table is the screen: deep ink in dark mode, warm peach in light mode, always following the phone's setting. On it lie cards of warm, light card stock, each carrying a flat geometric picture of its topic on one of four bright topic colours. A big, chunky display face sets the questions; a friendly grotesque carries everything else. The feel is a tabletop game for a few minutes on the phone: tactile, bright, a little playful, and plain about the facts.\n\nDensity is low and deliberate. One card is read at a time, upright and large; the next ones peek out behind it, rotated and dimmed, so the hand reads as a hand. Detail is on the card's back, one tap away, never in front. Depth comes from cards lying on the table with soft shadows; everything that is not a card (rows, chips, buttons, the navigation bar) stays flat.\n\nMaterial is the building kit underneath (navigation bar, back gesture, ripples, 48dp targets), not the visual language. Android ships first; iOS gets the same custom look.",
     "keyCharacteristics": [
       "Ink or stone table, light card stock, four rotating topic colours.",
       "Unbounded ExtraBold for headings and card questions; Albert Sans for all other text.",
@@ -122,12 +377,36 @@
       "Motion is physical (fan, flip, flight) and cuts to instant when the system disables animations."
     ],
     "rules": [
-      { "name": "The Rotating Suit Rule", "body": "Topic colours are assigned by topic index, never by meaning. No colour stands for a party, a position, urgency or success, and no screen adds a fifth.", "section": "colors" },
-      { "name": "The Ink-On-Everything Rule", "body": "Text on card stock and on any topic colour is always ink. Never set white or stock text on a topic colour, and never use a topic colour as a text colour.", "section": "colors" },
-      { "name": "The One Amber Rule", "body": "Interface chrome has one accent, amber: the selected navigation indicator and text selection. Buttons are ink or stock, never coloured.", "section": "colors" },
-      { "name": "The Fit-Don't-Cut Rule", "body": "A card question is never truncated mid-thought at normal sizes: it is set at the largest of 21, 18 or 16px that fits five lines, honouring the system text scale. Ellipsis is the last resort.", "section": "typography" },
-      { "name": "The One Loud Voice Rule", "body": "Unbounded is reserved for headings and card questions. Body, labels, buttons and navigation are always Albert Sans.", "section": "typography" },
-      { "name": "The Lying-On-The-Table Rule", "body": "Only cards cast shadows, and shadows are always soft and straight down. A hard, offset or coloured shadow does not belong to this world.", "section": "elevation" }
+      {
+        "name": "The Rotating Suit Rule",
+        "body": "Topic colours are assigned by topic index, never by meaning. No colour stands for a party, a position, urgency or success, and no screen adds a fifth.",
+        "section": "colors"
+      },
+      {
+        "name": "The Ink-On-Everything Rule",
+        "body": "Text on card stock and on any topic colour is always ink. Never set white or stock text on a topic colour, and never use a topic colour as a text colour.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Amber Rule",
+        "body": "Interface chrome has one accent, amber, and it always means \"selected\": the navigation indicator, a starred action in Wirkung, a picked Lebenslage, a topic set to \"mehr\", and text selection. Buttons are ink or stock, never coloured.",
+        "section": "colors"
+      },
+      {
+        "name": "The Fit-Don't-Cut Rule",
+        "body": "A card question is never truncated mid-thought at normal sizes: it is set at the largest of 21, 18 or 16px that fits five lines, honouring the system text scale. Ellipsis is the last resort.",
+        "section": "typography"
+      },
+      {
+        "name": "The One Loud Voice Rule",
+        "body": "Unbounded is reserved for headings and card questions. Body, labels, buttons and navigation are always Albert Sans.",
+        "section": "typography"
+      },
+      {
+        "name": "The Lying-On-The-Table Rule",
+        "body": "Only cards cast shadows, and shadows are always soft and straight down. A hard, offset or coloured shadow does not belong to this world.",
+        "section": "elevation"
+      }
     ],
     "dos": [
       "Do take every colour from the card-table tokens: table, card stock, ink, the two muted text colours, keylines and the four topic colours.",

@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// The card-table world of the redesigned surfaces ("Deine Hand"): a table
-/// the cards lie on, light card stock, and four topic colours that rotate by
-/// topic so no single (party-like) colour dominates. Screens that have not
-/// moved to this world yet keep [legacyTheme] and AppColors.
+/// The card-table world of the app ("Deine Hand"): a table the cards lie on,
+/// light card stock, and four topic colours that rotate by topic so no
+/// single (party-like) colour dominates.
 @immutable
 class MiColors extends ThemeExtension<MiColors> {
   const MiColors({
@@ -34,6 +33,16 @@ class MiColors extends ThemeExtension<MiColors> {
   final Color shadow;
   // Coral, teal, amber, violet. Ink text sits on all four.
   final List<Color> topics;
+
+  /// The filled button that lies on the table rather than on a card: it
+  /// inverts the table (stock on ink, ink on peach). In a Row without
+  /// Expanded, give it a finite minimumSize.
+  ButtonStyle get tableButton => FilledButton.styleFrom(
+        backgroundColor: onTable,
+        foregroundColor: table,
+        disabledBackgroundColor: onTable.withValues(alpha: 0.12),
+        disabledForegroundColor: onTableMuted,
+      );
 
   static const _ink = Color(0xFF101820);
   static const _stock = Color(0xFFF4F1EA);
@@ -190,6 +199,17 @@ ThemeData miTheme(Brightness brightness) {
         height: 1.1,
         letterSpacing: -0.02 * size,
       );
+  final muted = TextStyle(
+    fontFamily: MiFonts.text,
+    fontSize: 15,
+    fontWeight: FontWeight.w500,
+    color: colors.onTableMuted,
+  );
+  OutlineInputBorder field(Color color, [double width = 1]) =>
+      OutlineInputBorder(
+        borderRadius: BorderRadius.circular(MiRadius.tile),
+        borderSide: BorderSide(color: color, width: width),
+      );
   return base.copyWith(
     scaffoldBackgroundColor: colors.table,
     extensions: [colors],
@@ -274,25 +294,111 @@ ThemeData miTheme(Brightness brightness) {
         ),
       ),
     ),
+    // Secondary steps on the table ("Kopieren", "Fragebogen ausfüllen").
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: colors.onTable,
+        side: BorderSide(color: colors.onTableMuted),
+        minimumSize: const Size(48, 52),
+        padding: const EdgeInsets.symmetric(
+          horizontal: MiSpace.lg,
+          vertical: MiSpace.md,
+        ),
+        shape: const StadiumBorder(),
+        textStyle: const TextStyle(
+          fontFamily: MiFonts.text,
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    ),
     textSelectionTheme: TextSelectionThemeData(
       cursorColor: colors.topics[2],
       selectionColor: colors.topics[2].withValues(alpha: 0.4),
       selectionHandleColor: colors.topics[2],
     ),
+    // Pushed screens (letter, browser, "Alle Aktionen") lie on the table.
+    appBarTheme: AppBarTheme(
+      backgroundColor: colors.table,
+      foregroundColor: colors.onTable,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      titleTextStyle: display(text.titleLarge, 21),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: colors.tableRaised,
+      labelStyle: muted,
+      floatingLabelStyle: muted.copyWith(fontWeight: FontWeight.w700),
+      hintStyle: muted,
+      helperStyle: muted.copyWith(fontSize: 13),
+      counterStyle: muted.copyWith(fontSize: 13),
+      border: field(colors.keyline),
+      enabledBorder: field(colors.keyline),
+      disabledBorder: field(colors.keyline),
+      focusedBorder: field(colors.onTableMuted, 1.5),
+    ),
+    // Ticked is "selected": amber with an ink check.
+    checkboxTheme: CheckboxThemeData(
+      fillColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.selected)
+            ? colors.topics[2]
+            : Colors.transparent,
+      ),
+      checkColor: WidgetStatePropertyAll(colors.onCard),
+      side: WidgetStateBorderSide.resolveWith(
+        (states) => states.contains(WidgetState.selected)
+            ? BorderSide(color: colors.topics[2], width: 2)
+            : BorderSide(
+                color: states.contains(WidgetState.disabled)
+                    ? colors.keyline
+                    : colors.onTableMuted,
+                width: 2,
+              ),
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+    ),
+    expansionTileTheme: ExpansionTileThemeData(
+      iconColor: colors.onTable,
+      collapsedIconColor: colors.onTableMuted,
+      textColor: colors.onTable,
+      collapsedTextColor: colors.onTable,
+      shape: const Border(),
+      collapsedShape: const Border(),
+    ),
+    progressIndicatorTheme: ProgressIndicatorThemeData(
+      color: colors.onTable,
+      linearTrackColor: colors.keyline,
+    ),
+    // Inverts the table, like the buttons on it.
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: colors.onTable,
+      contentTextStyle: TextStyle(
+        fontFamily: MiFonts.text,
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+        color: colors.table,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(MiRadius.tile),
+      ),
+    ),
+    popupMenuTheme: PopupMenuThemeData(
+      color: colors.tableRaised,
+      surfaceTintColor: Colors.transparent,
+      textStyle: text.bodyLarge,
+      labelTextStyle: WidgetStatePropertyAll(text.bodyLarge),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(MiRadius.tile),
+        side: BorderSide(color: colors.keyline),
+      ),
+    ),
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: colors.table,
+      surfaceTintColor: Colors.transparent,
+      dragHandleColor: colors.onTableMuted,
+    ),
   );
 }
-
-/// The look of the screens that have not moved to the card table yet.
-ThemeData legacyTheme() => ThemeData(
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF1FA37A),
-      ).copyWith(
-        surface: const Color(0xFFFFFCF7),
-      ),
-      scaffoldBackgroundColor: const Color(0xFFFAF7F0),
-      textTheme: ThemeData.light().textTheme.apply(
-            bodyColor: const Color(0xFF28241F),
-            displayColor: const Color(0xFF28241F),
-          ),
-      useMaterial3: true,
-    );

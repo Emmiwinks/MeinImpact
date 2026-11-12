@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:meinimpact/l10n/app_localizations.dart';
 
 import '../core/profile/user_profile_store.dart';
@@ -66,7 +67,7 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
   // Onboarding steps (only used before a profile exists): 0 = value
   // profile, 1 = demographics.
   int _onboardingStep = 0;
-  Map<String, int>? _pendingWerte;
+  Map<String, double>? _pendingWerte;
   // True while an existing profile's owner is re-doing just the Werteprofil
   // quiz from "Mein Profil" — demographic data is left untouched, see
   // _onWerteRequizComplete.
@@ -100,7 +101,7 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
     await widget._actionLogStore?.save(updated);
   }
 
-  Future<void> _onWerteComplete(Map<String, int> werte) async {
+  Future<void> _onWerteComplete(Map<String, double> werte) async {
     setState(() {
       _pendingWerte = werte;
       _onboardingStep = 1;
@@ -126,7 +127,7 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
     setState(() => _profile = profile);
   }
 
-  Future<void> _onWerteRequizComplete(Map<String, int> werte) async {
+  Future<void> _onWerteRequizComplete(Map<String, double> werte) async {
     final updated = _profile!.copyWith(werte: werte);
     await widget._profileStore?.save(updated);
     setState(() {
@@ -175,9 +176,16 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
-      // Screens move to the card table (miTheme) one by one; the rest,
-      // including routes they push, keep the old look until then.
-      theme: legacyTheme(),
+      // Every screen lies on the card table, light or dark with the phone.
+      theme: miTheme(Brightness.light),
+      darkTheme: miTheme(Brightness.dark),
+      // Status bar icons follow the table; app bars set their own.
+      builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+        value: Theme.of(context).brightness == Brightness.dark
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark,
+        child: child!,
+      ),
       home: _buildHome(),
     );
   }
@@ -212,7 +220,10 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
     }
 
     if (_requizWerte) {
-      return ValueProfileScreen(onComplete: _onWerteRequizComplete);
+      return ValueProfileScreen(
+        initial: _profile!.werte,
+        onComplete: _onWerteRequizComplete,
+      );
     }
 
     // Onboarding step 0: value profile

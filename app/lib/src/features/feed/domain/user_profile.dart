@@ -2,6 +2,19 @@ import 'interest_weights.dart';
 import 'lebenslage.dart';
 import 'situation_keys.dart';
 
+/// The questionnaire's questions in order: two per value axis (Wirtschaft,
+/// Diplomatie, Freiheit, Wandel).
+const werteQuestionKeys = [
+  'wirtschaft_gleichheit',
+  'wirtschaft_staat',
+  'diplomatie_nation',
+  'diplomatie_welt',
+  'freiheit_staat',
+  'freiheit_sicherheit',
+  'wandel_tradition',
+  'wandel_zukunft',
+];
+
 class UserProfile {
   const UserProfile({
     this.werte = const {},
@@ -20,7 +33,8 @@ class UserProfile {
     final legacyRaw = json['betroffenheitsprofil'] as Map<String, Object?>?;
     final interestsRaw = json['interests'] as Map<String, Object?>?;
     return UserProfile(
-      werte: werteRaw.map((k, v) => MapEntry(k, v as int)),
+      // Saved as whole steps before the slider went continuous.
+      werte: werteRaw.map((k, v) => MapEntry(k, (v as num).toDouble())),
       region: json['region'] as String?,
       plz: json['plz'] as String?,
       mdbName: json['mdb_name'] as String?,
@@ -43,7 +57,7 @@ class UserProfile {
   }
 
   UserProfile copyWith({
-    Map<String, int>? werte,
+    Map<String, double>? werte,
     Set<String>? lebenslagen,
     InterestWeights? interests,
   }) {
@@ -59,11 +73,9 @@ class UserProfile {
     );
   }
 
-  /// Raw 8values question scores (-2 to +2, 0 = neutral/unanswered).
-  /// Keys: wirtschaft_gleichheit, wirtschaft_staat, diplomatie_nation,
-  ///       diplomatie_welt, freiheit_staat, freiheit_sicherheit,
-  ///       wandel_tradition, wandel_zukunft
-  final Map<String, int> werte;
+  /// Raw 8values question scores, anywhere from -2.0 to +2.0 (0 = neutral
+  /// or unanswered), keyed by [werteQuestionKeys].
+  final Map<String, double> werte;
   final String? region;
   final String? plz;
   final String? mdbName;
@@ -107,7 +119,7 @@ class UserProfile {
 
   int get answeredCount => werte.values.where((v) => v != 0).length;
 
-  double _q(String key) => (werte[key] ?? 0).toDouble();
+  double _q(String key) => werte[key] ?? 0;
 
   Map<String, Object?> toJson() {
     return {

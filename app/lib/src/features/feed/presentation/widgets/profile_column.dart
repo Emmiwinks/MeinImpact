@@ -6,6 +6,7 @@ import '../../domain/interest_weights.dart';
 import '../../domain/lebenslage.dart';
 import '../../domain/topic_tags.g.dart';
 import '../../domain/user_profile.dart';
+import 'axis_track.dart';
 import 'interest_chips.dart';
 import 'lebenslagen_picker.dart';
 
@@ -298,7 +299,7 @@ class _AxisBlock extends StatelessWidget {
                   MiMotion.reduced(context) ? Duration.zero : MiMotion.flight,
               curve: MiMotion.ease,
               builder: (context, t, _) =>
-                  _AxisTrack(position: t, ink: ink, stock: colors.cardStock),
+                  AxisTrack(position: t, ink: ink, stock: colors.cardStock),
             ),
             const SizedBox(height: MiSpace.sm),
             Row(
@@ -316,98 +317,6 @@ class _AxisBlock extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// The track of an axis: five steps, the centre marked, an ink bar from
-/// the centre to the marker. [position] runs from -1 (left pole) to +1.
-class _AxisTrack extends StatelessWidget {
-  const _AxisTrack({
-    required this.position,
-    required this.ink,
-    required this.stock,
-  });
-
-  final double position;
-  final Color ink;
-  final Color stock;
-
-  static const _height = 28.0;
-  static const _marker = 28.0;
-  static const _bar = 8.0;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: _height,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          // The marker's centre runs between the two ends of the track.
-          final span = constraints.maxWidth - _marker;
-          double x(double p) => _marker / 2 + span * (p + 1) / 2;
-          final centre = x(0);
-          final at = x(position);
-          return Stack(
-            clipBehavior: Clip.none,
-            children: [
-              // The track.
-              Positioned(
-                left: 0,
-                right: 0,
-                top: (_height - _bar) / 2,
-                height: _bar,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: ink.withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(MiRadius.chip),
-                  ),
-                ),
-              ),
-              // Five steps, the centre one taller.
-              for (var step = -2; step <= 2; step++)
-                Positioned(
-                  left: x(step / 2) - 1.5,
-                  top: step == 0 ? 2 : (_height - 14) / 2,
-                  width: 3,
-                  height: step == 0 ? _height - 4 : 14,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: ink.withValues(alpha: step == 0 ? 0.7 : 0.3),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-              // The lean: from the centre to the marker.
-              Positioned(
-                left: at < centre ? at : centre,
-                width: (at - centre).abs(),
-                top: (_height - _bar) / 2,
-                height: _bar,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: ink,
-                    borderRadius: BorderRadius.circular(MiRadius.chip),
-                  ),
-                ),
-              ),
-              Positioned(
-                left: at - _marker / 2,
-                top: (_height - _marker) / 2,
-                width: _marker,
-                height: _marker,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: stock,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: ink, width: 4),
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
       ),
     );
   }

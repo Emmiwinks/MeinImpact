@@ -3,6 +3,7 @@ import 'package:flutter_email_sender/flutter_email_sender.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meinimpact/l10n/app_localizations.dart';
+import 'package:meinimpact/src/app/theme/mi_theme.dart';
 import 'package:meinimpact/src/features/feed/domain/interest_weights.dart';
 import 'package:meinimpact/src/features/feed/domain/letter_recipients.dart';
 import 'package:meinimpact/src/features/feed/domain/mdb.dart';
@@ -143,6 +144,7 @@ void main() {
       bool? result;
       await tester.pumpWidget(
         MaterialApp(
+          theme: miTheme(Brightness.light),
           home: Builder(
             builder: (context) => TextButton(
               onPressed: () async => result = await LetterScreen.open(
@@ -182,6 +184,7 @@ void main() {
     testWidgets('offices are pre-selected and can be unticked', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          theme: miTheme(Brightness.light),
           home: LetterScreen(
             opportunity: _decision(),
             repository: _LetterRepository(
@@ -242,6 +245,7 @@ void main() {
         bool? result;
         await tester.pumpWidget(
           MaterialApp(
+            theme: miTheme(Brightness.light),
             home: Builder(
               builder: (context) => TextButton(
                 onPressed: () async =>
@@ -275,13 +279,12 @@ void main() {
         );
         await tester.tap(find.text('open'));
         await tester.pumpAndSettle();
+        await tester.ensureVisible(find.text('Brief erstellen'));
+        await tester.pumpAndSettle();
         await tester.tap(find.text('Brief erstellen'));
         await tester.pumpAndSettle();
-        await tester.dragUntilVisible(
-          find.text('Mail-App'),
-          find.byType(ListView),
-          const Offset(0, -200),
-        );
+        await tester.ensureVisible(find.text('Mail-App'));
+        await tester.pumpAndSettle();
         await tester.tap(find.text('Mail-App'));
         await tester.pumpAndSettle();
         return result;
@@ -330,6 +333,7 @@ void main() {
         (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          theme: miTheme(Brightness.light),
           home: LetterScreen(
             opportunity: _decision(),
             repository: _LetterRepository(
@@ -352,6 +356,7 @@ void main() {
         (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          theme: miTheme(Brightness.light),
           home: LetterScreen(
             opportunity: _decision(),
             repository: _LetterRepository(fail: true),
@@ -367,7 +372,7 @@ void main() {
         find.textContaining('konnte gerade nicht erstellt werden'),
         findsOneWidget,
       );
-      expect(find.text('Dein Brief (bearbeitbar)'), findsOneWidget);
+      expect(find.text('Dein Brief'), findsOneWidget);
       expect(find.text('Fertig'), findsOneWidget);
     });
   });
@@ -453,6 +458,7 @@ class _HarnessState extends State<_Harness> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      theme: miTheme(Brightness.light),
       locale: const Locale('de'),
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: AppLocalizations.localizationsDelegates,

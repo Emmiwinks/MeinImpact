@@ -18,6 +18,9 @@ import 'package:meinimpact/src/features/feed/domain/opportunity.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity_repository.dart';
 import 'package:meinimpact/src/features/feed/domain/user_profile.dart';
 import 'package:meinimpact/src/features/feed/presentation/aktionen_tab.dart';
+import 'package:meinimpact/src/features/feed/presentation/letter_screen.dart';
+import 'package:meinimpact/src/features/onboarding/demographic_screen.dart';
+import 'package:meinimpact/src/features/onboarding/value_profile_screen.dart';
 import 'package:meinimpact/src/features/tracking/domain/action_log.dart';
 import 'package:meinimpact/src/features/tracking/domain/impact_news.dart';
 
@@ -64,7 +67,7 @@ void main() {
           locale: const Locale('de'),
           supportedLocales: AppLocalizations.supportedLocales,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
-          theme: legacyTheme(),
+          theme: miTheme(Brightness.light),
           home: MainTabScreen(
             opportunityRepository: _Pool(pool ?? _opportunities(), news),
             profile: profile,
@@ -160,10 +163,192 @@ void main() {
         act: act,
       );
 
+  // A screen of its own (onboarding, letter) on the app's themes.
+  Future<void> screen(
+    WidgetTester tester,
+    String name,
+    Widget home, {
+    Brightness brightness = Brightness.dark,
+    Future<void> Function(WidgetTester tester)? act,
+  }) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    tester.view.padding = const FakeViewPadding(top: 141, bottom: 102);
+    tester.view.viewPadding = const FakeViewPadding(top: 141, bottom: 102);
+    tester.platformDispatcher.platformBrightnessTestValue = brightness;
+    addTearDown(tester.view.reset);
+    addTearDown(tester.platformDispatcher.clearAllTestValues);
+    debugDisableShadows = false;
+    await tester.pumpWidget(
+      RepaintBoundary(
+        key: _boundary,
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          locale: const Locale('de'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          theme: miTheme(Brightness.light),
+          darkTheme: miTheme(Brightness.dark),
+          home: home,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    if (act != null) {
+      await act(tester);
+      await tester.pumpAndSettle();
+    }
+    await tester.runAsync(() async {
+      final boundary = _boundary.currentContext!.findRenderObject()!
+          as RenderRepaintBoundary;
+      final image = await boundary.toImage(pixelRatio: 2);
+      final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+      final file = File('$_out/$name.png');
+      await file.parent.create(recursive: true);
+      await file.writeAsBytes(bytes!.buffer.asUint8List());
+    });
+    debugDisableShadows = true;
+  }
+
+  Future<void> answer(WidgetTester t) async {
+    // Leaning a little towards the left-hand statement.
+    final track = t.getRect(find.byKey(const ValueKey('werte-track')));
+    await t.tapAt(Offset(track.left + track.width * 0.3, track.center.dy));
+  }
+
+  // Answers anywhere along the slider, not only whole steps.
+  const someAnswers = {
+    'wirtschaft_gleichheit': -1.4,
+    'wirtschaft_staat': 0.6,
+    'diplomatie_nation': 0.85,
+    'diplomatie_welt': 1.7,
+    'freiheit_staat': -0.4,
+    'freiheit_sicherheit': 0.0,
+    'wandel_tradition': 1.2,
+    'wandel_zukunft': -0.9,
+  };
+
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      'questionnaire, ${brightness.name}',
+      (t) => screen(
+        t,
+        'phone-werte-${brightness.name}',
+        ValueProfileScreen(onComplete: (_) {}, onUseExampleProfile: () {}),
+        brightness: brightness,
+      ),
+    );
+    testWidgets(
+      'questionnaire under way, ${brightness.name}',
+      (t) => screen(
+        t,
+        'phone-werte-mid-${brightness.name}',
+        ValueProfileScreen(
+          onComplete: (_) {},
+          initial: Map.fromEntries(someAnswers.entries.take(2)),
+        ),
+        brightness: brightness,
+        act: (t) async {
+          for (var i = 0; i < 2; i++) {
+            await t.tap(find.text('Weiter'));
+            await t.pumpAndSettle();
+          }
+          await answer(t);
+        },
+      ),
+    );
+    testWidgets(
+      'picture revealed, ${brightness.name}',
+      (t) => screen(
+        t,
+        'phone-werte-bild-${brightness.name}',
+        ValueProfileScreen(onComplete: (_) {}, initial: someAnswers),
+        brightness: brightness,
+        act: (t) async {
+          for (var i = 0; i < 7; i++) {
+            await t.tap(find.text('Weiter'));
+            await t.pumpAndSettle();
+          }
+          await t.tap(find.text('Fertig'));
+        },
+      ),
+    );
+    testWidgets(
+      'about you, ${brightness.name}',
+      (t) => screen(
+        t,
+        'phone-ueber-dich-${brightness.name}',
+        DemographicScreen(
+          onComplete: (_) {},
+          onLookupMdb: (_) async => const [
+            MdbOption(
+              wahlkreisNr: 159,
+              wahlkreisName: 'Dresden I',
+              mdbName: 'Jana Beispiel',
+              mdbParty: 'Partei A',
+            ),
+            MdbOption(
+              wahlkreisNr: 160,
+              wahlkreisName: 'Dresden II – Bautzen II',
+              mdbName: 'Tom Muster',
+              mdbParty: 'Partei B',
+            ),
+          ],
+        ),
+        brightness: brightness,
+        act: (t) async {
+          await t.enterText(find.byType(TextField).first, '01067');
+          await t.pump();
+          await t.tap(find.text('Suchen'));
+        },
+      ),
+    );
+    testWidgets(
+      'letter, ${brightness.name}',
+      (t) => screen(
+        t,
+        'phone-letter-${brightness.name}',
+        LetterScreen(
+          opportunity: _opportunities()[3],
+          repository: _Pool(const []),
+          onViewPaper: () {},
+        ),
+        brightness: brightness,
+        act: (t) async {
+          await t.enterText(
+            find.byType(TextField),
+            'Meine Mutter geht dort zur Ärztin und kann nicht weit laufen.',
+          );
+          await t.ensureVisible(find.text('Brief erstellen'));
+          await t.pumpAndSettle();
+          await t.tap(find.text('Brief erstellen'));
+          await t.pumpAndSettle();
+          await t.drag(
+            find.byType(SingleChildScrollView),
+            const Offset(0, -500),
+          );
+        },
+      ),
+    );
+  }
+  testWidgets(
+    'letter before drafting, dark',
+    (t) => screen(
+      t,
+      'phone-letter-start-dark',
+      LetterScreen(
+        opportunity: _opportunities()[3],
+        repository: _Pool(const []),
+        onViewPaper: () {},
+      ),
+    ),
+  );
+
   testWidgets('pitch 1, hand', (t) => pitch(t, '1-hand'));
   testWidgets(
     'pitch 2, card back',
-    (t) => pitch(t, '2-back', act: (t) => t.tap(find.textContaining('Blitzer'))),
+    (t) =>
+        pitch(t, '2-back', act: (t) => t.tap(find.textContaining('Blitzer'))),
   );
   testWidgets(
     'pitch 3, impact',
@@ -275,7 +460,8 @@ ImpactNewsFeed _pitchNews() => ImpactNewsFeed({
           ImpactNewsItem(
             level: 'exact',
             kind: 'news',
-            title: 'Airlines gegen EU-Pläne für erweiterten CO2-Emissionshandel',
+            title:
+                'Airlines gegen EU-Pläne für erweiterten CO2-Emissionshandel',
             url: 'https://www.news.at/ausflugsziele/airlines-gegen-eu-plane-'
                 'fur-erweiterten-co2-emissionshandel',
             snippet: 'Die EU-Kommission hat vorgeschlagen, den Emissionshandel '
@@ -638,11 +824,34 @@ class _Pool implements OpportunityRepository {
 
   @override
   Stream<String> streamLetter(String opportunityId, {String? notes}) =>
-      const Stream.empty();
+      Stream.fromIterable([
+        'Sehr geehrte Damen und Herren,\n\n',
+        'am Ärztehaus in Gruna parken viele, die nicht weit laufen können, '
+            'darunter meine Mutter. Bitte stimmen Sie dafür, die '
+            'Stellplätze vor dem Ärztehaus und der Apotheke zu erhalten.\n\n',
+        'Mit freundlichen Grüßen\n',
+      ]);
 
   @override
   Future<LetterRecipients> letterRecipients(String opportunityId) async =>
-      const LetterRecipients();
+      const LetterRecipients(
+        bodies: ['Stadtbezirksbeirat Blasewitz'],
+        members: [
+          CouncilMember(name: 'Anton Amsel', fraktion: 'CDU-Fraktion'),
+          CouncilMember(name: 'Bea Berg', fraktion: 'Grüne-Fraktion'),
+        ],
+        offices: [
+          FraktionOffice(
+            fraktion: 'CDU-Fraktion',
+            email: 'cdu-fraktion@dresden.de',
+          ),
+          FraktionOffice(
+            fraktion: 'Grüne-Fraktion',
+            email: 'gruene-fraktion@dresden.de',
+          ),
+          FraktionOffice(fraktion: 'Neue Fraktion'),
+        ],
+      );
 
   @override
   Future<void> markTracked(String opportunityId) async {}

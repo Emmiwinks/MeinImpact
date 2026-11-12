@@ -4,9 +4,7 @@ import 'package:flutter/services.dart';
 import '../../app/theme/mi_theme.dart';
 import '../feed/domain/mdb.dart';
 import '../feed/domain/user_profile.dart';
-import '../feed/presentation/widgets/app_colors.dart';
 import '../feed/presentation/widgets/lebenslagen_picker.dart';
-import '../feed/presentation/widgets/components/surface_card.dart';
 
 /// PLZ/MdB lookup plus the Lebenslagen picker (what matters to the user).
 /// Everything is optional and starts empty, matching the "skipping degrades
@@ -50,6 +48,7 @@ class _DemographicScreenState extends State<DemographicScreen> {
   Future<void> _lookup() async {
     final plz = _plzController.text.trim();
     if (plz.length != 5) return;
+    FocusScope.of(context).unfocus();
     setState(() {
       _state = _LookupState.loading;
       _results = const [];
@@ -93,109 +92,102 @@ class _DemographicScreenState extends State<DemographicScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.mi;
+    final text = Theme.of(context).textTheme;
     return Scaffold(
-      backgroundColor: AppColors.canvas,
+      backgroundColor: colors.table,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                MiSpace.lg,
+                MiSpace.base,
+                MiSpace.sm,
+                0,
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Über dich',
-                          style:
-                              Theme.of(context).textTheme.titleLarge?.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: -0.4,
-                                  ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Hilft uns, dir relevantere Themen zu zeigen. '
-                          'Bleibt auf deinem Gerät, alles optional.',
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: AppColors.mutedText,
-                                  ),
-                        ),
-                      ],
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: MiSpace.sm),
+                      child: Text('Über dich', style: text.headlineMedium),
                     ),
                   ),
                   TextButton(
                     onPressed: _skip,
-                    child: Text(
-                      'Überspringen',
-                      style:
-                          TextStyle(color: AppColors.mutedText, fontSize: 13),
+                    style: TextButton.styleFrom(
+                      foregroundColor: colors.onTableMuted,
                     ),
+                    child: const Text('Überspringen'),
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _PlzSection(
-                        controller: _plzController,
-                        state: _state,
-                        results: _results,
-                        selected: _selected,
-                        onLookup: _lookup,
-                        onSelect: (opt) => setState(() => _selected = opt),
-                        onChanged: () {
-                          if (_state != _LookupState.idle) {
-                            setState(() {
-                              _state = _LookupState.idle;
-                              _results = const [];
-                              _selected = null;
-                            });
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 28),
-                      // The picker is already on the card table (it is
-                      // shared with Profil); light until onboarding moves.
-                      Theme(
-                        data: miTheme(Brightness.light),
-                        child: LebenslagenPicker(
-                          selected: _lebenslagen,
-                          onChanged: (ids) =>
-                              setState(() => _lebenslagen = ids),
-                        ),
-                      ),
-                    ],
-                  ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(
+                  MiSpace.lg,
+                  MiSpace.sm,
+                  MiSpace.lg,
+                  MiSpace.lg,
                 ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _confirm,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.green,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Hilft uns, dir relevantere Themen zu zeigen. '
+                      'Bleibt auf deinem Gerät, alles optional.',
+                      style: text.bodyMedium?.copyWith(
+                        color: colors.onTableMuted,
+                      ),
                     ),
-                  ),
-                  child: const Text(
-                    'Fertig',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
+                    const SizedBox(height: MiSpace.xl),
+                    _PlzSection(
+                      controller: _plzController,
+                      state: _state,
+                      results: _results,
+                      selected: _selected,
+                      onLookup: _lookup,
+                      onSelect: (opt) => setState(() => _selected = opt),
+                      onChanged: () {
+                        if (_state != _LookupState.idle) {
+                          setState(() {
+                            _state = _LookupState.idle;
+                            _results = const [];
+                            _selected = null;
+                          });
+                        }
+                      },
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: MiSpace.lg),
+                      child: Divider(height: 1, color: colors.keyline),
+                    ),
+                    LebenslagenPicker(
+                      selected: _lebenslagen,
+                      onChanged: (ids) => setState(() => _lebenslagen = ids),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                MiSpace.lg,
+                MiSpace.sm,
+                MiSpace.lg,
+                MiSpace.base,
+              ),
+              child: FilledButton(
+                onPressed: _confirm,
+                style: colors.tableButton,
+                child: const Text('Fertig'),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -223,24 +215,22 @@ class _PlzSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.mi;
+    final text = Theme.of(context).textTheme;
+    final pill = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(MiRadius.chip),
+      borderSide: BorderSide(color: colors.keyline),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'Dein Abgeordneter',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-        ),
-        const SizedBox(height: 4),
+        Text('Dein Abgeordneter', style: text.titleLarge),
+        const SizedBox(height: MiSpace.sm),
         Text(
           'Für persönliche Briefe an deine Vertretung im Bundestag.',
-          style: Theme.of(context)
-              .textTheme
-              .bodySmall
-              ?.copyWith(color: AppColors.mutedText),
+          style: text.bodyMedium?.copyWith(color: colors.onTableMuted),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: MiSpace.base),
         Row(
           children: [
             Expanded(
@@ -249,181 +239,147 @@ class _PlzSection extends StatelessWidget {
                 keyboardType: TextInputType.number,
                 maxLength: 5,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                style: text.bodyLarge,
                 decoration: InputDecoration(
-                  labelText: 'Postleitzahl',
-                  hintText: '10115',
+                  hintText: 'Postleitzahl, z. B. 01067',
                   counterText: '',
-                  filled: true,
-                  fillColor: AppColors.surface,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: AppColors.subtleBorder),
+                  prefixIcon: Icon(
+                    Icons.place_outlined,
+                    color: colors.onTableMuted,
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: AppColors.subtleBorder),
+                  border: pill,
+                  enabledBorder: pill,
+                  focusedBorder: pill.copyWith(
+                    borderSide: BorderSide(
+                      color: colors.onTableMuted,
+                      width: 1.5,
+                    ),
                   ),
                 ),
                 onChanged: (_) => onChanged(),
                 onSubmitted: (_) => onLookup(),
               ),
             ),
-            const SizedBox(width: 10),
-            SizedBox(
-              height: 56,
-              child: ElevatedButton(
-                onPressed: controller.text.length == 5 ? onLookup : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.green,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: AppColors.subtleBorder,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: state == _LookupState.loading
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text(
-                        'Suchen',
-                        style: TextStyle(fontWeight: FontWeight.w700),
-                      ),
+            const SizedBox(width: MiSpace.sm),
+            FilledButton(
+              onPressed:
+                  controller.text.length == 5 && state != _LookupState.loading
+                      ? onLookup
+                      : null,
+              style: colors.tableButton.copyWith(
+                minimumSize: const WidgetStatePropertyAll(Size(96, 52)),
               ),
+              child: state == _LookupState.loading
+                  ? SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: colors.onTableMuted,
+                      ),
+                    )
+                  : const Text('Suchen'),
             ),
           ],
         ),
-        const SizedBox(height: 12),
         _buildResult(context),
       ],
     );
   }
 
   Widget _buildResult(BuildContext context) {
+    final colors = context.mi;
+    final text = Theme.of(context).textTheme;
     switch (state) {
       case _LookupState.idle:
       case _LookupState.loading:
         return const SizedBox.shrink();
 
       case _LookupState.notFound:
-        return _InfoBox(
-          color: AppColors.warmSurface,
-          child: Text(
-            'Keine Wahlkreiszuordnung für diese PLZ gefunden.',
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(color: AppColors.amberText),
-          ),
-        );
+        return const _Note('Keine Wahlkreiszuordnung für diese PLZ gefunden.');
 
       case _LookupState.error:
-        return _InfoBox(
-          color: AppColors.warmSurface,
-          child: Text(
-            'Lookup nicht verfügbar. Du kannst diesen Schritt überspringen.',
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(color: AppColors.amberText),
-          ),
+        return const _Note(
+          'Lookup nicht verfügbar. Du kannst diesen Schritt überspringen.',
         );
 
       case _LookupState.done:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (results.length > 1) ...[
-              Text(
-                'Deine PLZ liegt in mehreren Wahlkreisen. Wähle deinen:',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.mutedText,
-                    ),
-              ),
-              const SizedBox(height: 10),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  border: Border.all(color: AppColors.subtleBorder),
-                  borderRadius: BorderRadius.circular(10),
+        return Padding(
+          padding: const EdgeInsets.only(top: MiSpace.base),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (results.length > 1) ...[
+                Text(
+                  'Deine PLZ liegt in mehreren Wahlkreisen. Wähle deinen:',
+                  style: text.bodyMedium?.copyWith(color: colors.onTableMuted),
                 ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<MdbOption>(
-                    value: selected,
-                    isExpanded: true,
-                    items: results
-                        .map(
-                          (opt) => DropdownMenuItem(
-                            value: opt,
-                            child: Text(
-                              '${opt.wahlkreisName} (${opt.mdbParty})',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: onSelect,
-                  ),
+                const SizedBox(height: MiSpace.md),
+                Wrap(
+                  spacing: MiSpace.sm,
+                  runSpacing: MiSpace.sm,
+                  children: [
+                    for (final opt in results)
+                      _ChoicePill(
+                        label: opt.wahlkreisName,
+                        selected: opt == selected,
+                        onTap: () => onSelect(opt),
+                      ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 14),
+                const SizedBox(height: MiSpace.base),
+              ],
+              if (selected != null) _MdbCard(mdb: selected!),
             ],
-            if (selected != null) _MdbCard(mdb: selected!),
-          ],
+          ),
         );
     }
   }
 }
 
+/// The found member of parliament, as a flat slip of card stock.
 class _MdbCard extends StatelessWidget {
   const _MdbCard({required this.mdb});
   final MdbOption mdb;
 
   @override
   Widget build(BuildContext context) {
-    return SurfaceCard(
-      color: AppColors.greenWash,
-      padding: const EdgeInsets.all(16),
+    final colors = context.mi;
+    final text = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.all(MiSpace.base),
+      decoration: BoxDecoration(
+        color: colors.cardStock,
+        borderRadius: BorderRadius.circular(MiRadius.tile),
+        border: Border.all(color: colors.keyline),
+      ),
       child: Row(
         children: [
           Container(
-            width: 42,
-            height: 42,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
-              color: AppColors.green.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
+              color: colors.onCard,
+              shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.how_to_vote_outlined,
-              color: AppColors.greenDark,
+              color: colors.cardStock,
               size: 22,
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: MiSpace.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   mdb.mdbName,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                  style: text.titleMedium?.copyWith(color: colors.onCard),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '${mdb.mdbParty} · ${mdb.wahlkreisName}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppColors.mutedText,
-                      ),
+                  style: text.labelMedium?.copyWith(color: colors.onCardMuted),
                 ),
               ],
             ),
@@ -434,20 +390,100 @@ class _MdbCard extends StatelessWidget {
   }
 }
 
-class _InfoBox extends StatelessWidget {
-  const _InfoBox({required this.color, required this.child});
-  final Color color;
-  final Widget child;
+/// One Wahlkreis to choose: outlined, or amber with a check when chosen.
+class _ChoicePill extends StatelessWidget {
+  const _ChoicePill({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(12),
+    final colors = context.mi;
+    final foreground = selected ? colors.onCard : colors.onTable;
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(MiRadius.chip),
+      side: BorderSide(
+        color: selected ? colors.topics[2] : colors.onTableMuted,
       ),
-      child: child,
+    );
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: Material(
+        color: selected ? colors.topics[2] : Colors.transparent,
+        shape: shape,
+        child: InkWell(
+          customBorder: shape,
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: MiSpace.base,
+                vertical: MiSpace.sm,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (selected) ...[
+                    Icon(Icons.check, size: 16, color: foreground),
+                    const SizedBox(width: MiSpace.sm - 2),
+                  ],
+                  Flexible(
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        fontFamily: MiFonts.text,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        height: 1.25,
+                        color: foreground,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A muted line with an icon, for lookups that found nothing.
+class _Note extends StatelessWidget {
+  const _Note(this.message);
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.mi;
+    return Padding(
+      padding: const EdgeInsets.only(top: MiSpace.md),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline, size: 18, color: colors.onTableMuted),
+          const SizedBox(width: MiSpace.sm),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: colors.onTableMuted),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

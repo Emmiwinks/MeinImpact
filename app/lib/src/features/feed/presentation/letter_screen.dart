@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_email_sender/flutter_email_sender.dart';
 
+import '../../../app/theme/mi_theme.dart';
 import '../domain/letter_recipients.dart';
 import '../domain/opportunity.dart';
 import '../domain/opportunity_repository.dart';
-import 'widgets/app_colors.dart';
+import 'hand/topic_art.dart';
 import 'widgets/done_bar.dart';
 
 /// The letter to the members of a body about to vote on a council decision:
@@ -170,17 +171,29 @@ class _LetterScreenState extends State<LetterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.mi;
     final opportunity = widget.opportunity;
     final textTheme = Theme.of(context).textTheme;
+    final muted = textTheme.bodyMedium?.copyWith(color: colors.onTableMuted);
     final body = opportunity.organizer ?? 'Stadtrat';
     final meeting = opportunity.closesOn;
     final streaming = _state == _DraftState.streaming;
     final hasLetter = _letter.text.trim().isNotEmpty;
+    final drafted = _state != _DraftState.idle;
+    final draftLabel = Text(drafted ? 'Neu erstellen' : 'Brief erstellen');
+    final draftIcon = streaming
+        ? SizedBox.square(
+            dimension: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: colors.onTableMuted,
+            ),
+          )
+        : const Icon(Icons.auto_awesome, size: 18);
 
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.table,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
         leading: IconButton(
           icon: const Icon(Icons.close),
           tooltip: 'Schließen',
@@ -188,142 +201,171 @@ class _LetterScreenState extends State<LetterScreen> {
         ),
         title: const Text('Brief schreiben'),
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
-        children: [
-          Text(
-            opportunity.title,
-            style: textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.3,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            meeting != null
-                ? '$body, Sitzung am '
-                    '${meeting.day}.${meeting.month}.${meeting.year}'
-                : body,
-            style: textTheme.bodyMedium?.copyWith(color: AppColors.mutedText),
-          ),
-          TextButton.icon(
-            onPressed: widget.onViewPaper,
-            icon: const Icon(Icons.description_outlined, size: 18),
-            label: const Text('Vorlage ansehen'),
-            style: TextButton.styleFrom(padding: EdgeInsets.zero),
-          ),
-          _RecipientsSection(
-            loading: _recipientsLoading,
-            recipients: _recipients,
-            selected: _selected,
-            onToggle: (email) => setState(
-              () => _selected.contains(email)
-                  ? _selected.remove(email)
-                  : _selected.add(email),
-            ),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _notes,
-            enabled: !streaming,
-            minLines: 3,
-            maxLines: 6,
-            maxLength: 1000,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(
-              labelText: 'Was ist dir wichtig? (optional)',
-              hintText: 'Deine Haltung, wie es dich betrifft, was du dir '
-                  'wünschst. Die KI baut das in den Brief ein.',
-              hintMaxLines: 3,
-              alignLabelWithHint: true,
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 8),
-          FilledButton.icon(
-            onPressed: streaming ? null : _draft,
-            icon: streaming
-                ? const SizedBox.square(
-                    dimension: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.auto_awesome),
-            label: Text(
-              _state == _DraftState.idle ? 'Brief erstellen' : 'Neu erstellen',
-            ),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.green,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-            ),
-          ),
-          if (_state != _DraftState.idle) ...[
-            const SizedBox(height: 16),
-            if (_state == _DraftState.failed)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  'Der Entwurf konnte gerade nicht erstellt werden. Du kannst '
-                  'es gleich noch einmal versuchen oder selbst schreiben.',
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                ),
-              ),
-            TextField(
-              controller: _letter,
-              readOnly: streaming,
-              minLines: 8,
-              maxLines: null,
-              onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Dein Brief (bearbeitbar)',
-                alignLabelWithHint: true,
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              _selected.isEmpty
-                  ? 'Unterschreibe mit deinem Namen, bevor du ihn abschickst. '
-                      'Die Empfänger:innen trägst du in deiner Mail-App ein.'
-                  : 'Unterschreibe mit deinem Namen, bevor du ihn abschickst. '
-                      'Die Mail-App öffnet sich mit den ausgewählten '
-                      'Fraktionsbüros in „An“.',
-              style: textTheme.bodySmall?.copyWith(color: AppColors.mutedText),
-            ),
-            const SizedBox(height: 12),
+      // A short form: built in one go rather than lazily.
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(
+          MiSpace.lg,
+          MiSpace.sm,
+          MiSpace.lg,
+          MiSpace.xl,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // The decision, laid out like a row in "Alle Aktionen".
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                CardThumbnail(look: TopicLook.of(opportunity)),
+                const SizedBox(width: MiSpace.base),
                 Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: hasLetter && !streaming ? _copy : null,
-                    icon: const Icon(Icons.copy, size: 18),
-                    label: const Text('Kopieren'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: hasLetter && !streaming ? _openMailApp : null,
-                    icon: const Icon(Icons.mail_outline, size: 18),
-                    label: const Text('Mail-App'),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(opportunity.title, style: textTheme.titleMedium),
+                      const SizedBox(height: MiSpace.xs),
+                      Text(
+                        meeting != null
+                            ? '$body, Sitzung am '
+                                '${meeting.day}.${meeting.month}.${meeting.year}'
+                            : body,
+                        style: textTheme.labelMedium?.copyWith(
+                          color: colors.onTableMuted,
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: widget.onViewPaper,
+                        icon: const Icon(Icons.description_outlined, size: 18),
+                        label: const Text('Vorlage ansehen'),
+                        style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-            if (_selected.isNotEmpty)
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: _copyAddresses,
-                  icon: const Icon(Icons.alternate_email, size: 18),
-                  label: const Text('Adressen kopieren (für Webmail)'),
-                  style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                ),
+            _Divider(color: colors.keyline),
+            _RecipientsSection(
+              loading: _recipientsLoading,
+              recipients: _recipients,
+              selected: _selected,
+              onToggle: (email) => setState(
+                () => _selected.contains(email)
+                    ? _selected.remove(email)
+                    : _selected.add(email),
               ),
+            ),
+            _Divider(color: colors.keyline),
+            Text('Was ist dir wichtig?', style: textTheme.titleMedium),
+            const SizedBox(height: MiSpace.xs),
+            Text(
+              'Optional. Deine Haltung, wie es dich betrifft, was du dir '
+              'wünschst. Die KI baut das in den Brief ein.',
+              style: muted,
+            ),
+            const SizedBox(height: MiSpace.md),
+            TextField(
+              controller: _notes,
+              enabled: !streaming,
+              minLines: 3,
+              maxLines: 6,
+              maxLength: 1000,
+              style: textTheme.bodyLarge,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                hintText: 'Ich fahre dort jeden Tag mit dem Rad …',
+              ),
+            ),
+            const SizedBox(height: MiSpace.sm),
+            // Once there is a letter, sending it is the main step; drafting
+            // again steps back to an outline.
+            if (drafted)
+              OutlinedButton.icon(
+                onPressed: streaming ? null : _draft,
+                icon: draftIcon,
+                label: draftLabel,
+              )
+            else
+              FilledButton.icon(
+                onPressed: _draft,
+                icon: draftIcon,
+                label: draftLabel,
+                style: colors.tableButton,
+              ),
+            if (drafted) ...[
+              const SizedBox(height: MiSpace.lg),
+              if (_state == _DraftState.failed)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: MiSpace.md),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        size: 18,
+                        color: colors.onTable,
+                      ),
+                      const SizedBox(width: MiSpace.sm),
+                      Expanded(
+                        child: Text(
+                          'Der Entwurf konnte gerade nicht erstellt werden. Du '
+                          'kannst es gleich noch einmal versuchen oder selbst '
+                          'schreiben.',
+                          style: textTheme.bodyMedium,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              _LetterSheet(
+                controller: _letter,
+                streaming: streaming,
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: MiSpace.md),
+              Text(
+                _selected.isEmpty
+                    ? 'Unterschreibe mit deinem Namen, bevor du ihn abschickst. '
+                        'Die Empfänger:innen trägst du in deiner Mail-App ein.'
+                    : 'Unterschreibe mit deinem Namen, bevor du ihn abschickst. '
+                        'Die Mail-App öffnet sich mit den ausgewählten '
+                        'Fraktionsbüros in „An“.',
+                style: muted,
+              ),
+              const SizedBox(height: MiSpace.base),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: hasLetter && !streaming ? _copy : null,
+                      icon: const Icon(Icons.copy, size: 18),
+                      label: const Text('Kopieren'),
+                    ),
+                  ),
+                  const SizedBox(width: MiSpace.md),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: hasLetter && !streaming ? _openMailApp : null,
+                      icon: const Icon(Icons.mail_outline, size: 18),
+                      label: const Text('Mail-App'),
+                      style: colors.tableButton,
+                    ),
+                  ),
+                ],
+              ),
+              if (_selected.isNotEmpty)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: _copyAddresses,
+                    icon: const Icon(Icons.alternate_email, size: 18),
+                    label: const Text('Adressen kopieren (für Webmail)'),
+                    style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                  ),
+                ),
+            ],
           ],
-        ],
+        ),
       ),
       bottomNavigationBar: _state == _DraftState.idle
           ? null
@@ -353,8 +395,9 @@ class _RecipientsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.mi;
     final textTheme = Theme.of(context).textTheme;
-    final muted = textTheme.bodySmall?.copyWith(color: AppColors.mutedText);
+    final muted = textTheme.bodyMedium?.copyWith(color: colors.onTableMuted);
     final recipients = this.recipients;
     final offices = recipients?.offices ?? const <FraktionOffice>[];
     final members = recipients?.members ?? const <CouncilMember>[];
@@ -362,34 +405,39 @@ class _RecipientsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 8),
-        Text(
-          'AN',
-          style: textTheme.labelSmall?.copyWith(
-            color: AppColors.mutedText,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.6,
-          ),
-        ),
-        const SizedBox(height: 4),
+        Text('An', style: textTheme.titleMedium),
+        const SizedBox(height: MiSpace.xs),
         if (loading)
-          const LinearProgressIndicator(minHeight: 2)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: MiSpace.sm),
+            child: LinearProgressIndicator(minHeight: 2),
+          )
         else if (offices.isNotEmpty) ...[
           Text(
             'Die Büros der Fraktionen geben deine Nachricht an ihre '
             'Mitglieder weiter.',
             style: muted,
           ),
+          const SizedBox(height: MiSpace.xs),
           for (final office in offices)
             CheckboxListTile(
-              dense: true,
               contentPadding: EdgeInsets.zero,
               controlAffinity: ListTileControlAffinity.leading,
               value: office.email != null && selected.contains(office.email),
               onChanged:
                   office.email == null ? null : (_) => onToggle(office.email!),
-              title: Text(office.fraktion),
-              subtitle: Text(office.email ?? 'Adresse fehlt noch'),
+              title: Text(
+                office.fraktion,
+                style: textTheme.bodyLarge?.copyWith(
+                  color: office.email == null ? colors.onTableMuted : null,
+                ),
+              ),
+              subtitle: Text(
+                office.email ?? 'Adresse fehlt noch',
+                style: textTheme.labelMedium?.copyWith(
+                  color: colors.onTableMuted,
+                ),
+              ),
             ),
         ] else
           Text(
@@ -403,23 +451,23 @@ class _RecipientsSection extends StatelessWidget {
         if (!loading && members.isNotEmpty)
           ExpansionTile(
             tilePadding: EdgeInsets.zero,
-            childrenPadding: const EdgeInsets.only(bottom: 8),
+            childrenPadding: const EdgeInsets.only(bottom: MiSpace.sm),
             title: Text(
               'Mitglieder: ${recipients!.bodies.join(', ')} '
               '(${members.length})',
-              style: textTheme.bodyMedium,
+              style: textTheme.bodyLarge,
             ),
             children: [
               for (final member in members)
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    padding: const EdgeInsets.symmetric(vertical: 3),
                     child: Text(
                       member.fraktion != null
                           ? '${member.name} · ${member.fraktion}'
                           : member.name,
-                      style: textTheme.bodySmall,
+                      style: muted,
                     ),
                   ),
                 ),
@@ -428,4 +476,105 @@ class _RecipientsSection extends StatelessWidget {
       ],
     );
   }
+}
+
+/// The letter as a sheet of card stock lying on the table: ink text, and
+/// editable in place.
+class _LetterSheet extends StatelessWidget {
+  const _LetterSheet({
+    required this.controller,
+    required this.streaming,
+    required this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final bool streaming;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.mi;
+    final text = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, MiSpace.base, 20, 20),
+      decoration: BoxDecoration(
+        color: colors.cardStock,
+        borderRadius: BorderRadius.circular(MiRadius.card),
+        border: Border.all(color: colors.keyline),
+        boxShadow: [
+          BoxShadow(
+            color: colors.shadow,
+            blurRadius: 30,
+            offset: const Offset(0, 14),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Dein Brief',
+                  style: text.labelMedium?.copyWith(
+                    color: colors.onCard,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              if (!streaming) ...[
+                Icon(Icons.edit_outlined, size: 16, color: colors.onCardMuted),
+                const SizedBox(width: MiSpace.xs),
+                Flexible(
+                  child: Text(
+                    'Zum Ändern hineintippen',
+                    style: text.labelMedium?.copyWith(
+                      color: colors.onCardMuted,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          Divider(
+            height: MiSpace.xl,
+            color: colors.onCard.withValues(alpha: 0.12),
+          ),
+          TextField(
+            controller: controller,
+            readOnly: streaming,
+            minLines: 8,
+            maxLines: null,
+            onChanged: onChanged,
+            style: text.bodyLarge?.copyWith(
+              color: colors.onCard,
+              fontWeight: FontWeight.w500,
+              height: 1.5,
+            ),
+            decoration: InputDecoration(
+              filled: false,
+              isCollapsed: true,
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              disabledBorder: InputBorder.none,
+              hintText: 'Schreib hier deinen Brief.',
+              hintStyle: text.bodyLarge?.copyWith(color: colors.onCardMuted),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Divider extends StatelessWidget {
+  const _Divider({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) =>
+      Divider(height: MiSpace.xl + MiSpace.base, color: color);
 }

@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import '../../../app/theme/mi_theme.dart';
 import '../domain/opportunity.dart';
-import 'widgets/app_colors.dart';
 import 'widgets/done_bar.dart';
 
 /// The action site inside the app (Android/iOS only: every action site
@@ -97,6 +97,7 @@ class _ActionBrowserScreenState extends State<ActionBrowserScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.mi;
     final canComplete = widget.opportunity.kind.completesInBrowser;
     return PopScope(
       canPop: false,
@@ -104,25 +105,26 @@ class _ActionBrowserScreenState extends State<ActionBrowserScreen> {
         if (!didPop) _onBack();
       },
       child: Scaffold(
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.table,
         appBar: AppBar(
-          backgroundColor: AppColors.surface,
           leading: IconButton(
             icon: const Icon(Icons.close),
             tooltip: 'Schließen',
             onPressed: () => Navigator.of(context).pop(false),
           ),
+          titleSpacing: 0,
+          // The site's address, not a heading: the text face.
           title: Row(
             children: [
               if (_current.scheme == 'https') ...[
-                const Icon(Icons.lock_outline, size: 16),
-                const SizedBox(width: 6),
+                Icon(Icons.lock_outline, size: 16, color: colors.onTableMuted),
+                const SizedBox(width: MiSpace.sm - 2),
               ],
               Flexible(
                 child: Text(
                   _current.host,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleSmall,
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
             ],
@@ -152,10 +154,9 @@ class _ActionBrowserScreenState extends State<ActionBrowserScreen> {
                 ? LinearProgressIndicator(
                     value: _progress / 100,
                     minHeight: 2,
-                    color: AppColors.green,
                     backgroundColor: Colors.transparent,
                   )
-                : const SizedBox(height: 2),
+                : Divider(height: 2, thickness: 1, color: colors.keyline),
           ),
         ),
         body: WebViewWidget(controller: _controller),

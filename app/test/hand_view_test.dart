@@ -325,7 +325,7 @@ void main() {
           locale: const Locale('de'),
           supportedLocales: AppLocalizations.supportedLocales,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
-          theme: legacyTheme(),
+          theme: miTheme(Brightness.light),
           home: MainTabScreen(
             opportunityRepository: _Repository(const []),
             doneActions: done,

@@ -598,10 +598,8 @@ class HandMessage extends StatelessWidget {
             if (actionLabel != null) ...[
               const SizedBox(height: MiSpace.lg),
               FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: colors.onTable,
-                  foregroundColor: colors.table,
-                  minimumSize: const Size(200, 52),
+                style: colors.tableButton.copyWith(
+                  minimumSize: const WidgetStatePropertyAll(Size(200, 52)),
                 ),
                 onPressed: onAction,
                 child: Text(actionLabel!),
