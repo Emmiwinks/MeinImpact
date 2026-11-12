@@ -11,12 +11,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:meinimpact/l10n/app_localizations.dart';
 import 'package:meinimpact/src/app/main_tab_screen.dart';
 import 'package:meinimpact/src/app/theme/mi_theme.dart';
+import 'package:meinimpact/src/features/feed/domain/interest_weights.dart';
 import 'package:meinimpact/src/features/feed/domain/letter_recipients.dart';
 import 'package:meinimpact/src/features/feed/domain/mdb.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity_repository.dart';
 import 'package:meinimpact/src/features/feed/domain/user_profile.dart';
 import 'package:meinimpact/src/features/feed/presentation/aktionen_tab.dart';
+import 'package:meinimpact/src/features/tracking/domain/action_log.dart';
 import 'package:meinimpact/src/features/tracking/domain/impact_news.dart';
 
 const _out = '../.impeccable/review';
@@ -33,7 +35,13 @@ void main() {
     String name, {
     Brightness brightness = Brightness.dark,
     double textScale = 1,
+    double pixelRatio = 2,
     List<Opportunity>? pool,
+    UserProfile profile = const UserProfile(
+      lebenslagen: {'eltern', 'oepnv', 'mieter'},
+    ),
+    List<ActionLogEntry> doneActions = const [],
+    ImpactNewsFeed news = const ImpactNewsFeed(),
     Future<void> Function(WidgetTester tester)? act,
   }) async {
     tester.view.physicalSize = const Size(1170, 2532);
@@ -58,10 +66,9 @@ void main() {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           theme: legacyTheme(),
           home: MainTabScreen(
-            opportunityRepository: _Pool(pool ?? _opportunities()),
-            profile: const UserProfile(
-              lebenslagen: {'eltern', 'oepnv', 'mieter'},
-            ),
+            opportunityRepository: _Pool(pool ?? _opportunities(), news),
+            profile: profile,
+            doneActions: doneActions,
             onActionDone: (_, __) {},
           ),
         ),
@@ -75,7 +82,7 @@ void main() {
     await tester.runAsync(() async {
       final boundary = _boundary.currentContext!.findRenderObject()!
           as RenderRepaintBoundary;
-      final image = await boundary.toImage(pixelRatio: 2);
+      final image = await boundary.toImage(pixelRatio: pixelRatio);
       final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
       final file = File('$_out/$name.png');
       await file.parent.create(recursive: true);
@@ -136,7 +143,189 @@ void main() {
     'font scale 1.3, dark',
     (t) => shoot(t, 'phone-hand-scale130-dark', textScale: 1.3),
   );
+
+  // The pitch set: dark phones on light slides, at full phone resolution.
+  Future<void> pitch(
+    WidgetTester tester,
+    String name, {
+    Future<void> Function(WidgetTester tester)? act,
+  }) =>
+      shoot(
+        tester,
+        'pitch-$name',
+        pixelRatio: 3,
+        profile: _pitchProfile,
+        doneActions: _pitchDone(),
+        news: _pitchNews(),
+        act: act,
+      );
+
+  testWidgets('pitch 1, hand', (t) => pitch(t, '1-hand'));
+  testWidgets(
+    'pitch 2, card back',
+    (t) => pitch(t, '2-back', act: (t) => t.tap(find.textContaining('Blitzer'))),
+  );
+  testWidgets(
+    'pitch 3, impact',
+    (t) => pitch(
+      t,
+      '3-impact',
+      act: (t) async {
+        await t.tap(find.text('Mein Impact'));
+        await t.pumpAndSettle();
+        await t.tap(find.byTooltip('Folgen').first);
+      },
+    ),
+  );
+  testWidgets(
+    'pitch 4, profile',
+    (t) => pitch(t, '4-profile', act: (t) => t.tap(find.text('Mein Profil'))),
+  );
 }
+
+const _pitchProfile = UserProfile(
+  werte: {
+    'wirtschaft_gleichheit': 1,
+    'wirtschaft_staat': 0,
+    'diplomatie_nation': -1,
+    'diplomatie_welt': 2,
+    'freiheit_staat': 1,
+    'freiheit_sicherheit': 0,
+    'wandel_tradition': -1,
+    'wandel_zukunft': 1,
+  },
+  lebenslagen: {'eltern', 'oepnv', 'mieter'},
+  interests: InterestWeights(
+    manual: {
+      'Mobilität/Verkehr': InterestLevel.more,
+      'Familie/Kinder': InterestLevel.more,
+    },
+  ),
+);
+
+// Real actions and the reports the news dry run of 2026-11-11 judged
+// relevant to them (backend/scripts/dryrun_output), oldest first.
+List<ActionLogEntry> _pitchDone() => [
+      ActionLogEntry(
+        opportunityId: 'gewalt-kinder',
+        doneAt: _in(-9),
+        via: ActionVia.inAppBrowser,
+        title: 'Aktionsplan gegen Gewalt an Kindern!',
+        kind: OpportunityKind.petition,
+        sourceOrg: 'WeAct',
+        sourceUrl: 'https://weact.campact.de/petitions/'
+            'aktionsplan-gegen-gewalt-an-kindern-jetzt',
+        affectedTags: const ['Familie/Kinder'],
+      ),
+      ActionLogEntry(
+        opportunityId: 'hilfsmittel',
+        doneAt: _in(-5),
+        via: ActionVia.inAppBrowser,
+        title: 'Alarmstufe Rot: Individuelle Hilfsmittelversorgung sichern – '
+            '3%-Pauschalabschlag streichen!',
+        kind: OpportunityKind.petition,
+        sourceOrg: 'openPetition',
+        sourceUrl: 'https://www.openpetition.de/petition/online/'
+            'alarmstufe-rot-individuelle-hilfsmittelversorgung-sichern-3-'
+            'pauschalabschlag-streichen',
+        affectedTags: const ['Gesundheit/Pflege'],
+      ),
+      ActionLogEntry(
+        opportunityId: 'emissionshandel',
+        doneAt: _in(-2),
+        via: ActionVia.inAppBrowser,
+        title: 'EU-Emissionshandelssystem (See- und Luftverkehr sowie '
+            'ortsfeste Anlagen) und Marktstabilitätsreserve – Überprüfung',
+        kind: OpportunityKind.consultation,
+        sourceOrg: 'Europäische Kommission',
+        sourceUrl: 'https://ec.europa.eu/info/law/better-regulation/'
+            'have-your-say/initiatives/14549_de',
+        affectedTags: const ['Umwelt/Natur', 'Mobilität/Verkehr'],
+      ),
+    ];
+
+ImpactNewsFeed _pitchNews() => ImpactNewsFeed({
+      'emissionshandel': ImpactNewsEntry(
+        checkedAt: _now,
+        items: [
+          ImpactNewsItem(
+            level: 'exact',
+            kind: 'news',
+            title: 'Merz hält am EU-Emissionshandel fest, Kommission will '
+                'Luftverkehr 2029 einbeziehen',
+            url: 'https://www.airliners.de/merz-haelt-eu-emissionshandel-fest-'
+                'kommission-will-luftverkehr-2029-einbeziehen/91455',
+            snippet: 'Kanzler Merz bekennt sich zum EU-Emissionshandel. Die '
+                'Kommission will das ETS ab 2029 auf Flüge zu den '
+                'Golf-Drehkreuzen und nach Istanbul ausweiten.',
+            publishedOn: DateTime(2026, 11, 11),
+          ),
+          ImpactNewsItem(
+            level: 'exact',
+            kind: 'news',
+            title: 'ICAO-Ratsvorsitzender kritisiert EU-Pläne für '
+                'Airline-Emissionshandel',
+            url: 'https://www.dvz.de/politik/detail/news/icao-ratsvorsitzender-'
+                'kritisiert-eu-plaene-fuer-airline-emissionshandel.html',
+            snippet: 'Die EU-Kommission spürt internationalen Gegenwind für '
+                'ihren Vorschlag, den Luftverkehr-Emissionshandel über '
+                'Europas Grenzen hinaus auszudehnen.',
+            publishedOn: DateTime(2026, 10, 19),
+          ),
+          ImpactNewsItem(
+            level: 'exact',
+            kind: 'news',
+            title: 'Airlines gegen EU-Pläne für erweiterten CO2-Emissionshandel',
+            url: 'https://www.news.at/ausflugsziele/airlines-gegen-eu-plane-'
+                'fur-erweiterten-co2-emissionshandel',
+            snippet: 'Die EU-Kommission hat vorgeschlagen, den Emissionshandel '
+                'auf Flüge aus der EU in andere Regionen auszuweiten.',
+            publishedOn: DateTime(2026, 10, 8),
+          ),
+        ],
+      ),
+      'hilfsmittel': ImpactNewsEntry(
+        checkedAt: _now,
+        items: [
+          ImpactNewsItem(
+            level: 'issue',
+            kind: 'statement',
+            title: 'GKV-BStabG zerstört die Hilfsmittelversorgungsstrukturen '
+                'in Deutschland',
+            url: 'https://www.ord.de/unternehmen/beitraege/gkv-bstabg-'
+                'zerstoert-die-hilfsmittelversorgungsstrukturen-in-deutschland',
+            snippet: 'Der Hilfsmittelbereich gehört nicht zu den '
+                'Kostentreibern der gesetzlichen Krankenversicherungen!',
+            publishedOn: DateTime(2026, 6, 3),
+          ),
+          ImpactNewsItem(
+            level: 'exact',
+            kind: 'news',
+            title: 'Korrekturgesetz: Die Koalition ändert das Sparpaket',
+            url: 'https://www.aok.de/pp/gg/gesundheitssystem/'
+                'korrekturgesetz-sparpaket',
+            snippet: 'Im Bereich der Hilfsmittelversorgung hat die '
+                'schwarz-rote Koalition einen pauschalen Abschlag auf alle '
+                'vertraglich vereinbarten Preise für Hilfsmittel eingeführt.',
+            publishedOn: DateTime(2026, 6, 10),
+          ),
+        ],
+      ),
+      'gewalt-kinder': ImpactNewsEntry(
+        checkedAt: _now,
+        items: [
+          ImpactNewsItem(
+            level: 'exact',
+            kind: 'social',
+            title: 'Gewalt an Kindern: Wo bleibt der Aufschrei?',
+            url: 'https://www.campact.de/blog/'
+                'gewalt-an-kindern-weact-petition-statistik',
+            snippet: '',
+            publishedOn: DateTime(2026, 10, 2),
+          ),
+        ],
+      ),
+    });
 
 // Palette alternatives, rendered side by side on the same hand. Each keeps
 // ink text readable on its four faces.
@@ -436,9 +625,10 @@ Opportunity _o(
     );
 
 class _Pool implements OpportunityRepository {
-  _Pool(this.items);
+  _Pool(this.items, [this.news = const ImpactNewsFeed()]);
 
   final List<Opportunity> items;
+  final ImpactNewsFeed news;
 
   @override
   Future<List<Opportunity>> pool() async => items;
@@ -458,5 +648,5 @@ class _Pool implements OpportunityRepository {
   Future<void> markTracked(String opportunityId) async {}
 
   @override
-  Future<ImpactNewsFeed> impactNews() async => const ImpactNewsFeed();
+  Future<ImpactNewsFeed> impactNews() async => news;
 }
