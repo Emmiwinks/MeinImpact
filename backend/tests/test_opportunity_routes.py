@@ -1,13 +1,16 @@
-"""GET /v1/opportunities/pool and POST /v1/opportunities/tracked."""
+"""GET /v1/opportunities/pool and /preview, POST /v1/opportunities/tracked."""
 
 import logging
 import uuid
+from dataclasses import replace
 from datetime import UTC, date, datetime
+from typing import Any
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
 from meinimpact.api.dependencies import get_opportunity_repository
+from meinimpact.api.routes.opportunities import PREVIEW_SIZE, preview_selection
 from meinimpact.core.config import Settings
 from meinimpact.domain.entities import Opportunity
 from meinimpact.main import create_app
@@ -46,10 +49,11 @@ class FakeRepository:
         self.asked_for: date | None = None
         self.tracked: dict[uuid.UUID, date] = {}
         self.commits = 0
+        self.open = [_OPPORTUNITY]
 
     async def list_open(self, today: date) -> list[Opportunity]:
         self.asked_for = today
-        return [_OPPORTUNITY]
+        return self.open
 
     async def mark_tracked(self, opportunity_id: uuid.UUID, today: date) -> bool:
         if opportunity_id != _OPPORTUNITY.id:
@@ -98,6 +102,67 @@ def test_pool_serves_open_opportunities_for_today() -> None:
     assert item["personal_impact_snippets"] == {
         "hat_kinder:true": "Betrifft deine Kita-Wahl."
     }
+
+
+def _variant(n: int, **changes: Any) -> Opportunity:
+    return replace(
+        _OPPORTUNITY, id=uuid.UUID(int=100 + n), title=f"Frage {n}", **changes
+    )
+
+
+def test_preview_needs_no_session_and_counts_by_level() -> None:
+    repository = FakeRepository()
+    repository.open = [
+        _OPPORTUNITY,
+        _variant(1, region="eu", affected_tags=("Wohnen/Miete",)),
+        _variant(2, region="bund", accessibility=2),
+    ]
+
+    response = _client(repository).get("/v1/opportunities/preview")
+
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "public, max-age=900"
+    body = response.json()
+    assert body["total"] == 3
+    assert body["by_region"] == {"dresden": 1, "sachsen": 0, "bund": 1, "eu": 1}
+    # The hard-to-grasp Bund item stays out; Wohnen/Miete is the first topic.
+    assert [(i["title"], i["topic_index"]) for i in body["items"]] == [
+        ("Soll die Kita erhalten bleiben?", 13),
+        ("Frage 1", 0),
+    ]
+    kita = body["items"][0]
+    assert kita["for_you"] == "Betrifft deine Kita-Wahl."
+    assert (kita["pro_argumente"], kita["contra_argumente"]) == (
+        ["Betreuungsplätze"],
+        ["Kosten"],
+    )
+    assert (kita["source_org"], kita["summary"]) == (
+        "openPetition",
+        "Die Stadt plant die Schließung.",
+    )
+    assert (kita["support_count"], kita["place"], kita["districts"]) == (
+        445,
+        "Dresden",
+        ["Hellerau"],
+    )
+
+
+def test_preview_selection_takes_levels_in_turn_soonest_first() -> None:
+    items = [
+        _variant(1, region="eu", closes_on=date(2026, 12, 1)),
+        _variant(2, region="dresden", closes_on=None),
+        _variant(3, region="dresden", closes_on=date(2026, 11, 20)),
+        _variant(4, region="eu", closes_on=date(2026, 11, 15)),
+    ]
+
+    picked = preview_selection(items)
+
+    assert [o.title for o in picked] == ["Frage 3", "Frage 4", "Frage 2", "Frage 1"]
+
+
+def test_preview_selection_stops_at_the_preview_size() -> None:
+    items = [_variant(n) for n in range(PREVIEW_SIZE + 5)]
+    assert len(preview_selection(items)) == PREVIEW_SIZE
 
 
 def test_tracked_requires_a_session() -> None:

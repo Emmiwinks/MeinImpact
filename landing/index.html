@@ -3,600 +3,582 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="MeinImpact – Deine Plattform für politisches Engagement. Kommt bald.">
-  <title>MeinImpact – Kommt bald</title>
+  <title>MeinImpact · Politisch aktiv werden</title>
+  <meta name="description" content="Die einfachste Art, politisch aktiv zu werden. Petitionen, Beteiligungen und anstehende Entscheidungen, passend zu deinem Leben. Jetzt als Android-Beta.">
+  <meta name="theme-color" content="#FFF1E3">
+  <link rel="preload" href="fonts/Unbounded-ExtraBold.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preconnect" href="https://meinimpact-api.fly.dev" crossorigin>
+  <link rel="stylesheet" href="site.css">
   <style>
-    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    /* ── Hero: claim beside an action card, built like the app's ── */
+    .hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 380px); gap: 40px clamp(40px, 6vw, 96px); align-items: center; padding-top: clamp(8px, 2vw, 24px); padding-bottom: clamp(64px, 9vw, 120px); }
+    .hero h1 { font-size: clamp(36px, 5.2vw, 72px); line-height: 1.02; letter-spacing: -0.035em; margin-bottom: 28px; }
+    .hero-lead { font-size: clamp(17px, 1.5vw, 20px); color: var(--muted); max-width: 46ch; margin-bottom: 32px; }
+    .counts { margin-top: 36px; padding-top: 18px; border-top: 1px solid var(--keyline); font-weight: 600; font-size: 15px; color: var(--muted); max-width: 52ch; }
+    .counts strong { color: var(--ink); font-weight: 800; }
+    @media (max-width: 860px) { .hero { grid-template-columns: 1fr; } }
 
-    :root {
-      --bg: #0F0F0F;
-      --card: rgba(255,255,255,0.04);
-      --border: rgba(255,255,255,0.08);
-      --green: #c59100;
-      --text: #EDE9E4;
-      --muted: #565250;
-      --sub: #8C8784;
+    .stage { width: 100%; max-width: 380px; justify-self: center; }
+    .deck { perspective: 1400px; }
+    .deck.out { animation: dealOut .26s cubic-bezier(.55, 0, 1, .45) forwards; }
+    .deck.in { animation: dealIn .46s var(--ease) both; }
+    @keyframes dealOut { to { transform: translateX(-36px) rotate(-6deg) scale(.97); opacity: 0; } }
+    @keyframes dealIn { from { transform: translateX(44px) rotate(5deg) scale(.97); opacity: 0; } }
+
+    .card { position: relative; display: grid; height: 600px; transform-style: preserve-3d; transition: transform .3s var(--ease); }
+    .card.flipped { transform: rotateY(180deg); }
+    .card.instant { transition: none; }
+    @media (max-width: 860px) { .card { height: 560px; } }
+    .face {
+      grid-area: 1 / 1; display: flex; flex-direction: column; min-height: 0;
+      background: var(--stock); border: 1px solid var(--keyline); border-radius: 26px; box-shadow: var(--shadow);
+      backface-visibility: hidden; -webkit-backface-visibility: hidden; overflow: hidden;
+    }
+    .face.back { transform: rotateY(180deg); }
+    .front { cursor: pointer; }
+    .art { flex: 1; min-height: 72px; margin: 10px 10px 0; border-radius: 18px; overflow: hidden; }
+    .art svg { display: block; width: 100%; height: 100%; }
+    .front-body { padding: 18px 20px 20px; display: flex; flex-direction: column; }
+    .card-q { font: 800 23px/1.1 var(--display); letter-spacing: -0.02em; overflow: hidden; overflow-wrap: break-word; hyphens: auto; }
+    .why { margin-top: 8px; font-weight: 500; font-size: 16px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+    .meta { margin-top: 16px; font-weight: 700; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .play { margin-top: 12px; width: 100%; min-height: 52px; font-size: 16px; padding: 12px 24px; }
+    .play:hover { transform: none; }
+
+    .strip { display: flex; align-items: center; gap: 8px; padding-left: 20px; }
+    .strip span { flex: 1; font: 700 13px/1.3 var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .close { width: 48px; height: 48px; display: grid; place-items: center; border: 0; background: transparent; color: var(--ink); cursor: pointer; border-radius: 999px; }
+    .close svg { width: 24px; height: 24px; }
+    .back-content {
+      flex: 1; min-height: 0; overflow-y: auto; padding: 16px 20px 32px; scrollbar-width: thin;
+      -webkit-mask-image: linear-gradient(#000 0, #000 86%, transparent); mask-image: linear-gradient(#000 0, #000 86%, transparent);
+    }
+    .back-content > p { font-size: 15px; line-height: 1.45; }
+    .facts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .facts span { border: 1px solid var(--ink); border-radius: 999px; padding: 6px 12px; font: 700 13px/1.3 var(--text); }
+    .args { margin-top: 20px; }
+    .args h4 { font: 700 17px/1.25 var(--text); }
+    .args p { display: grid; grid-template-columns: 14px 1fr; margin-top: 8px; font-size: 15px; line-height: 1.45; }
+    .args p::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ink); margin-top: 8px; }
+    .back .play { margin: 4px 20px 20px; width: auto; }
+
+    .stage-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 14px; }
+    .stage-bar span { font-weight: 700; font-size: 14px; color: var(--muted); }
+    .controls { display: flex; align-items: center; gap: 2px; }
+    .icon-btn { width: 48px; height: 48px; display: grid; place-items: center; background: transparent; border: 0; border-radius: 999px; color: var(--ink); cursor: pointer; }
+    .icon-btn:hover, .close:hover { background: #1018200f; }
+    .icon-btn svg { width: 22px; height: 22px; }
+
+    /* Chapters: the contents page of a game manual */
+    .chapters { list-style: none; }
+    .chapter { display: grid; grid-template-columns: 84px minmax(0, 340px) minmax(0, 1fr); gap: 12px clamp(20px, 3vw, 48px); padding: 32px 0; border-bottom: 1px solid var(--keyline); align-items: start; }
+    .chapter:first-child { padding-top: 0; }
+    .num { position: relative; width: 76px; height: 76px; display: grid; place-items: center; }
+    .num svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .num span { position: relative; font: 800 26px/1 var(--display); letter-spacing: -0.04em; }
+    .chapter h3 { font-size: clamp(21px, 2vw, 27px); margin-top: 16px; }
+    .chapter > div > p { font-size: 18px; color: var(--muted); max-width: 60ch; margin-top: 14px; }
+    .ways { list-style: none; margin-top: 22px; border-top: 1px solid var(--keyline); }
+    .ways li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--keyline); }
+    .ways strong { font: 700 17px/1.3 var(--text); }
+    .ways span.how { grid-column: 1; font-size: 15px; color: var(--muted); line-height: 1.4; }
+    .ways .chip { grid-column: 2; grid-row: 1 / span 2; }
+    @media (max-width: 900px) {
+      .chapter { grid-template-columns: 64px minmax(0, 1fr); }
+      .chapter > div:last-child { grid-column: 2; }
+      .chapter h3 { margin-top: 12px; }
+      .num { width: 64px; height: 64px; }
+      .num span { font-size: 22px; }
+    }
+    @media (max-width: 520px) { .ways li { grid-template-columns: 1fr; } .ways .chip { grid-column: 1; grid-row: auto; justify-self: start; margin-top: 6px; } }
+
+    /* Ruled boards (sources, status) */
+    .rows { list-style: none; background: var(--stock); border: 1px solid var(--keyline); border-radius: 26px; box-shadow: var(--shadow); padding: 8px clamp(18px, 3vw, 36px); }
+    .row { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 18px; align-items: center; padding: 20px 0; border-bottom: 1px solid var(--keyline); }
+    .row:last-child { border-bottom: 0; }
+    .row.later .row-title { color: var(--muted); }
+    .dot { width: 18px; height: 18px; border-radius: 50%; }
+    .dot.hollow { border: 2px dashed var(--muted); }
+    .row-title { font: 800 clamp(17px, 1.6vw, 21px)/1.2 var(--display); letter-spacing: -0.015em; }
+    .row-sub { display: block; font: 500 15px/1.4 var(--text); color: var(--muted); letter-spacing: 0; margin-top: 4px; }
+    .start { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 20px; align-items: center; margin-bottom: 28px; padding: 20px 24px; border: 2px solid var(--ink); border-radius: 22px; }
+    .start p { font-size: 18px; }
+    .start svg { width: 40px; height: 40px; }
+    .note { margin-top: 20px; color: var(--muted); font-size: 16px; max-width: 70ch; }
+    @media (max-width: 560px) {
+      .row { grid-template-columns: 14px minmax(0, 1fr); }
+      .dot { width: 14px; height: 14px; }
+      .row .chip { grid-column: 2; justify-self: start; }
     }
 
-    html { scroll-behavior: smooth; }
+    /* Privacy */
+    .privacy { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: clamp(20px, 3vw, 40px); align-items: center; background: var(--stock); border: 1px solid var(--keyline); border-radius: 26px; box-shadow: var(--shadow); padding: clamp(24px, 4vw, 48px); }
+    .privacy svg { width: clamp(64px, 8vw, 104px); height: auto; }
+    .privacy p { font: 800 clamp(20px, 2.4vw, 30px)/1.25 var(--display); letter-spacing: -0.02em; text-wrap: balance; }
+    @media (max-width: 560px) { .privacy { grid-template-columns: 1fr; } }
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-      overflow-x: hidden;
-      min-height: 100vh;
-    }
-
-    /* ─── Butterfly layer ─── */
-    .butterfly {
-      position: fixed;
-      pointer-events: none;
-      z-index: 60;
-      will-change: left, top, transform;
-    }
-
-    @keyframes wingsFlap {
-      from { transform: scaleX(1); }
-      to   { transform: scaleX(0.22); }
-    }
-
-    /* ─── Nav ─── */
-    nav {
-      position: fixed;
-      inset: 0 0 auto;
-      z-index: 100;
-      padding: 20px 40px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: linear-gradient(to bottom, rgba(15,15,15,.96) 0%, transparent 100%);
-    }
-
-    .logo { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.4px; }
-    .logo em { font-style: normal; color: var(--green); }
-
-    .pill-status {
-      border: 1px solid rgba(255,255,255,0.16);
-      color: rgba(255,255,255,0.45);
-      font-size: .72rem;
-      font-weight: 600;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-      padding: 5px 13px;
-      border-radius: 999px;
-    }
-
-    /* ─── Hero ─── */
-    .hero {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 100px 24px 64px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .hero::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(ellipse 80% 50% at 50% 36%, rgba(24,148,74,.04) 0%, transparent 62%);
-      pointer-events: none;
-    }
-
-    /* ─── Megaphone ─── */
-    .megaphone-wrap {
-      position: relative;
-      z-index: 1;
-      margin-bottom: 52px;
-      display: flex;
-      justify-content: center;
-    }
-
-    #megaphone {
-      width: min(400px, 82vw);
-      height: auto;
-      filter: drop-shadow(0 8px 48px rgba(212,146,14,.16))
-              drop-shadow(0 2px 10px rgba(0,0,0,.55));
-    }
-
-    /* ─── Hero text ─── */
-    .hero-text {
-      text-align: center;
-      max-width: 580px;
-      position: relative;
-      z-index: 1;
-    }
-
-    .hero-text h1 {
-      font-size: clamp(2.4rem, 6.5vw, 4rem);
-      font-weight: 800;
-      line-height: 1.08;
-      letter-spacing: -.035em;
-      margin-bottom: 18px;
-    }
-
-    .hero-text h1 em { font-style: normal; color: var(--green); }
-
-    .hero-text p {
-      font-size: clamp(.95rem, 2.4vw, 1.15rem);
-      color: var(--sub);
-      line-height: 1.7;
-      margin-bottom: 44px;
-    }
-
-    .scroll-hint {
-      display: inline-flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-      color: var(--muted);
-      font-size: .78rem;
-      letter-spacing: .05em;
-      text-transform: uppercase;
-      animation: nudge 2s ease-in-out infinite;
-    }
-
-    .scroll-hint svg { opacity: .45; }
-
-    @keyframes nudge {
-      0%,100% { transform: translateY(0); }
-      55%      { transform: translateY(9px); }
-    }
-
-    /* ─── Sections ─── */
-    section {
-      max-width: 960px;
-      margin: 0 auto;
-      padding: 88px 24px;
-    }
-
-    .label {
-      font-size: .75rem;
-      font-weight: 700;
-      letter-spacing: .1em;
-      text-transform: uppercase;
-      color: var(--green);
-      margin-bottom: 10px;
-    }
-
-    .section-title {
-      font-size: clamp(1.7rem, 4.5vw, 2.6rem);
-      font-weight: 800;
-      letter-spacing: -.025em;
-      line-height: 1.12;
-      margin-bottom: 14px;
-    }
-
-    .section-sub {
-      font-size: 1.05rem;
-      color: var(--sub);
-      line-height: 1.72;
-      max-width: 520px;
-      margin-bottom: 48px;
-    }
-
-    /* ─── Feature cards ─── */
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-      gap: 14px;
-    }
-
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 28px 24px;
-      transition: border-color .2s, background .2s;
-    }
-
-    .card:hover {
-      border-color: rgba(255,255,255,.16);
-      background: rgba(255,255,255,.07);
-    }
-
-    .card-icon {
-      width: 30px;
-      height: 30px;
-      margin-bottom: 16px;
-      color: var(--green);
-    }
-
-    .card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 7px; }
-
-    .card p { font-size: .88rem; color: var(--sub); line-height: 1.62; }
-
-    /* ─── Beta section ─── */
-    .beta { border-top: 1px solid var(--border); }
-
-    .beta-box {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 44px 48px;
-    }
-
-    .timeline { display: flex; flex-direction: column; gap: 22px; margin-top: 28px; }
-
-    .tl-item { display: flex; gap: 16px; align-items: flex-start; }
-
-    .tl-dot {
-      width: 10px; height: 10px;
-      border-radius: 50%;
-      background: var(--green);
-      flex-shrink: 0;
-      margin-top: 5px;
-    }
-
-    .tl-dot.dim { background: var(--muted); }
-
-    .tl-item strong { display: block; font-weight: 600; font-size: .95rem; margin-bottom: 2px; }
-    .tl-item span   { color: var(--sub); font-size: .85rem; }
-
-    /* ─── Contact section ─── */
-    .contact { border-top: 1px solid var(--border); text-align: center; }
-
-    .contact .section-sub { margin-inline: auto; }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      background: var(--green);
-      color: #fff;
-      font-weight: 800;
-      font-size: 1rem;
-      padding: 15px 34px;
-      border-radius: 999px;
-      text-decoration: none;
-      transition: opacity .2s, transform .15s;
-      letter-spacing: -.01em;
-    }
-
-    .btn:hover { opacity: .88; transform: translateY(-2px); }
-
-    /* ─── Footer ─── */
-    footer {
-      text-align: center;
-      padding: 28px 24px;
-      color: var(--muted);
-      font-size: .78rem;
-      border-top: 1px solid var(--border);
-    }
-
-    footer a { color: var(--muted); text-decoration: none; }
-    footer a:hover { color: var(--sub); }
-
-    /* ─── Responsive ─── */
-    @media (max-width: 600px) {
-      nav { padding: 16px 20px; }
-      .beta-box { padding: 32px 22px; }
-      section { padding: 64px 20px; }
-    }
+    /* Beta signup */
+    .signup { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px 48px; align-items: center; background: var(--ink); color: var(--stock); border-radius: 26px; padding: clamp(28px, 5vw, 64px); box-shadow: var(--shadow); }
+    .signup h2 { margin-bottom: 14px; }
+    .signup p { color: #D7DCE1; font-size: 18px; max-width: 52ch; }
+    .signup .btn { background: var(--stock); color: var(--ink); }
+    .signup .btn:hover { background: #fff; }
+    .signup small { display: block; margin-top: 14px; color: #B9C0C8; font-weight: 700; font-size: 14px; }
+    .signup a.plain { color: var(--stock); }
+    @media (max-width: 860px) { .signup { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
 
-  <!-- ───────────── Nav ───────────── -->
-  <nav aria-label="Hauptnavigation">
-    <span class="logo">mein<em>Impact</em></span>
-    <span class="pill-status" aria-label="Status: Im Aufbau">Im Aufbau</span>
-  </nav>
+  <header class="wrap top">
+    <a class="wordmark" href="#" aria-label="MeinImpact, zum Seitenanfang">MeinImpact</a>
+    <nav aria-label="Seite">
+      <a href="#drin">Was drin ist</a>
+      <a href="#woher">Woher die Aktionen kommen</a>
+      <a href="#mitmachen">Mitmachen</a>
+      <span class="version">Version 0.1 · Beta</span>
+    </nav>
+  </header>
 
-  <!-- ───────────── Hero ───────────── -->
-  <div class="hero">
-    <div class="megaphone-wrap">
-      <svg id="megaphone" viewBox="0 0 360 185" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-        <!--
-          Real bullhorn silhouette:
-          ① handle (down)  ② housing box  ③ cone (right)  ④ bell rim  ⑤ waves
-        -->
-
-        <!-- ① Grip — straight down from housing -->
-        <rect x="15" y="118" width="22" height="55" rx="9" fill="#7A4C04"/>
-
-        <!-- ② Housing — the rectangular body the speaker holds -->
-        <rect x="8"  y="52"  width="48" height="68" rx="7" fill="#A87010"/>
-        <rect x="8"  y="52"  width="48" height="22" rx="7" fill="white" opacity="0.07"/>
-
-        <!-- ③ Cone — attached to the RIGHT side of the housing -->
-        <path d="M56,52 L262,5 L262,177 L56,120 Z" fill="#D4920E"/>
-        <path d="M56,52 L262,5 L262,56 L56,72 Z"   fill="white" opacity="0.08"/>
-
-        <!-- ④ Bell rim -->
-        <ellipse cx="262" cy="91" rx="19" ry="86" fill="#8C5C06"/>
-        <ellipse cx="262" cy="91" rx="12" ry="75" fill="#0A0400"/>
-
-        <!-- ⑤ Sound waves -->
-        <path d="M287,65 Q305,91 287,117" fill="none" stroke="#F5C842" stroke-width="3.0" stroke-linecap="round" opacity="0.80"/>
-        <path d="M302,46 Q326,91 302,136" fill="none" stroke="#F5C842" stroke-width="2.2" stroke-linecap="round" opacity="0.55"/>
-        <path d="M317,27 Q348,91 317,155" fill="none" stroke="#F5C842" stroke-width="1.5" stroke-linecap="round" opacity="0.30"/>
-
-        <!-- butterfly spawn point -->
-        <circle id="speaker-marker" cx="278" cy="91" r="2" fill="transparent"/>
-      </svg>
-    </div>
-
-    <div class="hero-text">
-      <h1>Deine Stimme.<br><em>Dein Impact.</em></h1>
-      <p>
-        MeinImpact macht politisches Engagement einfach und wirkungsvoll.
-      </p>
-      <a class="scroll-hint" href="#features" aria-label="Mehr erfahren">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-          <path d="M6 9l6 6 6-6"/>
-        </svg>
-        Mehr erfahren
-      </a>
-    </div>
-  </div>
-
-  <!-- ───────────── Features ───────────── -->
-  <section id="features">
-    <p class="label">Was dich erwartet</p>
-    <h2 class="section-title">Demokratie,<br>neu gedacht.</h2>
-    <p class="section-sub">
-      MeinImpact verbindet dich mit politischen Aktionen, die zu deinen Werten passen und dir wichtig sind.
-      Dein wöchentlicher Beitrag zur Demokratie in drei Minuten.
-    </p>
-    <div class="grid">
-      <div class="card">
-        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect x="2" y="19" width="20" height="2" rx="1"/>
-          <rect x="2" y="4" width="20" height="2" rx="1"/>
-          <line x1="5" y1="6" x2="5" y2="19"/>
-          <line x1="9.5" y1="6" x2="9.5" y2="19"/>
-          <line x1="14.5" y1="6" x2="14.5" y2="19"/>
-          <line x1="19" y1="6" x2="19" y2="19"/>
-        </svg>
-        <h3>Politische Aktionen</h3>
-        <p>Entdecke Aktionen auf Bundes-, Landes- und Regionalebene, die zu deinen Werten und Interessen passen.</p>
+  <main>
+    <section class="wrap hero" aria-labelledby="claim">
+      <div>
+        <h1 id="claim">Die einfachste Art, politisch aktiv zu werden.</h1>
+        <p class="hero-lead">MeinImpact sucht dir Petitionen, Beteiligungen und anstehende Entscheidungen heraus, die zu deinem Leben passen. Mitmachen dauert ein paar Minuten.</p>
+        <a class="btn" href="#mitmachen">Beta testen</a>
+        <p class="counts" id="counts">Aktionen auf lokaler Ebene, im Land, im Bund und in der EU.</p>
       </div>
-      <div class="card">
-        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
-          <line x1="3" y1="6" x2="21" y2="6"/>
-          <circle cx="8" cy="6" r="2" fill="currentColor" stroke="none"/>
-          <line x1="3" y1="12" x2="21" y2="12"/>
-          <circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"/>
-          <line x1="3" y1="18" x2="21" y2="18"/>
-          <circle cx="10" cy="18" r="2" fill="currentColor" stroke="none"/>
-        </svg>
-        <h3>Dein Werteprofil</h3>
-        <p>Finde heraus, welche Themen für dich relevant sind und welchen Effekt politische Entscheidungen auf deinen Alltag haben könnten.</p>
-      </div>
-      <div class="card">
-        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <polyline points="3,17 7,11 11,14 16,7 21,10"/>
-          <line x1="3" y1="21" x2="21" y2="21"/>
-        </svg>
-        <h3>Tracke deinen Impact</h3>
-        <p>Nach einer Aktion bleibst du weiterhin informiert. Was Abgeordnete darüber gesagt haben, wie sie gestimmt haben und welche Entscheidungen getroffen wurden.</p>
-      </div>
-      <div class="card">
-        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect x="3" y="5" width="18" height="14" rx="2"/>
-          <polyline points="3,7 12,13 21,7"/>
-        </svg>
-        <h3>Briefe an Abgeordnete</h3>
-        <p>Schreibe mit KI-Unterstützung wirkungsvolle Briefe direkt an deine Volksvertreter.</p>
-      </div>
-    </div>
-  </section>
 
-  <!-- ───────────── Beta ───────────── -->
-  <section id="beta" class="beta">
-    <p class="label">Der frühe Vogel</p>
-    <h2 class="section-title">Beta-Tester:innen<br>werden.</h2>
-    <p class="section-sub">
-      Wir suchen engagierte Menschen, die MeinImpact als Erste ausprobieren
-      und aktiv mitgestalten wollen.
-    </p>
-  </section>
+      <div class="stage" aria-labelledby="stage-h">
+        <h2 class="visually-hidden" id="stage-h">Eine Aktion, wie sie in der App aussieht</h2>
+        <div class="deck" id="deck">
+          <div class="card" id="card">
+            <article class="face front" id="front"></article>
+            <article class="face back" id="back" aria-hidden="true" inert></article>
+          </div>
+        </div>
+        <div class="stage-bar">
+          <span id="position" aria-live="polite"></span>
+          <div class="controls">
+            <button class="icon-btn" id="prev" type="button" aria-label="Vorige Aktion">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+            </button>
+            <button class="icon-btn" id="pause" type="button" aria-label="Anhalten" aria-pressed="false">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" id="pause-icon"><rect x="6" y="5" width="4" height="14" rx="1.5"/><rect x="14" y="5" width="4" height="14" rx="1.5"/></svg>
+            </button>
+            <button class="icon-btn" id="next" type="button" aria-label="Nächste Aktion">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
 
-  <!-- ───────────── Contact ───────────── -->
-  <section id="kontakt" class="contact">
-    <p class="label">Kontakt</p>
-    <h2 class="section-title">Meld dich bei uns!</h2>
-    <p class="section-sub">
-      Fragen, Feedback oder Interesse am Beta-Test? Wir freuen uns über jede Nachricht.
-    </p>
-    <a href="mailto:hallo@meinimpact.de" class="btn">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-        <rect x="2" y="4" width="20" height="16" rx="2"/>
-        <path d="M22,6 L12,13 L2,6"/>
-      </svg>
-      hallo@meinimpact.de
-    </a>
-  </section>
+    <section class="wrap part" id="drin" aria-labelledby="drin-h">
+      <div class="part-head">
+        <h2 id="drin-h">Was in der App drin ist</h2>
+      </div>
+      <ol class="chapters">
+        <li class="chapter">
+          <div class="num"><svg viewBox="0 0 76 76" aria-hidden="true"><circle cx="38" cy="38" r="36" fill="#FF5A5F"/></svg><span>1</span></div>
+          <h3>Deine Werte</h3>
+          <div><p>Acht Fragen zu deinen Werten. Daraus entsteht ein kleines Kunstwerk.</p></div>
+        </li>
+        <li class="chapter">
+          <div class="num"><svg viewBox="0 0 76 76" aria-hidden="true"><path d="M2 62a36 36 0 0 1 72 0z" fill="#2EC4B6"/></svg><span>2</span></div>
+          <h3>Was in deinem Leben los ist</h3>
+          <div><p>Mieter:in, Kind in der Kita, pflegende Angehörige: Du wählst aus, was auf dich zutrifft. Danach richtet sich, was du zuerst siehst.</p></div>
+        </li>
+        <li class="chapter">
+          <div class="num"><svg viewBox="0 0 76 76" aria-hidden="true"><rect x="4" y="18" width="68" height="40" rx="20" fill="#FFBF3C"/></svg><span>3</span></div>
+          <h3>Aktionen für dich</h3>
+          <div>
+            <p>Aus allem, was gerade offen ist, die am besten passenden zuerst. Sortiert wird auf deinem Handy. So machst du mit:</p>
+            <ul class="ways">
+              <li><strong>Petitionen unterschreiben</strong><span class="how">Die Petition öffnet in der App. Danach tippst du auf Fertig.</span><span class="chip on">in der Beta</span></li>
+              <li><strong>Bei Beteiligungen und Umfragen mitreden</strong><span class="how">Konsultationen, Bürgerumfragen und Planauslegungen, genauso in der App.</span><span class="chip on">in der Beta</span></li>
+              <li><strong>Brief an den Stadtrat</strong><span class="how">Steht eine Entscheidung an, entwirft die App einen Brief an die Fraktionen. Du passt ihn an und schickst ihn aus deinem Mailprogramm.</span><span class="chip on">in der Beta</span></li>
+              <li><strong>Formulare vorausfüllen</strong><span class="how">Name und Adresse trägt die App für dich ein, damit Unterschreiben noch schneller geht.</span><span class="chip soon">bald</span></li>
+              <li><strong>Aktionen vor Ort</strong><span class="how">Versammlungen und Sprechstunden in deiner Nähe, zu denen du hingehen kannst.</span><span class="chip soon">bald</span></li>
+              <li><strong>Brief an den Landtag</strong><span class="how">Briefe auch zu Entscheidungen auf Landesebene.</span><span class="chip soon">bald</span></li>
+            </ul>
+          </div>
+        </li>
+        <li class="chapter">
+          <div class="num"><svg viewBox="0 0 76 76" aria-hidden="true"><path d="M38 4l36 66H2z" fill="#8C84FF"/></svg><span>4</span></div>
+          <h3>Was das für dich bedeutet</h3>
+          <div><p>Zu vielen Aktionen ein Satz dazu, was sich für jemanden in deiner Lage ändern könnte. So siehst du schnell, ob dich etwas betrifft.</p></div>
+        </li>
+        <li class="chapter">
+          <div class="num"><svg viewBox="0 0 76 76" aria-hidden="true"><circle cx="38" cy="38" r="36" fill="#2EC4B6"/></svg><span>5</span></div>
+          <h3>Was spricht dafür, was dagegen?</h3>
+          <div><p>Auf der Rückseite jeder Aktion stehen Argumente von beiden Seiten. Du machst dir selbst ein Bild, bevor du mitmachst.</p></div>
+        </li>
+        <li class="chapter">
+          <div class="num"><svg viewBox="0 0 76 76" aria-hidden="true"><path d="M2 62a36 36 0 0 1 72 0z" fill="#FF5A5F"/></svg><span>6</span></div>
+          <h3>Mein Impact</h3>
+          <div><p>Hier sammelt sich, was du gemacht hast. Die App sucht Berichte darüber, was danach passiert ist.</p></div>
+        </li>
+      </ol>
+    </section>
 
-  <!-- ───────────── Footer ───────────── -->
+    <section class="wrap part" id="woher" aria-labelledby="woher-h">
+      <div class="part-head">
+        <h2 id="woher-h">Woher die Aktionen kommen</h2>
+        <p>Das ist der Stand heute. Weitere Quellen und Städte kommen dazu.</p>
+      </div>
+      <div class="start">
+        <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="17" r="13" fill="#FFBF3C"/><circle cx="20" cy="17" r="5" fill="#101820"/><path d="M20 38l-8-12h16z" fill="#101820"/></svg>
+        <p><strong>MeinImpact startet in Dresden.</strong> Lokale Aktionen kommen deshalb zuerst aus dem Dresdner Stadtrat und den Ortschaftsräten.</p>
+      </div>
+      <ul class="rows" aria-label="Quellen">
+        <li class="row"><i class="dot" style="background:#2EC4B6"></i><span class="row-title">Ratsinformationssystem Dresden<span class="row-sub">Anstehende Entscheidungen im Stadtrat und in den Ortschaftsräten</span></span><span class="chip">lokal</span></li>
+        <li class="row"><i class="dot" style="background:#FFBF3C"></i><span class="row-title">Beteiligungsportal Sachsen<span class="row-sub">Beteiligungen, Umfragen und Planauslegungen des Landes und der Kommunen</span></span><span class="chip">Land</span></li>
+        <li class="row"><i class="dot" style="background:#FF5A5F"></i><span class="row-title">openPetition und WeAct<span class="row-sub">Petitionen von Bürger:innen, vom eigenen Ort bis zum Bundestag</span></span><span class="chip">lokal bis Bund</span></li>
+        <li class="row"><i class="dot" style="background:#8C84FF"></i><span class="row-title">„Ihre Meinung zählt“ der EU-Kommission<span class="row-sub">Öffentliche Konsultationen zu neuen EU-Regeln</span></span><span class="chip">EU</span></li>
+        <li class="row later"><i class="dot hollow"></i><span class="row-title">Sächsischer Landtag</span><span class="chip soon">bald</span></li>
+        <li class="row later"><i class="dot hollow"></i><span class="row-title">Weitere Städte</span><span class="chip soon">bald</span></li>
+      </ul>
+      <p class="note">Sortiert wird nach dem, was dich betrifft, nie nach Partei. Die Überschriften schreibt eine KI als neutrale Frage um.</p>
+    </section>
+
+    <section class="wrap part" id="handy" aria-labelledby="handy-h">
+      <div class="part-head">
+        <h2 id="handy-h">Was bei dir bleibt</h2>
+      </div>
+      <div class="privacy">
+        <svg viewBox="0 0 104 104" aria-hidden="true"><rect x="22" y="4" width="60" height="96" rx="14" fill="#101820"/><rect x="29" y="14" width="46" height="70" rx="6" fill="#2EC4B6"/><rect x="40" y="38" width="24" height="22" rx="4" fill="#FFFCF8"/><path d="M44 38v-5a8 8 0 0 1 16 0v5" fill="none" stroke="#FFFCF8" stroke-width="4"/><circle cx="52" cy="92" r="3" fill="#FFFCF8"/></svg>
+        <p>Alle persönlichen Daten bleiben auf deinem Handy. Niemand kann nachvollziehen, was du machst. Kein Konto, DSGVO-konform.</p>
+      </div>
+    </section>
+
+    <section class="wrap part" id="aufbau" aria-labelledby="aufbau-h">
+      <div class="part-head">
+        <h2 id="aufbau-h">Noch im Aufbau</h2>
+      </div>
+      <ul class="rows" aria-label="Stand der App">
+        <li class="row"><i class="dot" style="background:#FF5A5F"></i><span class="row-title">Android-App</span><span class="chip on">Beta läuft</span></li>
+        <li class="row"><i class="dot" style="background:#2EC4B6"></i><span class="row-title">iPhone</span><span class="chip">als Nächstes</span></li>
+        <li class="row later"><i class="dot hollow"></i><span class="row-title">Bescheid bei Neuigkeiten zu deinen Aktionen</span><span class="chip soon">bald</span></li>
+        <li class="row later"><i class="dot hollow"></i><span class="row-title">Streaks, Badges und neue Designs zum Freischalten</span><span class="chip soon">bald</span></li>
+      </ul>
+    </section>
+
+    <section class="wrap part" id="mitmachen" aria-labelledby="beta-h">
+      <div class="signup">
+        <div>
+          <h2 id="beta-h">Teste die Beta</h2>
+          <p>Schreib mir eine Mail mit der Adresse deines Google-Kontos. Ich trage dich bei Google Play als Tester:in ein und schicke dir den Link.</p>
+        </div>
+        <div>
+          <a class="btn" href="mailto:hallo@meinimpact.de?subject=Beta-Test%20MeinImpact&amp;body=Hallo%20Sophie%2C%0A%0Aich%20m%C3%B6chte%20die%20Beta%20testen.%20Mein%20Google-Konto%3A%20">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><path d="M3 6.5l9 6.5 9-6.5"/></svg>
+            Mail schreiben
+          </a>
+          <small>An <a class="plain" href="mailto:hallo@meinimpact.de">hallo@meinimpact.de</a></small>
+        </div>
+      </div>
+    </section>
+  </main>
+
   <footer>
-    <p>© 2025 MeinImpact &nbsp;·&nbsp; <a href="#">Impressum</a> &nbsp;·&nbsp; <a href="#">Datenschutz</a></p>
+    <div class="wrap">
+      <span>© 2026 MeinImpact</span>
+      <nav aria-label="Über MeinImpact">
+        <a href="ueber-uns.html">Über uns</a>
+        <a href="impressum.html">Impressum</a>
+        <a href="datenschutz.html">Datenschutz</a>
+        <a href="https://github.com/Emmiwinks/MeinImpact" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.69 5.39-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z"/></svg>
+          Code auf GitHub
+        </a>
+      </nav>
+    </div>
   </footer>
 
-  <!-- ───────────── Butterfly animation ───────────── -->
   <script>
   (function () {
     'use strict';
 
-    var COLORS = [
-      '#F97316','#EC4899','#A855F7','#06B6D4',
-      '#22C55E','#EAB308','#F43F5E','#8B5CF6',
-      '#14B8A6','#FB923C','#E879F9','#38BDF8',
-      '#84CC16','#F59E0B'
+    var API = new URLSearchParams(location.search).get('api') || 'https://meinimpact-api.fly.dev';
+    var DWELL = 6000;
+    var INK = '#101820', STOCK = '#FFFCF8';
+    var COLOURS = ['#FF5A5F', '#2EC4B6', '#FFBF3C', '#8C84FF'];
+    // Same order as the backend's topic list (taxonomy.py TAG_AXES) and the app's kTopicTags.
+    var TOPICS = ['Wohnen/Miete', 'Mobilität/Verkehr', 'Arbeit/Einkommen', 'Energie/Heizkosten', 'Bildung/Ausbildung',
+      'Rente/Alter', 'Digitales/Datenschutz', 'Sicherheit', 'Migration/Integration', 'Außenpolitik/Verteidigung',
+      'Demokratie/Mitbestimmung', 'Stadtentwicklung/Bauen', 'Gesundheit/Pflege', 'Familie/Kinder', 'Umwelt/Natur',
+      'Selbstständigkeit/Unternehmertum', 'Gleichstellung/Inklusion'];
+    // The app's OpportunityKind: wire value, label, button label. Its order colours untagged actions.
+    var KINDS = [
+      ['petition', 'Petition', 'Petition unterschreiben'], ['consultation', 'Konsultation', 'Stellung nehmen'],
+      ['public_display', 'Planauslegung', 'Plan ansehen & mitreden'], ['survey', 'Umfrage', 'An Umfrage teilnehmen'],
+      ['event', 'Veranstaltung', 'Zur Veranstaltung'], ['decision', 'Abstimmung im Rat', 'Brief schreiben'],
+      ['notice', 'Bekanntmachung', 'Zur Quelle'], ['other', 'Beteiligung', 'Zur Quelle']];
+    var LEVELS = { dresden: 'lokal', sachsen: 'Land', bund: 'Bund', eu: 'EU' };
+
+    // Only when the live actions cannot be loaded: real items from 12.11.2026.
+    var FALLBACK = [
+      { title: 'Bleibt die Kita GARTENKINDER erhalten?', kind: 'petition', region: 'dresden', source_org: 'openPetition',
+        summary: 'Die Kita GARTENKINDER in Dresden-Pieschen soll geschlossen werden. Eltern und Kinder fordern ihren Erhalt, weil sie ein einzigartiges Betreuungsangebot bietet.',
+        opens_on: null, closes_on: '2027-01-03', topic_index: 4,
+        for_you: 'Eltern verlieren ein bewährtes und einzigartiges Betreuungsangebot für ihre Kinder.',
+        pro_argumente: ['Die Kita bietet ein einzigartiges pädagogisches Konzept mit Naturbezug und Gemeinschaftsgefühl.', 'Eltern haben ein Recht auf Vielfalt bei der Wahl der Betreuungseinrichtung.', 'Die Kita ist seit Jahren voll ausgelastet und trägt zur Betreuungsvielfalt im Stadtteil bei.'],
+        contra_argumente: ['Die Stadt Dresden argumentiert, dass es genug freie Kita-Plätze in anderen Einrichtungen gibt.', 'Ein Trägerwechsel könnte organisatorische Herausforderungen mit sich bringen.'],
+        support_count: 445, support_goal: null, place: 'Dresden', districts: ['Pieschen'] },
+      { title: 'Darf es ab 2035 nur noch E-Autos geben?', kind: 'petition', region: 'bund', source_org: 'openPetition',
+        summary: 'Die EU will ab 2035 nur noch Autos ohne CO₂-Ausstoß am Auspuff zulassen. Das könnte Arbeitsplätze gefährden und die Wahlfreiheit bei Antrieben einschränken.',
+        opens_on: null, closes_on: '2026-11-24', topic_index: 1,
+        for_you: 'Du könntest ab 2035 keine neuen Verbrenner mehr kaufen.',
+        pro_argumente: ['Technologieoffenheit sichert Arbeitsplätze in der Automobilindustrie.', 'Alternative Antriebe wie E-Fuels oder Hybride könnten schneller umgesetzt werden.', 'Verbraucher behalten mehr Wahlfreiheit bei der Fahrzeugauswahl.'],
+        contra_argumente: ['Ein klares Aus für Verbrenner beschleunigt den Umstieg auf klimafreundliche Antriebe.', 'Langfristig könnten mehr Jobs in der E-Mobilität entstehen als wegfallen.', 'Die CO₂-Bilanz von Verbrennern ist auch mit E-Fuels oft schlechter als bei E-Autos.'],
+        support_count: 17872, support_goal: null, place: 'Deutschland', districts: [] },
+      { title: 'Sind Kinder im Netz sicher genug?', kind: 'consultation', region: 'eu', source_org: 'EU-Kommission: Ihre Meinung zählt',
+        summary: 'Die EU will digitale Räume für Kinder sicherer machen. Eltern und Jugendliche können ihre Meinung dazu sagen.',
+        opens_on: '2026-10-01', closes_on: '2026-12-03', topic_index: 6, for_you: null,
+        pro_argumente: ['Kinder brauchen besseren Schutz vor schädlichen Inhalten und Datenmissbrauch.', 'Einheitliche EU-Regeln machen das Internet für Familien verlässlicher.'],
+        contra_argumente: ['Zu strenge Regeln könnten die Freiheit von Plattformen und Nutzer:innen einschränken.', 'Technische Umsetzung könnte für kleine Anbieter zu teuer sein.'],
+        support_count: null, support_goal: null, place: 'Europäische Kommission', districts: [] }
     ];
 
-    var NUM = 14;
-    var bflies = [];
-
-    // Build butterfly SVG markup
-    function makeSVG(color, w, h, flapMs) {
-      var c = color;
-      var body = '#1a1a1a';
-      return '<svg width="' + w + '" height="' + h + '" viewBox="0 0 34 30" '
-        + 'xmlns="http://www.w3.org/2000/svg" '
-        + 'style="animation: wingsFlap ' + flapMs + 'ms ease-in-out infinite alternate;'
-        + 'transform-origin: 50% 50%; display:block;">'
-        // upper left wing
-        + '<path d="M17,15 Q10,2 1,4 Q-1,15 17,15" fill="' + c + '"/>'
-        // upper right wing
-        + '<path d="M17,15 Q24,2 33,4 Q35,15 17,15" fill="' + c + '"/>'
-        // lower left wing
-        + '<path d="M17,15 Q7,27 1,24 Q3,15 17,15" fill="' + c + '" opacity="0.75"/>'
-        // lower right wing
-        + '<path d="M17,15 Q27,27 33,24 Q31,15 17,15" fill="' + c + '" opacity="0.75"/>'
-        // body
-        + '<ellipse cx="17" cy="15" rx="2" ry="7" fill="' + body + '"/>'
-        // head
-        + '<circle cx="17" cy="8" r="2.2" fill="' + body + '"/>'
-        // left antenna
-        + '<line x1="17" y1="7" x2="12" y2="1" stroke="' + body + '" stroke-width="1" stroke-linecap="round"/>'
-        + '<circle cx="12" cy="1" r="1.3" fill="' + body + '"/>'
-        // right antenna
-        + '<line x1="17" y1="7" x2="22" y2="1" stroke="' + body + '" stroke-width="1" stroke-linecap="round"/>'
-        + '<circle cx="22" cy="1" r="1.3" fill="' + body + '"/>'
-        + '</svg>';
-    }
-
-    function speakerPos() {
-      var m = document.getElementById('speaker-marker');
-      if (!m) return { x: window.innerWidth * 0.65, y: window.innerHeight * 0.42 };
-      var r = m.getBoundingClientRect();
-      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-    }
-
-    function randTarget() {
-      return {
-        x: 50 + Math.random() * (window.innerWidth  - 100),
-        y: 70 + Math.random() * (window.innerHeight - 140)
+    /* ── The app's topic art (topic_art.dart), drawn as SVG at the art box's size ── */
+    var uid = 0;
+    function topicArt(tag, face, accent, W, H) {
+      var side = Math.min(W, H) * 0.9, L = (W - side) / 2, T = (H - side) / 2, out = [];
+      function X(x) { return +(L + x * side).toFixed(2); }
+      function Y(y) { return +(T + y * side).toFixed(2); }
+      function D(v) { return +(v * side).toFixed(2); }
+      var a = {
+        ink: INK, stock: STOCK, accent: accent, X: X, Y: Y, D: D,
+        circle: function (x, y, r, c) { out.push('<circle cx="' + X(x) + '" cy="' + Y(y) + '" r="' + D(r) + '" fill="' + c + '"/>'); },
+        ring: function (x, y, r, c, w) { out.push('<circle cx="' + X(x) + '" cy="' + Y(y) + '" r="' + D(r) + '" fill="none" stroke="' + c + '" stroke-width="' + D(w) + '"/>'); },
+        rect: function (x, y, w, h, c, r) { out.push('<rect x="' + X(x) + '" y="' + Y(y) + '" width="' + D(w) + '" height="' + D(h) + '" rx="' + D(r || 0) + '" fill="' + c + '"/>'); },
+        shape: function (pts, c) { out.push('<path d="M' + pts.map(function (p) { return X(p[0]) + ' ' + Y(p[1]); }).join('L') + 'Z" fill="' + c + '"/>'); },
+        line: function (x1, y1, x2, y2, c, w) { out.push('<line x1="' + X(x1) + '" y1="' + Y(y1) + '" x2="' + X(x2) + '" y2="' + Y(y2) + '" stroke="' + c + '" stroke-width="' + D(w) + '" stroke-linecap="round"/>'); },
+        ground: function (y, c) { out.push('<rect x="0" y="' + Y(y) + '" width="' + W + '" height="' + Math.max(0, H - Y(y)) + '" fill="' + c + '"/>'); },
+        raw: function (s) { out.push(s); }
       };
+      (RECIPES[tag] || fallbackArt)(a);
+      return '<svg viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true"><rect width="' + W + '" height="' + H + '" fill="' + face + '"/>' + out.join('') + '</svg>';
     }
-
-    function startFlight(b, isFirst) {
-      var sp = speakerPos();
-      var tgt;
-
-      if (isFirst) {
-        // Burst outward from the speaker in a wide spread
-        var angle = (Math.random() - 0.5) * Math.PI * 1.6;
-        var dist  = 130 + Math.random() * 240;
-        tgt = {
-          x: Math.max(40, Math.min(window.innerWidth  - 40, sp.x + Math.cos(angle) * dist)),
-          y: Math.max(60, Math.min(window.innerHeight - 60, sp.y + Math.sin(angle) * dist))
-        };
-      } else {
-        tgt = randTarget();
-      }
-
-      b.sx = b.x; b.sy = b.y;
-      b.tx = tgt.x; b.ty = tgt.y;
-
-      // Curved control points (perpendicular offset for arc)
-      var mx   = (b.sx + b.tx) / 2,  my   = (b.sy + b.ty) / 2;
-      var perpX = -(b.ty - b.sy) * 0.45, perpY = (b.tx - b.sx) * 0.45;
-      var jitter = isFirst ? 80 : 130;
-
-      b.cp1x = mx + perpX + (Math.random() - 0.5) * jitter;
-      b.cp1y = my + perpY + (Math.random() - 0.5) * jitter;
-      b.cp2x = mx - perpX * 0.6 + (Math.random() - 0.5) * jitter * 0.7;
-      b.cp2y = my - perpY * 0.6 + (Math.random() - 0.5) * jitter * 0.7;
-
-      b.dur  = isFirst ? (1800 + Math.random() * 1200) : (5500 + Math.random() * 5000);
-      b.t0   = performance.now();
-      b.going = true;
-    }
-
-    function cubic(t, p0, c1, c2, p1) {
-      var m = 1 - t;
-      return m*m*m*p0 + 3*m*m*t*c1 + 3*m*t*t*c2 + t*t*t*p1;
-    }
-
-    function eio(t) {
-      return t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t+2,2)/2;
-    }
-
-    function tick(now) {
-      for (var i = 0; i < bflies.length; i++) {
-        var b = bflies[i];
-        if (!b.going) continue;
-
-        var raw = Math.min((now - b.t0) / b.dur, 1);
-        var e   = eio(raw);
-        var nx  = cubic(e, b.sx, b.cp1x, b.cp2x, b.tx);
-        var ny  = cubic(e, b.sy, b.cp1y, b.cp2y, b.ty);
-
-        // Compute movement direction for gentle tilt (clamped to ±28°)
-        var dx = nx - b.x, dy = ny - b.y;
-        if (Math.abs(dx) > 0.05 || Math.abs(dy) > 0.05) {
-          var raw_angle = Math.atan2(dy, dx) * (180 / Math.PI);
-          // Clamp so butterfly never flips upside-down
-          b.tilt = Math.max(-28, Math.min(28, raw_angle));
+    function fallbackArt(a) { a.circle(.5, .5, .36, a.stock); a.circle(.5, .5, .24, a.ink); a.circle(.5, .5, .12, a.accent); }
+    var RECIPES = {
+      'Wohnen/Miete': function (a) { a.ground(.88, a.ink); a.rect(.26, .45, .48, .43, a.stock); a.shape([[.18, .48], [.5, .16], [.82, .48]], a.ink); a.rect(.42, .58, .16, .16, a.accent, .02); },
+      'Mobilität/Verkehr': function (a) {
+        a.circle(.8, .2, .1, a.stock); a.ring(.28, .66, .17, a.ink, .05); a.ring(.72, .66, .17, a.ink, .05);
+        a.line(.28, .66, .47, .4, a.ink, .05); a.line(.47, .4, .72, .66, a.ink, .05); a.line(.47, .4, .62, .4, a.ink, .05); a.circle(.47, .4, .05, a.accent);
+      },
+      'Arbeit/Einkommen': function (a) { a.circle(.76, .24, .1, a.accent); [.72, .58, .44].forEach(function (y, i) { a.rect(.22 + i * .04, y, .42, .11, i % 2 === 0 ? a.stock : a.ink, .05); }); },
+      'Energie/Heizkosten': function (a) { a.circle(.5, .5, .38, a.stock); a.shape([[.56, .1], [.3, .56], [.48, .56], [.4, .9], [.72, .42], [.53, .42], [.63, .1]], a.ink); },
+      'Bildung/Ausbildung': function (a) { a.circle(.5, .2, .09, a.ink); a.shape([[.12, .38], [.5, .48], [.5, .86], [.12, .76]], a.stock); a.shape([[.88, .38], [.5, .48], [.5, .86], [.88, .76]], a.accent); a.line(.5, .48, .5, .86, a.ink, .03); },
+      'Rente/Alter': function (a) { a.rect(.24, .1, .52, .06, a.ink, .03); a.rect(.24, .84, .52, .06, a.ink, .03); a.shape([[.3, .16], [.7, .16], [.5, .5]], a.stock); a.shape([[.5, .5], [.7, .84], [.3, .84]], a.accent); },
+      'Digitales/Datenschutz': function (a) {
+        for (var i = 0; i < 3; i++) for (var j = 0; j < 3; j++) a.circle(.1 + i * .07, .2 + j * .07, .018, a.ink);
+        a.raw('<path d="M' + a.X(.34) + ' ' + a.Y(.44) + 'A' + a.D(.16) + ' ' + a.D(.16) + ' 0 0 1 ' + a.X(.66) + ' ' + a.Y(.44) + '" fill="none" stroke="' + a.ink + '" stroke-width="' + a.D(.06) + '" stroke-linecap="round"/>');
+        a.rect(.28, .44, .44, .4, a.stock, .06); a.circle(.5, .6, .05, a.ink); a.rect(.48, .6, .04, .12, a.ink);
+      },
+      'Sicherheit': function (a) {
+        function shield(i, c) {
+          a.raw('<path d="M' + a.X(.5) + ' ' + a.Y(.12 + i) + 'L' + a.X(.8 - i) + ' ' + a.Y(.24 + i) + 'L' + a.X(.78 - i) + ' ' + a.Y(.58) +
+            'Q' + a.X(.74 - i) + ' ' + a.Y(.78 - i / 2) + ' ' + a.X(.5) + ' ' + a.Y(.9 - i) +
+            'Q' + a.X(.26 + i) + ' ' + a.Y(.78 - i / 2) + ' ' + a.X(.22 + i) + ' ' + a.Y(.58) +
+            'L' + a.X(.2 + i) + ' ' + a.Y(.24 + i) + 'Z" fill="' + c + '"/>');
         }
+        shield(0, a.stock); shield(.1, a.ink); a.circle(.5, .48, .07, a.accent);
+      },
+      'Migration/Integration': function (a) {
+        var id = 'mi' + (++uid);
+        a.circle(.37, .5, .25, a.stock); a.circle(.63, .5, .25, a.accent);
+        a.raw('<clipPath id="' + id + '"><circle cx="' + a.X(.37) + '" cy="' + a.Y(.5) + '" r="' + a.D(.25) + '"/></clipPath>' +
+          '<circle cx="' + a.X(.63) + '" cy="' + a.Y(.5) + '" r="' + a.D(.25) + '" fill="' + a.ink + '" clip-path="url(#' + id + ')"/>');
+      },
+      'Außenpolitik/Verteidigung': function (a) {
+        a.circle(.5, .5, .35, a.stock);
+        a.raw('<ellipse cx="' + a.X(.5) + '" cy="' + a.Y(.5) + '" rx="' + a.D(.35 * .46) + '" ry="' + a.D(.35) + '" fill="none" stroke="' + a.ink + '" stroke-width="' + a.D(.03) + '"/>');
+        a.line(.15, .5, .85, .5, a.ink, .03); a.line(.22, .32, .78, .32, a.ink, .025); a.line(.22, .68, .78, .68, a.ink, .025); a.circle(.82, .18, .07, a.accent);
+      },
+      'Demokratie/Mitbestimmung': function (a) {
+        a.ground(.9, a.ink);
+        [[.26, a.ink], [.74, a.ink], [.5, a.stock]].forEach(function (p) {
+          var top = p[0] === .5 ? .3 : .42;
+          a.circle(p[0], top, .08, p[1]); a.rect(p[0] - .13, top + .12, .26, .9 - top - .12, p[1], .12);
+        });
+        a.rect(.62, .08, .26, .16, a.accent, .06);
+      },
+      'Stadtentwicklung/Bauen': function (a) {
+        a.ground(.9, a.ink); a.rect(.1, .52, .18, .38, a.stock); a.rect(.3, .3, .16, .6, a.ink); a.rect(.48, .46, .16, .44, a.accent); a.rect(.66, .38, .2, .52, a.stock);
+        a.line(.82, .08, .82, .38, a.ink, .03); a.line(.56, .1, .95, .1, a.ink, .03);
+      },
+      'Gesundheit/Pflege': function (a) { a.rect(.4, .18, .2, .64, a.stock, .05); a.rect(.18, .4, .64, .2, a.stock, .05); a.circle(.5, .5, .06, a.ink); a.circle(.8, .18, .07, a.accent); },
+      'Familie/Kinder': function (a) { a.circle(.78, .22, .13, a.accent); a.circle(.34, 1.04, .46, a.ink); a.circle(.24, .8, .08, a.stock); a.circle(.44, .84, .06, a.stock); },
+      'Umwelt/Natur': function (a) { a.ground(.88, a.ink); a.rect(.46, .56, .08, .32, a.ink); a.circle(.5, .42, .24, a.stock); a.circle(.82, .2, .07, a.accent); },
+      'Selbstständigkeit/Unternehmertum': function (a) { [.24, .44, .64].forEach(function (h, i) { a.rect(.14 + i * .24, .88 - h, .2, h, i % 2 ? a.ink : a.stock, .03); }); a.circle(.72, .14, .08, a.accent); },
+      'Gleichstellung/Inklusion': function (a) { a.circle(.34, .24, .08, a.stock); a.circle(.66, .24, .08, a.accent); a.rect(.18, .42, .64, .1, a.ink, .05); a.rect(.18, .6, .64, .1, a.ink, .05); }
+    };
 
-        b.x = nx; b.y = ny;
-        b.el.style.left = (nx - b.hw) + 'px';
-        b.el.style.top  = (ny - b.hh) + 'px';
-        b.el.style.transform = 'rotate(' + b.tilt + 'deg)';
-
-        if (raw >= 1) startFlight(b, false);
+    /* ── Card text, as the app's metaLine and factChips write it ── */
+    function kind(item) { for (var i = 0; i < KINDS.length; i++) if (KINDS[i][0] === item.kind) return { i: i, label: KINDS[i][1], cta: KINDS[i][2] }; return { i: 7, label: KINDS[7][1], cta: KINDS[7][2] }; }
+    function day(iso) { return new Date(iso + 'T00:00:00'); }
+    function today() { var t = new Date(); t.setHours(0, 0, 0, 0); return t; }
+    function fmt(iso) { var d = day(iso); return d.getDate() + '.' + (d.getMonth() + 1) + '.' + d.getFullYear(); }
+    function announced(item) { return item.opens_on && day(item.opens_on) > today(); }
+    function daysLeft(item) { return item.closes_on ? Math.max(0, Math.round((day(item.closes_on) - today()) / 86400000)) : null; }
+    function metaLine(item) {
+      var k = kind(item), n = daysLeft(item), when = null;
+      if (announced(item)) when = 'ab ' + fmt(item.opens_on);
+      else if (n !== null) {
+        if (item.kind === 'decision') when = n === 0 ? 'heute' : n === 1 ? 'morgen' : 'in ' + n + ' Tagen';
+        else when = n === 0 ? 'endet heute' : n === 1 ? 'noch 1 Tag' : 'noch ' + n + ' Tage';
       }
-      requestAnimationFrame(tick);
+      return when ? k.label + ' · ' + when : k.label;
+    }
+    function facts(item) {
+      var f = [];
+      if (announced(item)) f.push('Ab ' + fmt(item.opens_on));
+      if (item.closes_on) f.push(item.kind === 'decision' ? 'Sitzung am ' + fmt(item.closes_on) : 'Bis ' + fmt(item.closes_on));
+      if (item.support_count !== null && item.support_count !== undefined) {
+        var n = item.support_count.toLocaleString('de-DE');
+        f.push(item.support_goal ? n + ' von ' + item.support_goal.toLocaleString('de-DE') + ' Unterstützer:innen' : n + ' Unterstützer:innen');
+      }
+      if (item.place) f.push(item.place);
+      return f.concat(item.districts || []);
+    }
+    function look(item) {
+      var tag = item.topic_index !== null && item.topic_index !== undefined ? TOPICS[item.topic_index] : null;
+      var idx = tag ? item.topic_index : kind(item).i;
+      return { tag: tag, face: COLOURS[idx % 4], accent: COLOURS[(idx + 1) % 4] };
+    }
+    function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+    function args(title, list) {
+      if (!list || !list.length) return '';
+      return '<div class="args"><h4>' + title + '</h4>' + list.map(function (p) { return '<p>' + esc(p) + '</p>'; }).join('') + '</div>';
     }
 
-    function spawn(i) {
-      var el     = document.createElement('div');
-      var color  = COLORS[i % COLORS.length];
-      var scale  = 0.7 + Math.random() * 0.65;
-      var w      = Math.round(34 * scale);
-      var h      = Math.round(30 * scale);
-      var flapMs = 600 + Math.random() * 300;
-      var delay  = i * 260 + Math.random() * 350;
+    var els = {
+      deck: document.getElementById('deck'), card: document.getElementById('card'),
+      front: document.getElementById('front'), back: document.getElementById('back'),
+      counts: document.getElementById('counts'), position: document.getElementById('position'),
+      prev: document.getElementById('prev'), next: document.getElementById('next'),
+      pause: document.getElementById('pause'), pauseIcon: document.getElementById('pause-icon')
+    };
+    var reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    var items = [], index = 0, flipped = false, timer = null, paused = false, holding = false;
 
-      el.className = 'butterfly';
-      el.innerHTML = makeSVG(color, w, h, flapMs);
-      el.style.opacity = '0';
+    function drawArt() {
+      var box = els.front.querySelector('.art');
+      if (!box || !items.length) return;
+      var l = look(items[index]);
+      box.innerHTML = topicArt(l.tag, l.face, l.accent, Math.max(1, Math.round(box.clientWidth)), Math.max(1, Math.round(box.clientHeight)));
+    }
 
-      var sp = speakerPos();
-      el.style.left = (sp.x - w/2) + 'px';
-      el.style.top  = (sp.y - h/2) + 'px';
+    // The app's fit: the largest of three sizes that holds the question in five lines.
+    function fitTitle() {
+      var q = els.front.querySelector('.card-q');
+      if (!q) return;
+      var sizes = [23, 20, 18];
+      for (var i = 0; i < sizes.length; i++) {
+        q.style.fontSize = sizes[i] + 'px';
+        if (q.scrollHeight <= sizes[i] * 1.1 * 5 + 2) return;
+      }
+    }
 
-      document.body.appendChild(el);
+    function paint() {
+      var item = items[index], k = kind(item), l = look(item);
+      var play = '<a class="btn play" href="#mitmachen" title="In der App mitmachen">' + esc(k.cta) + '</a>';
+      els.front.innerHTML =
+        '<div class="art"></div>' +
+        '<div class="front-body"><h3 class="card-q">' + esc(item.title) + '</h3>' +
+        (item.for_you ? '<p class="why">' + esc(item.for_you) + '</p>' : '') +
+        '<p class="meta">' + esc(metaLine(item)) + '</p><button class="btn play" type="button">Mehr Infos</button></div>';
+      els.back.innerHTML =
+        '<div class="strip" style="background:' + l.face + '"><span>' + esc(k.label + ' · ' + item.source_org) + '</span>' +
+        '<button class="close" type="button" data-turn aria-label="Karte umdrehen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
+        '<div class="back-content"><p>' + esc(item.summary) + '</p>' +
+        '<div class="facts">' + facts(item).map(function (f) { return '<span>' + esc(f) + '</span>'; }).join('') + '</div>' +
+        args('Dafür spricht', item.pro_argumente) + args('Dagegen spricht', item.contra_argumente) + '</div>' + play;
+      els.position.textContent = 'Aktion ' + (index + 1) + ' von ' + items.length;
+      fitTitle();
+      drawArt();
+    }
 
-      var b = {
-        el: el,
-        x: sp.x, y: sp.y,
-        sx: sp.x, sy: sp.y,
-        tx: 0, ty: 0,
-        cp1x:0, cp1y:0, cp2x:0, cp2y:0,
-        dur: 0, t0: 0,
-        tilt: 0,
-        going: false,
-        hw: w / 2, hh: h / 2
-      };
+    function setFlipped(f, instant) {
+      flipped = f;
+      if (instant) els.card.classList.add('instant');
+      els.card.classList.toggle('flipped', f);
+      els.front.setAttribute('aria-hidden', String(f)); els.front.inert = f;
+      els.back.setAttribute('aria-hidden', String(!f)); els.back.inert = !f;
+      if (instant) { void els.card.offsetWidth; els.card.classList.remove('instant'); }
+      if (f) { var c = els.back.querySelector('.close'); if (c) c.focus({ preventScroll: true }); }
+      schedule();
+    }
 
-      bflies.push(b);
-
+    // A new card is dealt face up; the old one leaves whichever side it showed.
+    function go(next) {
+      if (!items.length) return;
+      index = (next + items.length) % items.length;
+      if (reduced.matches) { paint(); setFlipped(false, true); return; }
+      els.deck.classList.remove('in'); els.deck.classList.add('out');
       setTimeout(function () {
-        el.style.transition = 'opacity .6s';
-        el.style.opacity = '0.72';
-        startFlight(b, true);
-      }, delay);
+        paint(); setFlipped(false, true);
+        els.deck.classList.remove('out'); void els.deck.offsetWidth; els.deck.classList.add('in');
+      }, 260);
     }
 
-    function init() {
-      for (var i = 0; i < NUM; i++) spawn(i);
-      requestAnimationFrame(tick);
+    // Deals the next card every few seconds while the front is up and nobody is reading.
+    function schedule() {
+      clearTimeout(timer);
+      if (paused || holding || flipped || reduced.matches || document.hidden || items.length < 2) return;
+      timer = setTimeout(function () { go(index + 1); schedule(); }, DWELL);
     }
 
-    if (document.readyState === 'complete') {
-      init();
-    } else {
-      window.addEventListener('load', init);
+    function setPaused(p) {
+      paused = p;
+      els.pause.setAttribute('aria-pressed', String(p));
+      els.pause.setAttribute('aria-label', p ? 'Weiter abspielen' : 'Anhalten');
+      els.pauseIcon.innerHTML = p
+        ? '<path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/>'
+        : '<rect x="6" y="5" width="4" height="14" rx="1.5"/><rect x="14" y="5" width="4" height="14" rx="1.5"/>';
+      schedule();
     }
+
+    function start(list, data) {
+      items = list; index = 0;
+      if (data) {
+        var parts = Object.keys(LEVELS).map(function (r) { return LEVELS[r] + ' ' + (data.by_region[r] || 0); });
+        els.counts.innerHTML = '<strong>' + data.total + ' Aktionen</strong> sind gerade offen: ' + parts.join(' · ');
+      }
+      paint(); setFlipped(false, true);
+    }
+
+    var controller = 'AbortController' in window ? new AbortController() : null;
+    var giveUp = setTimeout(function () { if (controller) controller.abort(); }, 9000);
+    fetch(API + '/v1/opportunities/preview', controller ? { signal: controller.signal } : {})
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (data) { clearTimeout(giveUp); if (!data.items || !data.items.length) throw new Error('empty'); start(data.items, data); })
+      .catch(function () {
+        clearTimeout(giveUp);
+        els.counts.textContent = 'Gerade keine Verbindung zu den aktuellen Aktionen. Die Karten hier sind Beispiele vom 12. November 2026.';
+        start(FALLBACK, null);
+      });
+
+    // Like the app: tapping the front turns the card over, the cross turns it back.
+    els.front.addEventListener('click', function (e) { if (!e.target.closest('a')) setFlipped(true); });
+    els.back.addEventListener('click', function (e) { if (e.target.closest('[data-turn]')) setFlipped(false); });
+    els.front.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && e.target === els.front) { e.preventDefault(); setFlipped(true); } });
+    els.front.tabIndex = 0;
+    els.front.setAttribute('aria-label', 'Aktion, zum Umdrehen antippen');
+    els.next.addEventListener('click', function () { go(index + 1); });
+    els.prev.addEventListener('click', function () { go(index - 1); });
+    els.pause.addEventListener('click', function () { setPaused(!paused); });
+    var stage = document.querySelector('.stage');
+    stage.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse') { holding = true; schedule(); } });
+    stage.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') { holding = false; schedule(); } });
+    stage.addEventListener('focusin', function () { holding = true; schedule(); });
+    stage.addEventListener('focusout', function () { holding = false; schedule(); });
+    document.addEventListener('visibilitychange', schedule);
+    if (reduced.addEventListener) reduced.addEventListener('change', schedule);
+    var resizeTimer;
+    window.addEventListener('resize', function () { clearTimeout(resizeTimer); resizeTimer = setTimeout(function () { fitTitle(); drawArt(); }, 120); });
   }());
   </script>
 </body>

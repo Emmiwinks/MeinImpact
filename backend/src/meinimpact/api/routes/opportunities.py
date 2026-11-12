@@ -8,10 +8,11 @@ takes the app's anonymous mark that someone did an opportunity; `news`
 serves what Mein Impact found on all tracked ones.
 """
 
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from meinimpact.api import schemas
 from meinimpact.api.dependencies import (
@@ -21,6 +22,8 @@ from meinimpact.api.dependencies import (
     require_principal,
 )
 from meinimpact.domain import repositories
+from meinimpact.domain.entities import Opportunity
+from meinimpact.infrastructure.ai.taxonomy import TAG_AXES
 from meinimpact.infrastructure.council.offices import FRAKTION_OFFICES
 from meinimpact.infrastructure.council.postgres_council_repository import (
     PostgresCouncilRepository,
@@ -36,6 +39,84 @@ router = APIRouter(
     tags=["opportunities"],
     dependencies=[Depends(require_principal)],
 )
+
+# The landing page reads this one without a session.
+public_router = APIRouter(prefix="/v1/opportunities", tags=["opportunities"])
+
+PREVIEW_SIZE = 12
+# Dresden first: the page is for people who live there.
+_PREVIEW_REGIONS = ("dresden", "sachsen", "bund", "eu")
+_TOPICS = list(TAG_AXES)
+
+
+def _easy(opportunity: Opportunity) -> bool:
+    """Everyday and easy to grasp, so a stranger gets it at a glance."""
+    return (opportunity.everyday_relevance or 0) >= 4 and (
+        opportunity.accessibility or 0
+    ) >= 4
+
+
+def preview_selection(opportunities: Sequence[Opportunity]) -> list[Opportunity]:
+    """Easy questions, soonest deadline first per level, levels taking turns."""
+    queues = {
+        region: sorted(
+            (o for o in opportunities if o.region == region and _easy(o)),
+            key=lambda o: (o.closes_on is None, o.closes_on),
+        )
+        for region in _PREVIEW_REGIONS
+    }
+    picked: list[Opportunity] = []
+    while len(picked) < PREVIEW_SIZE and any(queues.values()):
+        for region in _PREVIEW_REGIONS:
+            if queues[region] and len(picked) < PREVIEW_SIZE:
+                picked.append(queues[region].pop(0))
+    return picked
+
+
+def _topic_index(opportunity: Opportunity) -> int | None:
+    tags = opportunity.affected_tags
+    return _TOPICS.index(tags[0]) if tags and tags[0] in _TOPICS else None
+
+
+@public_router.get("/preview")
+async def get_opportunity_preview(
+    response: Response,
+    opportunity_repository: repositories.OpportunityRepository = Depends(
+        get_opportunity_repository
+    ),
+) -> schemas.OpportunityPreviewResponse:
+    """Counts and a few open questions for meinimpact.de."""
+    now = datetime.now(UTC)
+    opportunities = await opportunity_repository.list_open(now.date())
+    response.headers["Cache-Control"] = "public, max-age=900"
+    return schemas.OpportunityPreviewResponse(
+        total=len(opportunities),
+        by_region={
+            region: sum(1 for o in opportunities if o.region == region)
+            for region in _PREVIEW_REGIONS
+        },
+        items=[
+            schemas.OpportunityPreviewItemResponse(
+                title=o.title,
+                kind=o.kind,
+                region=o.region,
+                source_org=o.source_org,
+                summary=o.summary,
+                opens_on=o.opens_on,
+                closes_on=o.closes_on,
+                topic_index=_topic_index(o),
+                for_you=next(iter(o.personal_impact_snippets.values()), None),
+                pro_argumente=list(o.pro_argumente),
+                contra_argumente=list(o.contra_argumente),
+                support_count=o.support_count,
+                support_goal=o.support_goal,
+                place=o.organizer or o.locality,
+                districts=list(o.districts),
+            )
+            for o in preview_selection(opportunities)
+        ],
+        generated_at=now,
+    )
 
 
 @router.get("/pool")

@@ -281,6 +281,39 @@ class OpportunityPoolResponse(BaseModel):
     generated_at: datetime
 
 
+class OpportunityPreviewItemResponse(BaseModel):
+    """One action for the landing page, with what the app's card shows on
+    both faces. `topic_index` is the main topic's position in the topic list
+    (None for an untagged one), so the page draws and colours it like the
+    app does. `for_you` is one of its personal impact sentences."""
+
+    title: str
+    kind: str
+    region: str
+    source_org: str
+    summary: str
+    opens_on: date | None
+    closes_on: date | None
+    topic_index: int | None
+    for_you: str | None
+    pro_argumente: list[str]
+    contra_argumente: list[str]
+    support_count: int | None
+    support_goal: int | None
+    place: str | None
+    districts: list[str]
+
+
+class OpportunityPreviewResponse(BaseModel):
+    """A public taste of the pool for meinimpact.de: counts and a few easy
+    questions, no session needed."""
+
+    total: int
+    by_region: dict[str, int]
+    items: list[OpportunityPreviewItemResponse]
+    generated_at: datetime
+
+
 # ── Recommendations ───────────────────────────────────────────────────────────
 
 
