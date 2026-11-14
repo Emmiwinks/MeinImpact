@@ -190,16 +190,25 @@ void main() {
           ),
         ),
       );
-      expect(find.text('Mehr davon'), findsNothing);
+      expect(find.text('öfter'), findsNothing);
 
       await tester.tap(find.byType(ActionCard));
       await tester.pumpAndSettle();
+      expect(find.text('Karten zu Wohnen/Miete:'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('vote-less')));
       await tester.pumpAndSettle();
 
       expect(votes, [('Wohnen/Miete', InterestSignal.less)]);
-      expect(find.text('Wohnen/Miete zeigen wir dir seltener.'), findsOneWidget);
+      expect(
+        find.text('Karten zu Wohnen/Miete kommen seltener.'),
+        findsOneWidget,
+      );
       expect(find.byKey(const ValueKey('vote-more')), findsNothing);
+      // The vote does not turn the card; a tap on the back does.
+      expect(find.text('Zusammenfassung'), findsOneWidget);
+      await tester.tap(find.text('Zusammenfassung'));
+      await tester.pumpAndSettle();
+      expect(find.text('Zusammenfassung'), findsNothing);
     });
   });
 
@@ -235,6 +244,27 @@ void main() {
       await tester.tap(find.text('Frage 7?'));
       await tester.pumpAndSettle();
       expect(_fanAt('Karte 1 von 6'), findsOneWidget);
+    });
+
+    testWidgets('the next card is dealt face up after a turned one', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_Tab(pool: _pool(3)));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Frage 1?'));
+      await tester.pumpAndSettle();
+      expect(find.text('Antwort 1'), findsOneWidget);
+
+      await tester.flingFrom(
+        const Offset(400, 300),
+        const Offset(-250, 0),
+        900,
+      );
+      await tester.pumpAndSettle();
+      expect(_fanAt('Karte 2 von 3'), findsOneWidget);
+      expect(find.text('Antwort 2'), findsNothing);
+      expect(find.text('Antwort 1'), findsNothing);
     });
 
     testWidgets('after the last card the hand ends', (tester) async {

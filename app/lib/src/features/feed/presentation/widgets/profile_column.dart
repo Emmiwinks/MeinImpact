@@ -310,7 +310,8 @@ class _WertebildCardState extends State<_WertebildCard>
                 child: AnimatedBuilder(
                   animation: _turn,
                   builder: (context, _) {
-                    final angle = MiMotion.ease.transform(_turn.value) * math.pi;
+                    final angle =
+                        MiMotion.ease.transform(_turn.value) * math.pi;
                     final back = angle > math.pi / 2;
                     return Transform(
                       alignment: Alignment.center,
@@ -767,8 +768,8 @@ class _MiniTag extends StatelessWidget {
 // ── Deine Themen ────────────────────────────────────────────────────────
 
 /// A mirror of what the cards taught: the topics the feed shows more often,
-/// strongest first. Steering happens on the cards ("Mehr davon" / "Weniger
-/// davon"); here a topic can only be forgotten.
+/// strongest first. Steering happens on the cards ("öfter" / "seltener");
+/// here a topic can only be forgotten.
 class _TopicsSection extends StatelessWidget {
   const _TopicsSection({required this.interests, required this.onChanged});
 
@@ -789,8 +790,8 @@ class _TopicsSection extends StatelessWidget {
         const SizedBox(height: MiSpace.sm),
         if (favourites.isEmpty)
           Text(
-            'Was du auf den Karten öffnest, erledigst oder mit „Mehr davon“ '
-            'markierst, zeigen wir dir öfter. Diese Themen stehen dann hier.',
+            'Was du auf den Karten öffnest, erledigst oder auf „öfter“ '
+            'stellst, zeigen wir dir häufiger. Diese Themen stehen dann hier.',
             style: text.bodyMedium?.copyWith(color: colors.onTableMuted),
           )
         else

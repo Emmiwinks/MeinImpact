@@ -37,7 +37,7 @@ class HandView extends StatefulWidget {
   final Future<bool> Function(RankedOpportunity ranked) onPlay;
   final void Function(RankedOpportunity ranked) onPlayed;
   final void Function(RankedOpportunity ranked)? onOpened;
-  // "Mehr davon" / "Weniger davon" on a card's back, for one topic.
+  // "öfter" / "seltener" on a card's back, for one topic.
   final void Function(String tag, InterestSignal signal)? onVote;
 
   @override
@@ -184,6 +184,10 @@ class _HandViewState extends State<HandView>
             frontKey: _frontKey,
             builder: (ranked, {required isFront, required contentOpacity}) =>
                 ActionCard(
+              // The front card's GlobalKey moves to the next card on a
+              // swipe; keyed by action, the next one does not inherit the
+              // turned-over state and starts face up.
+              key: ValueKey(ranked.opportunity.id),
               ranked: ranked,
               actionLabel: widget.actionLabel(ranked.opportunity),
               isFront: isFront,

@@ -32,7 +32,7 @@ class ActionCard extends StatefulWidget {
   final VoidCallback? onAction;
   // The card was turned over to its back.
   final VoidCallback? onOpened;
-  // "Mehr davon" / "Weniger davon" on the back, for [voteTopic].
+  // "öfter" / "seltener" on the back, for [voteTopic].
   final void Function(String tag, InterestSignal signal)? onVote;
   // Only the front card of the hand reacts to taps.
   final bool isFront;
@@ -284,74 +284,79 @@ class _CardBack extends StatelessWidget {
     final facts = factChips(opportunity, DateTime.now());
     final topic = voteTopic(ranked);
     final cast = onVote;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          color: look.face(colors),
-          padding: const EdgeInsets.only(left: MiSpace.lg - 4),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '${opportunity.kind.label} · ${opportunity.sourceOrg}',
-                  style: text.labelMedium?.copyWith(color: colors.onCard),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+    final voting = topic != null && cast != null;
+    // A tap anywhere that is not a button turns the card back over.
+    return InkWell(
+      onTap: onTurn,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            color: look.face(colors),
+            padding: const EdgeInsets.only(left: MiSpace.lg - 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${opportunity.kind.label} · ${opportunity.sourceOrg}',
+                    style: text.labelMedium?.copyWith(color: colors.onCard),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              ),
-              IconButton(
-                onPressed: onTurn,
-                tooltip: 'Karte umdrehen',
-                color: colors.onCard,
-                icon: const Icon(Icons.close_rounded),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          // Fades out at the bottom edge, so more below the button reads
-          // as scrollable rather than cut off.
-          child: ShaderMask(
-            blendMode: BlendMode.dstIn,
-            shaderCallback: (bounds) => const LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Colors.black, Colors.black, Colors.transparent],
-              stops: [0, 0.86, 1],
-            ).createShader(bounds),
-            child: _BackContent(
-              opportunity: opportunity,
-              facts: facts,
-              text: text,
-              colors: colors,
+                IconButton(
+                  onPressed: onTurn,
+                  tooltip: 'Karte umdrehen',
+                  color: colors.onCard,
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
             ),
           ),
-        ),
-        if (topic != null && cast != null)
+          Expanded(
+            // Fades out at the bottom edge, so more below the button reads
+            // as scrollable rather than cut off.
+            child: ShaderMask(
+              blendMode: BlendMode.dstIn,
+              shaderCallback: (bounds) => const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.black, Colors.black, Colors.transparent],
+                stops: [0, 0.86, 1],
+              ).createShader(bounds),
+              child: _BackContent(
+                opportunity: opportunity,
+                facts: facts,
+                text: text,
+                colors: colors,
+              ),
+            ),
+          ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(
+            padding: EdgeInsets.fromLTRB(
               MiSpace.lg - 4,
-              MiSpace.xs,
+              MiSpace.sm,
               MiSpace.lg - 4,
-              0,
+              voting ? 0 : MiSpace.lg - 4,
             ),
-            child: _TopicVote(
-              topic: topic,
-              vote: vote,
-              onVote: (signal) => cast(topic, signal),
+            child: FilledButton(onPressed: onAction, child: Text(actionLabel)),
+          ),
+          if (voting)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                MiSpace.base,
+                0,
+                MiSpace.base,
+                MiSpace.xs,
+              ),
+              child: _TopicVote(
+                topic: topic,
+                vote: vote,
+                onVote: (signal) => cast(topic, signal),
+              ),
             ),
-          ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            MiSpace.lg - 4,
-            MiSpace.sm,
-            MiSpace.lg - 4,
-            MiSpace.lg - 4,
-          ),
-          child: FilledButton(onPressed: onAction, child: Text(actionLabel)),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -361,7 +366,8 @@ class _CardBack extends StatelessWidget {
 String? voteTopic(RankedOpportunity ranked) =>
     ranked.interestTag ?? ranked.opportunity.affectedTags.firstOrNull;
 
-/// "Mehr davon" / "Weniger davon" for the card's topic. Once said, the row
+/// One quiet line under the action button that names the topic and what a
+/// tap changes: "Karten zu Verkehr: öfter · seltener". Once said, the line
 /// answers in words; the feed picks the vote up on its next load.
 class _TopicVote extends StatelessWidget {
   const _TopicVote({
@@ -377,100 +383,101 @@ class _TopicVote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.mi;
-    final text = Theme.of(context).textTheme;
+    final style = Theme.of(context)
+        .textTheme
+        .labelSmall
+        ?.copyWith(color: colors.onCardMuted);
     final said = vote;
-    final label = text.labelMedium?.copyWith(color: colors.onCardMuted);
-    return AnimatedSwitcher(
-      duration: MiMotion.reduced(context) ? Duration.zero : MiMotion.flip,
-      child: said != null
-          ? SizedBox(
-              key: const ValueKey('voted'),
-              height: 48,
-              child: Row(
+    return SizedBox(
+      height: 40,
+      child: AnimatedSwitcher(
+        duration: MiMotion.reduced(context) ? Duration.zero : MiMotion.flip,
+        child: said != null
+            ? Row(
+                key: const ValueKey('voted'),
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
                     Icons.check_rounded,
-                    size: 18,
-                    color: colors.onCard,
+                    size: 14,
+                    color: colors.onCardMuted,
                   ),
-                  const SizedBox(width: MiSpace.sm),
-                  Expanded(
+                  const SizedBox(width: MiSpace.xs),
+                  Flexible(
                     child: Text(
                       said == InterestSignal.more
-                          ? '$topic zeigen wir dir öfter.'
-                          : '$topic zeigen wir dir seltener.',
-                      style: text.labelMedium?.copyWith(color: colors.onCard),
-                      maxLines: 2,
+                          ? 'Karten zu $topic kommen öfter.'
+                          : 'Karten zu $topic kommen seltener.',
+                      style: style,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
+              )
+            : Row(
+                key: const ValueKey('ask'),
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Flexible(
+                    child: Text(
+                      'Karten zu $topic:',
+                      style: style,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  _VoteLink(
+                    key: const ValueKey('vote-more'),
+                    label: 'öfter',
+                    style: style,
+                    onPressed: () => onVote(InterestSignal.more),
+                  ),
+                  Text('·', style: style),
+                  _VoteLink(
+                    key: const ValueKey('vote-less'),
+                    label: 'seltener',
+                    style: style,
+                    onPressed: () => onVote(InterestSignal.less),
+                  ),
+                ],
               ),
-            )
-          : Column(
-              key: const ValueKey('ask'),
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  topic,
-                  style: label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: MiSpace.xs),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _VoteButton(
-                        key: const ValueKey('vote-more'),
-                        label: 'Mehr davon',
-                        onPressed: () => onVote(InterestSignal.more),
-                      ),
-                    ),
-                    const SizedBox(width: MiSpace.sm),
-                    Expanded(
-                      child: _VoteButton(
-                        key: const ValueKey('vote-less'),
-                        label: 'Weniger davon',
-                        onPressed: () => onVote(InterestSignal.less),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+      ),
     );
   }
 }
 
-class _VoteButton extends StatelessWidget {
-  const _VoteButton({
+/// A word in the vote line that reads as a link, not a button.
+class _VoteLink extends StatelessWidget {
+  const _VoteLink({
     required this.label,
+    required this.style,
     required this.onPressed,
     super.key,
   });
 
   final String label;
+  final TextStyle? style;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.mi;
-    return OutlinedButton(
+    return TextButton(
       onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: colors.onCard,
-        side: BorderSide(color: colors.onCardMuted),
-        minimumSize: const Size.fromHeight(40),
-        padding: const EdgeInsets.symmetric(horizontal: MiSpace.xs),
-        shape: const StadiumBorder(),
-        textStyle: const TextStyle(
-          fontFamily: MiFonts.text,
-          fontSize: 13,
+      style: TextButton.styleFrom(
+        foregroundColor: context.mi.onCardMuted,
+        minimumSize: const Size(0, 40),
+        padding: const EdgeInsets.symmetric(horizontal: MiSpace.xs + 2),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      child: Text(
+        label,
+        style: style?.copyWith(
           fontWeight: FontWeight.w700,
+          decoration: TextDecoration.underline,
+          decorationColor: style?.color,
         ),
       ),
-      child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
     );
   }
 }

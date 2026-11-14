@@ -78,7 +78,7 @@ void main() {
       (tester) async {
     await _pump(tester, const UserProfile());
 
-    expect(find.textContaining('Mehr davon'), findsOneWidget);
+    expect(find.textContaining('auf „öfter“ stellst'), findsOneWidget);
   });
 
   testWidgets('the Rucksack shows public Lebenslagen and the Wahlkreis',
