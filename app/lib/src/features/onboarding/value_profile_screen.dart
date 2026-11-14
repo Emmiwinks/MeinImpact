@@ -75,8 +75,13 @@ class ValueProfileScreen extends StatefulWidget {
     required this.onComplete,
     this.onUseExampleProfile,
     this.initial = const {},
+    this.onCancel,
     super.key,
   });
+
+  /// System Back on the first question, when re-doing the questionnaire
+  /// from the profile: leaves without saving. Null lets the route pop.
+  final VoidCallback? onCancel;
 
   /// The answered questions only; skipped ones stay out (they count as 0).
   final void Function(Map<String, double> werte) onComplete;
@@ -107,7 +112,6 @@ class _ValueProfileScreenState extends State<ValueProfileScreen>
     duration: const Duration(milliseconds: 1400),
   );
   bool _revealing = false;
-  DateTime _revealedAt = DateTime.now();
   // Which way the cards are dealt: on to the next question, or back.
   bool _forward = true;
 
@@ -153,10 +157,7 @@ class _ValueProfileScreenState extends State<ValueProfileScreen>
       _done();
       return;
     }
-    setState(() {
-      _revealing = true;
-      _revealedAt = DateTime.now();
-    });
+    setState(() => _revealing = true);
     if (MiMotion.reduced(context)) {
       _reveal.value = 1;
       return;
@@ -203,6 +204,8 @@ class _ValueProfileScreenState extends State<ValueProfileScreen>
         _forward = false;
         _step--;
       });
+    } else {
+      widget.onCancel?.call();
     }
   }
 
@@ -212,7 +215,7 @@ class _ValueProfileScreenState extends State<ValueProfileScreen>
     final isLast = _step == _kStatements.length - 1;
 
     return PopScope(
-      canPop: !_revealing && _step == 0,
+      canPop: !_revealing && _step == 0 && widget.onCancel == null,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _back();
       },
@@ -403,13 +406,6 @@ class _ValueProfileScreenState extends State<ValueProfileScreen>
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: MiSpace.xs),
-                    Text(
-                      '${werteBildNummer(_answers)} · ${_date(_revealedAt)}',
-                      style: text.labelMedium?.copyWith(
-                        color: colors.onTableMuted,
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -513,9 +509,6 @@ class _ValueProfileScreenState extends State<ValueProfileScreen>
       ),
     );
   }
-
-  static String _date(DateTime d) => '${d.day.toString().padLeft(2, '0')}.'
-      '${d.month.toString().padLeft(2, '0')}.${d.year}';
 }
 
 /// Where the user is in the questionnaire: one dot per question, the

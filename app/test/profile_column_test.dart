@@ -6,7 +6,8 @@ import 'package:meinimpact/src/features/feed/domain/user_profile.dart';
 import 'package:meinimpact/src/features/feed/presentation/widgets/profile_column.dart';
 
 void main() {
-  testWidgets('values show both poles of every axis', (tester) async {
+  testWidgets('the picture shows no values until it is turned over',
+      (tester) async {
     await _pump(
       tester,
       const UserProfile(
@@ -14,6 +15,14 @@ void main() {
       ),
     );
 
+    expect(find.text('Zum Anzeigen tippen'), findsOneWidget);
+    expect(find.text('Umverteilung'), findsNothing);
+    expect(find.textContaining('Nr.'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('wertebild')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Zum Verbergen tippen'), findsOneWidget);
     for (final pole in [
       'Umverteilung',
       'Freier Markt',
@@ -26,7 +35,7 @@ void main() {
     ]) {
       expect(find.text(pole), findsOneWidget);
     }
-    expect(find.text('Fragebogen erneut ausfüllen'), findsOneWidget);
+    expect(find.text('Neu malen'), findsOneWidget);
   });
 
   testWidgets('without answers it says so', (tester) async {
@@ -37,33 +46,61 @@ void main() {
     expect(find.text('Umverteilung'), findsNothing);
   });
 
-  testWidgets('only set topics show; all of them open in a sheet',
+  testWidgets('only favoured topics show, and one can be forgotten',
       (tester) async {
     InterestWeights? changed;
     await _pump(
       tester,
-      const UserProfile(
+      UserProfile(
         interests: InterestWeights(
-          manual: {'Wohnen/Miete': InterestLevel.more},
+          weights: const {
+            'Wohnen/Miete': 0.5,
+            'Umwelt/Natur': 0.1,
+            'Sicherheit': -0.5,
+          },
+          asOf: DateTime.now(),
         ),
       ),
       onInterestsChanged: (w) => changed = w,
     );
 
-    expect(find.text('Wohnen/Miete · mehr'), findsOneWidget);
+    expect(find.byKey(const ValueKey('topic-Wohnen/Miete')), findsOneWidget);
     expect(find.byKey(const ValueKey('topic-Umwelt/Natur')), findsNothing);
+    expect(find.byKey(const ValueKey('topic-Sicherheit')), findsNothing);
 
-    await tester.tap(find.text('Anpassen'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('topic-Umwelt/Natur')).last);
-    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Wohnen/Miete vergessen'));
 
-    expect(changed?.manual['Umwelt/Natur'], InterestLevel.more);
-    // The sheet follows the change at once.
-    expect(find.text('Umwelt/Natur · mehr'), findsOneWidget);
+    expect(changed?.weights.containsKey('Wohnen/Miete'), isFalse);
+    expect(changed?.weights['Sicherheit'], closeTo(-0.5, 1e-3));
   });
 
-  testWidgets('the Lebenslagen picker opens in a sheet', (tester) async {
+  testWidgets('without favoured topics it says where they come from',
+      (tester) async {
+    await _pump(tester, const UserProfile());
+
+    expect(find.textContaining('Mehr davon'), findsOneWidget);
+  });
+
+  testWidgets('the Rucksack shows public Lebenslagen and the Wahlkreis',
+      (tester) async {
+    await _pump(
+      tester,
+      const UserProfile(
+        plz: '01067',
+        mdbWahlkreis: 'Dresden I',
+        mdbName: 'Jana Beispiel',
+        mdbParty: 'Partei',
+        lebenslagen: {'mieter', 'eltern'},
+      ),
+    );
+
+    expect(find.text('Dresden I'), findsWidgets);
+    expect(find.text('Im Bundestag: Jana Beispiel, Partei'), findsOneWidget);
+    expect(find.text('Mieter:in'), findsOneWidget);
+  });
+
+  testWidgets('without a Rucksack screen, Umpacken opens the picker',
+      (tester) async {
     Set<String>? changed;
     await _pump(
       tester,
@@ -71,7 +108,7 @@ void main() {
       onLebenslagenChanged: (ids) => changed = ids,
     );
 
-    await tester.tap(find.text('Bearbeiten'));
+    await tester.tap(find.text('Umpacken'));
     await tester.pumpAndSettle();
     expect(find.text('Was ist dir wichtig?'), findsOneWidget);
 

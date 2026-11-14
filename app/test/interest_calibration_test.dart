@@ -262,6 +262,7 @@ void main() {
   test('a user who changes taste is followed within a few weeks', () {
     const config = InterestConfig();
     final from = DateTime(2026, 11, 1);
+    final switchDay = from.add(const Duration(days: 30));
     final first = _live(
       config: config,
       favourite: 'Umwelt/Natur',
@@ -270,25 +271,47 @@ void main() {
       days: 30,
     );
 
-    int? newLeads;
-    _live(
-      config: config,
-      favourite: 'Mobilität/Verkehr',
-      start: first,
-      from: from.add(const Duration(days: 30)),
-      days: 30,
-      onDay: (day, feed) {
-        if (newLeads == null &&
-            feed.first.opportunity.affectedTags.first == 'Mobilität/Verkehr') {
-          newLeads = day;
-        }
-      },
+    int? daysUntilLeads(UserProfile start) {
+      int? newLeads;
+      _live(
+        config: config,
+        favourite: 'Mobilität/Verkehr',
+        start: start,
+        from: switchDay,
+        days: 40,
+        onDay: (day, feed) {
+          if (newLeads == null &&
+              feed.first.opportunity.affectedTags.first ==
+                  'Mobilität/Verkehr') {
+            newLeads = day;
+          }
+        },
+      );
+      return newLeads;
+    }
+
+    // Behaviour alone, and with one "Weniger davon" on the old favourite.
+    final silent = daysUntilLeads(first);
+    final voted = daysUntilLeads(
+      first.copyWith(
+        interests: first.interests.record(
+          ['Umwelt/Natur'],
+          InterestSignal.less,
+          switchDay,
+          config,
+        ),
+      ),
     );
     // ignore: avoid_print
-    print('taste change: new favourite leads after $newLeads days');
+    print('taste change: new favourite leads after $silent days, '
+        '$voted with one "Weniger davon"');
 
-    expect(newLeads, isNotNull);
-    expect(newLeads, lessThan(16));
+    // A 30-day half-life (chosen 2026-11-14, so a vote lasts) follows a
+    // silent change in ~25 days; the card vote is the fast way.
+    expect(silent, isNotNull);
+    expect(silent, lessThan(30));
+    expect(voted, isNotNull);
+    expect(voted, lessThan(silent!));
   });
 
   test('half-life sweep: how fast a taste change is followed', () {

@@ -115,6 +115,33 @@ void main() {
     expect(result, {'wirtschaft_staat': 1.25});
   });
 
+  testWidgets('Back steps through the questions, then cancels', (tester) async {
+    var cancelled = false;
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: miTheme(Brightness.dark),
+        home: ValueProfileScreen(
+          onComplete: (_) {},
+          onCancel: () => cancelled = true,
+        ),
+      ),
+    );
+    await tester.tap(find.text('Überspringen'));
+    await tester.pumpAndSettle();
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(cancelled, isFalse);
+    expect(find.textContaining('Der Staat sollte große Vermögen'), findsOne);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(cancelled, isTrue);
+  });
+
   test('profiles saved with whole steps still load', () {
     final profile = UserProfile.fromJson({
       'werte': {'wirtschaft_gleichheit': -2, 'wandel_zukunft': 0.75},

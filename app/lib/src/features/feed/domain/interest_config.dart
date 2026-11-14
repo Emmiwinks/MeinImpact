@@ -10,25 +10,30 @@ class InterestConfig {
   const InterestConfig({
     this.openedDelta = 0.1,
     this.actedDelta = 0.3,
+    this.moreDelta = 0.5,
+    this.lessDelta = -0.5,
     this.maxWeight = 1.0,
-    this.halfLife = const Duration(days: 14),
+    this.halfLife = const Duration(days: 30),
     this.neutralBand = 0.05,
     this.reasonThreshold = 0.15,
     this.matchBonus = 0.25,
     this.minMatchWeight = 0.3,
     this.rankingInfluence = 0.3,
     this.explorationInterval = 5,
-    this.manualMore = 0.6,
-    this.manualLess = -0.6,
   });
 
   // Weight gained by a topic when its card is opened / acted on.
   final double openedDelta;
   final double actedDelta;
+  // Weight a "Mehr davon" / "Weniger davon" on a card gives its topic.
+  final double moreDelta;
+  final double lessDelta;
   // Weights are clamped to -maxWeight..+maxWeight.
   final double maxWeight;
-  // Time for a weight to fall to half its value. 14 days follows a change
-  // of taste in ~12 days (calibration test); 30 days took 25.
+  // Time for a weight to fall to half its value. 30 days keeps a "Weniger
+  // davon" for about two months; behaviour alone then follows a change of
+  // taste in ~25 days instead of ~12 at 14 days (calibration test), and a
+  // card vote speeds that up.
   final Duration halfLife;
   // Below this magnitude a topic counts as "no opinion" (unexplored).
   final double neutralBand;
@@ -46,13 +51,10 @@ class InterestConfig {
   // Every n-th slot goes to an unexplored topic; 0 turns exploration off.
   final int explorationInterval;
 
-  // Weight a topic set to "mehr" / "weniger" by hand adds on top of what
-  // was learned; manual levels never decay.
-  final double manualMore;
-  final double manualLess;
-
   double deltaFor(InterestSignal signal) => switch (signal) {
         InterestSignal.opened => openedDelta,
         InterestSignal.acted => actedDelta,
+        InterestSignal.more => moreDelta,
+        InterestSignal.less => lessDelta,
       };
 }

@@ -19,7 +19,7 @@ import 'package:meinimpact/src/features/feed/domain/opportunity_repository.dart'
 import 'package:meinimpact/src/features/feed/domain/user_profile.dart';
 import 'package:meinimpact/src/features/feed/presentation/aktionen_tab.dart';
 import 'package:meinimpact/src/features/feed/presentation/letter_screen.dart';
-import 'package:meinimpact/src/features/onboarding/demographic_screen.dart';
+import 'package:meinimpact/src/features/onboarding/rucksack/rucksack_screen.dart';
 import 'package:meinimpact/src/features/onboarding/value_profile_screen.dart';
 import 'package:meinimpact/src/features/tracking/domain/action_log.dart';
 import 'package:meinimpact/src/features/tracking/domain/impact_news.dart';
@@ -273,12 +273,8 @@ void main() {
         },
       ),
     );
-    testWidgets(
-      'about you, ${brightness.name}',
-      (t) => screen(
-        t,
-        'phone-ueber-dich-${brightness.name}',
-        DemographicScreen(
+    RucksackScreen rucksack() => RucksackScreen(
+          werte: someAnswers,
           onComplete: (_) {},
           onLookupMdb: (_) async => const [
             MdbOption(
@@ -294,12 +290,41 @@ void main() {
               mdbParty: 'Partei B',
             ),
           ],
-        ),
+        );
+    testWidgets(
+      'rucksack, where you live, ${brightness.name}',
+      (t) => screen(
+        t,
+        'phone-rucksack-plz-${brightness.name}',
+        rucksack(),
         brightness: brightness,
         act: (t) async {
           await t.enterText(find.byType(TextField).first, '01067');
-          await t.pump();
-          await t.tap(find.text('Suchen'));
+        },
+      ),
+    );
+    testWidgets(
+      'rucksack, packed, ${brightness.name}',
+      (t) => screen(
+        t,
+        'phone-rucksack-${brightness.name}',
+        rucksack(),
+        brightness: brightness,
+        act: (t) async {
+          await t.enterText(find.byType(TextField).first, '01067');
+          await t.pumpAndSettle();
+          await t.tap(find.text('Weiter'));
+          await t.pumpAndSettle();
+          for (final label in ['Mieter:in', 'Auf Wohnungssuche']) {
+            await t.tap(find.text(label));
+            await t.pumpAndSettle();
+          }
+          // On to Gesundheit, all of it private.
+          for (var i = 0; i < 3; i++) {
+            await t.fling(find.byType(PageView), const Offset(-300, 0), 1000);
+            await t.pumpAndSettle();
+          }
+          await t.tap(find.textContaining('Chronisch krank'));
         },
       ),
     );
@@ -366,10 +391,54 @@ void main() {
     'pitch 4, profile',
     (t) => pitch(t, '4-profile', act: (t) => t.tap(find.text('Mein Profil'))),
   );
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      'profile, ${brightness.name}',
+      (t) => shoot(
+        t,
+        'phone-profile-${brightness.name}',
+        brightness: brightness,
+        profile: _pitchProfile,
+        act: (t) => t.tap(find.text('Mein Profil')),
+      ),
+    );
+    testWidgets(
+      'profile turned over, ${brightness.name}',
+      (t) => shoot(
+        t,
+        'phone-profile-turned-${brightness.name}',
+        brightness: brightness,
+        profile: _pitchProfile,
+        act: (t) async {
+          await t.tap(find.text('Mein Profil'));
+          await t.pumpAndSettle();
+          await t.tap(find.byKey(const ValueKey('wertebild')));
+        },
+      ),
+    );
+    testWidgets(
+      'profile, lower half, ${brightness.name}',
+      (t) => shoot(
+        t,
+        'phone-profile-lower-${brightness.name}',
+        brightness: brightness,
+        profile: _pitchProfile,
+        act: (t) async {
+          await t.tap(find.text('Mein Profil'));
+          await t.pumpAndSettle();
+          await t.scrollUntilVisible(
+            find.text('Deine Themen'),
+            300,
+            scrollable: find.byType(Scrollable).first,
+          );
+        },
+      ),
+    );
+  }
 }
 
-const _pitchProfile = UserProfile(
-  werte: {
+final _pitchProfile = UserProfile(
+  werte: const {
     'wirtschaft_gleichheit': 1,
     'wirtschaft_staat': 0,
     'diplomatie_nation': -1,
@@ -379,12 +448,18 @@ const _pitchProfile = UserProfile(
     'wandel_tradition': -1,
     'wandel_zukunft': 1,
   },
-  lebenslagen: {'eltern', 'oepnv', 'mieter'},
+  plz: '01067',
+  mdbWahlkreis: 'Dresden I',
+  mdbName: 'Jana Beispiel',
+  mdbParty: 'Partei',
+  lebenslagen: const {'eltern', 'oepnv', 'mieter'},
   interests: InterestWeights(
-    manual: {
-      'Mobilität/Verkehr': InterestLevel.more,
-      'Familie/Kinder': InterestLevel.more,
+    weights: const {
+      'Mobilität/Verkehr': 0.7,
+      'Familie/Kinder': 0.5,
+      'Umwelt/Natur': 0.2,
     },
+    asOf: DateTime.now(),
   ),
 );
 

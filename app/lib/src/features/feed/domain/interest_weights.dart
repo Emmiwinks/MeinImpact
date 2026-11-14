@@ -2,81 +2,91 @@ import 'dart:math';
 
 import 'interest_config.dart';
 
-/// What the user did with an opportunity. How strongly each counts is set
-/// in [InterestConfig].
+/// What the user did with an opportunity or its topic. How strongly each
+/// counts is set in [InterestConfig].
 enum InterestSignal {
   // Opened the detail view.
   opened,
   // Followed the call to action to the registry.
   acted,
+  // "Mehr davon" on the card, for its topic.
+  more,
+  // "Weniger davon" on the card, for its topic.
+  less,
 }
 
-/// What the user set by hand for a topic in "Deine Themen". Absent = normal
-/// (only what was learned counts).
-enum InterestLevel { less, more }
-
-/// On-device interest per topic tag (the backend's fixed taxonomy), learned
-/// from behaviour. -maxWeight..+maxWeight, 0 = neutral. Never leaves the
-/// device and only reorders the feed, never hides anything.
+/// On-device interest per topic tag (the backend's fixed taxonomy).
+/// -maxWeight..+maxWeight, 0 = neutral. Never leaves the device and only
+/// reorders the feed, never hides anything.
+///
+/// One number per topic: what the user opens, does and says on the card all
+/// add to it, so the profile can show exactly what the ranking uses.
 ///
 /// This holds data only; every tuning number comes from the [InterestConfig]
 /// passed to each call. Weights drift back to neutral with the config's
 /// half-life, so old interests fade instead of locking the feed in. Decay is
 /// applied lazily: [asOf] is the moment the stored weights were last current.
-///
-/// [manual] holds what the user set by hand. It does not decay (a "mehr"
-/// should not fade after two weeks) and is added on top of what was learned.
 class InterestWeights {
-  const InterestWeights({
-    this.weights = const {},
-    this.asOf,
-    this.manual = const {},
-  });
+  const InterestWeights({this.weights = const {}, this.asOf});
 
   factory InterestWeights.fromJson(Map<String, Object?> json) {
     final raw = json['weights'] as Map<String, Object?>? ?? {};
     final asOf = json['as_of'] as String?;
-    final manualRaw = json['manual'] as Map<String, Object?>? ?? {};
-    return InterestWeights(
-      weights: raw.map((k, v) => MapEntry(k, (v as num).toDouble())),
-      asOf: asOf == null ? null : DateTime.tryParse(asOf),
-      manual: {
-        for (final MapEntry(:key, :value) in manualRaw.entries)
-          if (InterestLevel.values.asNameMap()[value] case final level?)
-            key: level,
-      },
-    );
+    final weights = raw.map((k, v) => MapEntry(k, (v as num).toDouble()));
+    var since = asOf == null ? null : DateTime.tryParse(asOf);
+    // Before 2026-11-14 "mehr"/"weniger" was a separate, permanent level.
+    // It is folded in as one card vote, current as of loading.
+    final legacy = json['manual'] as Map<String, Object?>? ?? {};
+    if (legacy.isNotEmpty) {
+      final now = DateTime.now();
+      if (since != null) {
+        final factor = _decayFactor(since, now, _legacyHalfLife);
+        weights.updateAll((_, w) => w * factor);
+      }
+      since = now;
+      for (final MapEntry(:key, :value) in legacy.entries) {
+        final vote = switch (value) {
+          'more' => _legacyVote,
+          'less' => -_legacyVote,
+          _ => 0.0,
+        };
+        weights[key] = ((weights[key] ?? 0) + vote).clamp(-1.0, 1.0);
+      }
+    }
+    return InterestWeights(weights: weights, asOf: since);
   }
+
+  // The defaults when the legacy levels were folded in.
+  static const _legacyHalfLife = Duration(days: 14);
+  static const _legacyVote = 0.5;
 
   final Map<String, double> weights;
   final DateTime? asOf;
-  final Map<String, InterestLevel> manual;
 
-  bool hasSignal(DateTime now, InterestConfig config) {
-    final tags = {...weights.keys, ...manual.keys};
-    return tags.any(
-      (tag) => weightOf(tag, now, config).abs() >= config.neutralBand,
-    );
-  }
+  bool hasSignal(DateTime now, InterestConfig config) => weights.keys.any(
+        (tag) => weightOf(tag, now, config).abs() >= config.neutralBand,
+      );
 
-  /// Effective weight: learned (decayed) plus the manual level, clamped.
+  /// The weight of [tag], decayed to [now].
   double weightOf(String tag, DateTime now, InterestConfig config) {
-    final level = manual[tag];
-    final manualValue = switch (level) {
-      InterestLevel.more => config.manualMore,
-      InterestLevel.less => config.manualLess,
-      null => 0.0,
-    };
-    return (learnedOf(tag, now, config) + manualValue)
-        .clamp(-config.maxWeight, config.maxWeight);
-  }
-
-  /// What behaviour taught, decayed to [now], without the manual level.
-  double learnedOf(String tag, DateTime now, InterestConfig config) {
     final stored = weights[tag];
     final since = asOf;
     if (stored == null || since == null) return 0;
     return stored * _decayFactor(since, now, config.halfLife);
+  }
+
+  /// The topics the feed favours, strongest first: those at or above the
+  /// config's reason threshold, the same ones a card may name as its reason.
+  List<String> favourites(DateTime now, InterestConfig config) {
+    final strong = [
+      for (final tag in weights.keys)
+        if (weightOf(tag, now, config) >= config.reasonThreshold) tag,
+    ];
+    return strong
+      ..sort(
+        (a, b) =>
+            weightOf(b, now, config).compareTo(weightOf(a, now, config)),
+      );
   }
 
   /// The strongest opinion among [tags] (largest magnitude, sign kept), so a
@@ -123,9 +133,9 @@ class InterestWeights {
     return best;
   }
 
-  /// Weights after [signal] on an opportunity with [tags]. The signal is
-  /// shared across the tags (divided by sqrt of their count) so a card with
-  /// many tags does not inflate all of them.
+  /// Weights after [signal] on [tags]. The signal is shared across the tags
+  /// (divided by sqrt of their count) so a card with many tags does not
+  /// inflate all of them; a card vote names one tag and counts in full.
   InterestWeights record(
     Iterable<String> tags,
     InterestSignal signal,
@@ -135,35 +145,29 @@ class InterestWeights {
     final unique = tags.toSet();
     if (unique.isEmpty) return this;
     final share = config.deltaFor(signal) / sqrt(unique.length);
-    final updated = <String, double>{
-      for (final tag in weights.keys) tag: learnedOf(tag, now, config),
-    };
+    final updated = _decayedTo(now, config);
     for (final tag in unique) {
       updated[tag] = ((updated[tag] ?? 0) + share)
           .clamp(-config.maxWeight, config.maxWeight);
     }
-    return InterestWeights(weights: updated, asOf: now, manual: manual);
+    return InterestWeights(weights: updated, asOf: now);
   }
 
-  /// A copy with [tag] set by hand to [level] (null = back to normal).
-  InterestWeights withManual(String tag, InterestLevel? level) {
+  /// A copy without [tag]: back to neutral, as if never seen.
+  InterestWeights forget(String tag, DateTime now, InterestConfig config) {
     return InterestWeights(
-      weights: weights,
-      asOf: asOf,
-      manual: {
-        for (final MapEntry(:key, :value) in manual.entries)
-          if (key != tag) key: value,
-        if (level != null) tag: level,
-      },
+      weights: _decayedTo(now, config)..remove(tag),
+      asOf: now,
     );
   }
+
+  Map<String, double> _decayedTo(DateTime now, InterestConfig config) => {
+        for (final tag in weights.keys) tag: weightOf(tag, now, config),
+      };
 
   Map<String, Object?> toJson() => {
         'weights': weights,
         'as_of': asOf?.toIso8601String(),
-        'manual': {
-          for (final MapEntry(:key, :value) in manual.entries) key: value.name,
-        },
       };
 
   static double _decayFactor(DateTime since, DateTime now, Duration halfLife) {

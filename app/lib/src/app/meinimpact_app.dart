@@ -10,7 +10,7 @@ import '../features/feed/domain/interest_weights.dart';
 import '../features/feed/domain/opportunity.dart';
 import '../features/feed/domain/opportunity_repository.dart';
 import '../features/feed/domain/user_profile.dart';
-import '../features/onboarding/demographic_screen.dart';
+import '../features/onboarding/rucksack/rucksack_screen.dart';
 import '../features/onboarding/value_profile_screen.dart';
 import '../features/tracking/data/action_log_store.dart';
 import '../features/tracking/domain/action_log.dart';
@@ -72,6 +72,11 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
   // quiz from "Mein Profil" — demographic data is left untouched, see
   // _onWerteRequizComplete.
   bool _requizWerte = false;
+  // True while the owner re-packs the Rucksack (PLZ and Lebenslagen) from
+  // "Mein Profil".
+  bool _repack = false;
+  // The tab the shell opens on: back from those two, it is Mein Profil.
+  int _homeTab = 1;
   late ActionLog _actionLog;
 
   @override
@@ -108,14 +113,14 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
     });
   }
 
-  Future<void> _onDemographicComplete(UserProfile? patch) async {
+  Future<void> _onDemographicComplete(UserProfile patch) async {
     final profile = UserProfile(
       werte: _pendingWerte!,
-      plz: patch?.plz,
-      mdbName: patch?.mdbName,
-      mdbParty: patch?.mdbParty,
-      mdbWahlkreis: patch?.mdbWahlkreis,
-      lebenslagen: patch?.lebenslagen ?? const {},
+      plz: patch.plz,
+      mdbName: patch.mdbName,
+      mdbParty: patch.mdbParty,
+      mdbWahlkreis: patch.mdbWahlkreis,
+      lebenslagen: patch.lebenslagen,
     );
     await widget._profileStore?.save(profile);
     setState(() => _profile = profile);
@@ -133,6 +138,31 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
     setState(() {
       _profile = updated;
       _requizWerte = false;
+      _homeTab = 0;
+    });
+  }
+
+  Future<void> _onRepackComplete(UserProfile patch) async {
+    final current = _profile!;
+    final keepMdb = patch.plz != null &&
+        patch.plz == current.plz &&
+        patch.mdbWahlkreis == null;
+    final updated = UserProfile(
+      werte: current.werte,
+      region: current.region,
+      plz: patch.plz,
+      // The same PLZ without a fresh lookup (offline) keeps its members.
+      mdbName: keepMdb ? current.mdbName : patch.mdbName,
+      mdbParty: keepMdb ? current.mdbParty : patch.mdbParty,
+      mdbWahlkreis: keepMdb ? current.mdbWahlkreis : patch.mdbWahlkreis,
+      lebenslagen: patch.lebenslagen,
+      interests: current.interests,
+    );
+    await widget._profileStore?.save(updated);
+    setState(() {
+      _profile = updated;
+      _repack = false;
+      _homeTab = 0;
     });
   }
 
@@ -151,14 +181,14 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
   // Interests are learned silently: persisted, but the open feed is not
   // re-ranked under the user's finger (the next feed load picks them up).
   Future<void> _onInterestSignal(
-    Opportunity opportunity,
+    List<String> tags,
     InterestSignal signal,
   ) async {
     final current = _profile;
     if (current == null) return;
     final updated = current.copyWith(
       interests: current.interests.record(
-        opportunity.affectedTags,
+        tags,
         signal,
         DateTime.now(),
         widget._interestConfig,
@@ -204,11 +234,29 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
     // Profile loaded → show the tab shell (unless the owner chose to redo
     // just the Werteprofil quiz — demographic data is always editable
     // inline instead, see onLebenslagenChanged below).
+    if (_profile != null && _repack) {
+      return RucksackScreen(
+        werte: _profile!.werte,
+        dropPicture: false,
+        initialPlz: _profile!.plz,
+        initialWahlkreis: _profile!.mdbWahlkreis,
+        initialLebenslagen: _profile!.lebenslagen,
+        onComplete: _onRepackComplete,
+        onLookupMdb: widget._opportunityRepository.lookupMdb,
+        onBack: () => setState(() {
+          _repack = false;
+          _homeTab = 0;
+        }),
+      );
+    }
+
     if (_profile != null && !_requizWerte) {
       return MainTabScreen(
         opportunityRepository: widget._opportunityRepository,
         profile: _profile,
+        initialTab: _homeTab,
         onEditProfile: () => setState(() => _requizWerte = true),
+        onEditLebenslagen: () => setState(() => _repack = true),
         onLebenslagenChanged: _onLebenslagenChanged,
         onInterestsChanged: _onInterestsChanged,
         onInterestSignal: _onInterestSignal,
@@ -223,22 +271,30 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
       return ValueProfileScreen(
         initial: _profile!.werte,
         onComplete: _onWerteRequizComplete,
+        onCancel: () => setState(() {
+          _requizWerte = false;
+          _homeTab = 0;
+        }),
       );
     }
 
     // Onboarding step 0: value profile
     if (_onboardingStep == 0) {
       return ValueProfileScreen(
+        // Back from the Rucksack keeps what was answered.
+        initial: _pendingWerte ?? const {},
         onComplete: _onWerteComplete,
         onUseExampleProfile: _onUseExampleProfile,
       );
     }
 
-    // Onboarding step 1: demographics (PLZ + MdB + Lebenslagen) —
+    // Onboarding step 1: the Rucksack (PLZ + MdB, then Lebenslagen) —
     // optional
-    return DemographicScreen(
+    return RucksackScreen(
+      werte: _pendingWerte ?? const {},
       onComplete: _onDemographicComplete,
       onLookupMdb: widget._opportunityRepository.lookupMdb,
+      onBack: () => setState(() => _onboardingStep = 0),
     );
   }
 }

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../../../../app/theme/mi_theme.dart';
 import '../../data/opportunity_relevance_ranker.dart';
+import '../../domain/interest_weights.dart';
 import '../../domain/opportunity.dart';
 import 'action_card.dart';
 import 'all_actions_screen.dart';
@@ -25,6 +26,7 @@ class HandView extends StatefulWidget {
     required this.onPlay,
     required this.onPlayed,
     this.onOpened,
+    this.onVote,
     super.key,
   });
 
@@ -35,6 +37,8 @@ class HandView extends StatefulWidget {
   final Future<bool> Function(RankedOpportunity ranked) onPlay;
   final void Function(RankedOpportunity ranked) onPlayed;
   final void Function(RankedOpportunity ranked)? onOpened;
+  // "Mehr davon" / "Weniger davon" on a card's back, for one topic.
+  final void Function(String tag, InterestSignal signal)? onVote;
 
   @override
   State<HandView> createState() => _HandViewState();
@@ -186,6 +190,7 @@ class _HandViewState extends State<HandView>
               contentOpacity: contentOpacity,
               onAction: isFront ? () => _play(ranked) : null,
               onOpened: () => widget.onOpened?.call(ranked),
+              onVote: widget.onVote,
             ),
             endCard: ({required isFront, required contentOpacity}) => _EndCard(
               dealt: hand.length,

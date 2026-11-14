@@ -20,7 +20,9 @@ class MainTabScreen extends StatefulWidget {
   const MainTabScreen({
     required this.opportunityRepository,
     this.profile,
+    this.initialTab = 1,
     this.onEditProfile,
+    this.onEditLebenslagen,
     this.onLebenslagenChanged,
     this.onInterestsChanged,
     this.onInterestSignal,
@@ -33,10 +35,16 @@ class MainTabScreen extends StatefulWidget {
 
   final OpportunityRepository opportunityRepository;
   final UserProfile? profile;
+
+  /// 0 Mein Profil, 1 Meine Aktionen (the default), 2 Mein Impact.
+  final int initialTab;
   final VoidCallback? onEditProfile;
+  // Opens the Rucksack to re-pack PLZ and Lebenslagen; without it the
+  // profile edits the Lebenslagen in a sheet.
+  final VoidCallback? onEditLebenslagen;
   final ValueChanged<Set<String>>? onLebenslagenChanged;
   final ValueChanged<InterestWeights>? onInterestsChanged;
-  final void Function(Opportunity opportunity, InterestSignal signal)?
+  final void Function(List<String> tags, InterestSignal signal)?
       onInterestSignal;
   final Set<String> doneIds;
   // The action log, oldest first.
@@ -51,8 +59,8 @@ class MainTabScreen extends StatefulWidget {
 }
 
 class _MainTabScreenState extends State<MainTabScreen> {
-  int _tabIndex =
-      1; // default to Meine Aktionen — the primary "what now" screen
+  // Meine Aktionen unless the shell comes back from a profile edit.
+  late int _tabIndex = widget.initialTab;
   // Done actions the user has not looked at in Wirkung yet; the Wirkung tab
   // shows their count where played cards land.
   late int _seenDone = widget.doneActions.length;
@@ -72,6 +80,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
       _ProfileTab(
         profile: effectiveProfile,
         onEdit: widget.onEditProfile,
+        onEditLebenslagen: widget.onEditLebenslagen,
         onLebenslagenChanged: widget.onLebenslagenChanged,
         onInterestsChanged: widget.onInterestsChanged,
       ),
@@ -141,12 +150,14 @@ class _ProfileTab extends StatelessWidget {
   const _ProfileTab({
     required this.profile,
     required this.onEdit,
+    required this.onEditLebenslagen,
     required this.onLebenslagenChanged,
     required this.onInterestsChanged,
   });
 
   final UserProfile profile;
   final VoidCallback? onEdit;
+  final VoidCallback? onEditLebenslagen;
   final ValueChanged<Set<String>>? onLebenslagenChanged;
   final ValueChanged<InterestWeights>? onInterestsChanged;
 
@@ -157,6 +168,7 @@ class _ProfileTab extends StatelessWidget {
       child: ProfileColumn(
         profile: profile,
         onEdit: onEdit ?? () {},
+        onEditLebenslagen: onEditLebenslagen,
         onLebenslagenChanged: onLebenslagenChanged ?? (_) {},
         onInterestsChanged: onInterestsChanged ?? (_) {},
       ),

@@ -4,6 +4,7 @@ import 'package:meinimpact/l10n/app_localizations.dart';
 import 'package:meinimpact/src/app/main_tab_screen.dart';
 import 'package:meinimpact/src/app/theme/mi_theme.dart';
 import 'package:meinimpact/src/features/feed/data/opportunity_relevance_ranker.dart';
+import 'package:meinimpact/src/features/feed/domain/interest_weights.dart';
 import 'package:meinimpact/src/features/feed/domain/letter_recipients.dart';
 import 'package:meinimpact/src/features/feed/domain/mdb.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity.dart';
@@ -149,6 +150,56 @@ void main() {
         ),
         'Betrifft dich.',
       );
+    });
+  });
+
+  group('card vote', () {
+    test('is about the reason topic, else the main topic', () {
+      RankedOpportunity ranked({String? reason}) => RankedOpportunity(
+            opportunity: _o('v', tags: ['Wohnen/Miete', 'Sicherheit']),
+            matchedSnippet: null,
+            werteAlignment: 0.5,
+            interestTag: reason,
+          );
+      expect(voteTopic(ranked()), 'Wohnen/Miete');
+      expect(voteTopic(ranked(reason: 'Sicherheit')), 'Sicherheit');
+    });
+
+    testWidgets('the back asks once and then answers in words', (
+      tester,
+    ) async {
+      final votes = <(String, InterestSignal)>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: miTheme(Brightness.dark),
+          home: Center(
+            child: SizedBox(
+              width: 320,
+              height: 560,
+              child: ActionCard(
+                ranked: RankedOpportunity(
+                  opportunity: _o('v', tags: ['Wohnen/Miete']),
+                  matchedSnippet: null,
+                  werteAlignment: 0.5,
+                ),
+                actionLabel: 'Unterschreiben',
+                onAction: () {},
+                onVote: (tag, signal) => votes.add((tag, signal)),
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(find.text('Mehr davon'), findsNothing);
+
+      await tester.tap(find.byType(ActionCard));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('vote-less')));
+      await tester.pumpAndSettle();
+
+      expect(votes, [('Wohnen/Miete', InterestSignal.less)]);
+      expect(find.text('Wohnen/Miete zeigen wir dir seltener.'), findsOneWidget);
+      expect(find.byKey(const ValueKey('vote-more')), findsNothing);
     });
   });
 

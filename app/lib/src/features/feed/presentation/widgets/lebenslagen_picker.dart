@@ -5,9 +5,9 @@ import '../../domain/lebenslage.dart';
 import '../../domain/lebenslagen_catalog.g.dart';
 import '../../domain/lebenslagen_search.dart';
 
-/// "Was ist dir wichtig?": the Lebenslagen picker, shared between onboarding
-/// (`DemographicScreen`) and the always-editable Profil tab
-/// (`ProfileColumn`). One relation only: picking a group means it matters
+/// "Was ist dir wichtig?": the Lebenslagen picker of the always-editable
+/// Profil tab (`ProfileColumn`); onboarding packs them into the Rucksack
+/// instead (`RucksackScreen`). One relation only: picking a group means it matters
 /// to you, whether you are affected yourself, know someone who is or simply
 /// care. Stateless about the value: the caller owns the selection and gets
 /// a full replacement set on every change.

@@ -114,19 +114,6 @@ class WerteBildRahmen extends StatelessWidget {
   }
 }
 
-/// A number for the picture that stays the same for the same answers, but
-/// cannot be read back into them ("Nr. 92 253").
-String werteBildNummer(List<double?> answers) {
-  var h = 0x811c9dc5;
-  for (var i = 0; i < answers.length; i++) {
-    final a = answers[i];
-    h ^= (a == null ? 999 : (a * 10).round() + 20) + i * 7;
-    h = (h * 0x01000193) & 0xffffffff;
-  }
-  final n = (h % 90000 + 10000).toString();
-  return 'Nr. ${n.substring(0, 2)} ${n.substring(2)}';
-}
-
 const _ink = Color(0xFF101820);
 const _paper = Color(0xFFF4F1EA);
 const _mat = Color(0xFFFFFCF8);

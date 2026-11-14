@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/theme/mi_theme.dart';
 import '../../data/opportunity_relevance_ranker.dart';
+import '../../domain/interest_weights.dart';
 import '../../domain/lebenslage.dart';
 import '../../domain/opportunity.dart';
 import 'topic_art.dart';
@@ -17,6 +18,7 @@ class ActionCard extends StatefulWidget {
     required this.actionLabel,
     this.onAction,
     this.onOpened,
+    this.onVote,
     this.isFront = true,
     this.contentOpacity = 1,
     super.key,
@@ -30,6 +32,8 @@ class ActionCard extends StatefulWidget {
   final VoidCallback? onAction;
   // The card was turned over to its back.
   final VoidCallback? onOpened;
+  // "Mehr davon" / "Weniger davon" on the back, for [voteTopic].
+  final void Function(String tag, InterestSignal signal)? onVote;
   // Only the front card of the hand reacts to taps.
   final bool isFront;
 
@@ -40,8 +44,15 @@ class ActionCard extends StatefulWidget {
 class _ActionCardState extends State<ActionCard>
     with SingleTickerProviderStateMixin {
   late final AnimationController _turn;
+  // What the user said about this card's topic, once said.
+  InterestSignal? _vote;
 
   bool get _showsBack => _turn.value > 0.5;
+
+  void _castVote(String tag, InterestSignal signal) {
+    setState(() => _vote = signal);
+    widget.onVote?.call(tag, signal);
+  }
 
   @override
   void initState() {
@@ -88,6 +99,8 @@ class _ActionCardState extends State<ActionCard>
                 actionLabel: widget.actionLabel,
                 onAction: widget.onAction,
                 onTurn: _toggle,
+                vote: _vote,
+                onVote: widget.onVote == null ? null : _castVote,
               )
             : _CardFront(
                 ranked: widget.ranked,
@@ -251,12 +264,16 @@ class _CardBack extends StatelessWidget {
     required this.actionLabel,
     required this.onAction,
     required this.onTurn,
+    required this.vote,
+    required this.onVote,
   });
 
   final RankedOpportunity ranked;
   final String actionLabel;
   final VoidCallback? onAction;
   final VoidCallback onTurn;
+  final InterestSignal? vote;
+  final void Function(String tag, InterestSignal signal)? onVote;
 
   @override
   Widget build(BuildContext context) {
@@ -265,6 +282,8 @@ class _CardBack extends StatelessWidget {
     final opportunity = ranked.opportunity;
     final look = TopicLook.of(opportunity);
     final facts = factChips(opportunity, DateTime.now());
+    final topic = voteTopic(ranked);
+    final cast = onVote;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -309,16 +328,149 @@ class _CardBack extends StatelessWidget {
             ),
           ),
         ),
+        if (topic != null && cast != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              MiSpace.lg - 4,
+              MiSpace.xs,
+              MiSpace.lg - 4,
+              0,
+            ),
+            child: _TopicVote(
+              topic: topic,
+              vote: vote,
+              onVote: (signal) => cast(topic, signal),
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.fromLTRB(
             MiSpace.lg - 4,
-            MiSpace.xs,
+            MiSpace.sm,
             MiSpace.lg - 4,
             MiSpace.lg - 4,
           ),
           child: FilledButton(onPressed: onAction, child: Text(actionLabel)),
         ),
       ],
+    );
+  }
+}
+
+/// The topic a card vote is about: the one the card was ranked up for, or
+/// else the card's main topic (the one its art shows).
+String? voteTopic(RankedOpportunity ranked) =>
+    ranked.interestTag ?? ranked.opportunity.affectedTags.firstOrNull;
+
+/// "Mehr davon" / "Weniger davon" for the card's topic. Once said, the row
+/// answers in words; the feed picks the vote up on its next load.
+class _TopicVote extends StatelessWidget {
+  const _TopicVote({
+    required this.topic,
+    required this.vote,
+    required this.onVote,
+  });
+
+  final String topic;
+  final InterestSignal? vote;
+  final ValueChanged<InterestSignal> onVote;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.mi;
+    final text = Theme.of(context).textTheme;
+    final said = vote;
+    final label = text.labelMedium?.copyWith(color: colors.onCardMuted);
+    return AnimatedSwitcher(
+      duration: MiMotion.reduced(context) ? Duration.zero : MiMotion.flip,
+      child: said != null
+          ? SizedBox(
+              key: const ValueKey('voted'),
+              height: 48,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.check_rounded,
+                    size: 18,
+                    color: colors.onCard,
+                  ),
+                  const SizedBox(width: MiSpace.sm),
+                  Expanded(
+                    child: Text(
+                      said == InterestSignal.more
+                          ? '$topic zeigen wir dir öfter.'
+                          : '$topic zeigen wir dir seltener.',
+                      style: text.labelMedium?.copyWith(color: colors.onCard),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : Column(
+              key: const ValueKey('ask'),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  topic,
+                  style: label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: MiSpace.xs),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _VoteButton(
+                        key: const ValueKey('vote-more'),
+                        label: 'Mehr davon',
+                        onPressed: () => onVote(InterestSignal.more),
+                      ),
+                    ),
+                    const SizedBox(width: MiSpace.sm),
+                    Expanded(
+                      child: _VoteButton(
+                        key: const ValueKey('vote-less'),
+                        label: 'Weniger davon',
+                        onPressed: () => onVote(InterestSignal.less),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+    );
+  }
+}
+
+class _VoteButton extends StatelessWidget {
+  const _VoteButton({
+    required this.label,
+    required this.onPressed,
+    super.key,
+  });
+
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.mi;
+    return OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: colors.onCard,
+        side: BorderSide(color: colors.onCardMuted),
+        minimumSize: const Size.fromHeight(40),
+        padding: const EdgeInsets.symmetric(horizontal: MiSpace.xs),
+        shape: const StadiumBorder(),
+        textStyle: const TextStyle(
+          fontFamily: MiFonts.text,
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
     );
   }
 }

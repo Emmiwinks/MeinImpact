@@ -54,8 +54,9 @@ class AktionenTab extends StatefulWidget {
   final UserProfile profile;
   // Opportunity ids in the action log; hidden from the feed.
   final Set<String> doneIds;
-  // Reports what the user did with an opportunity, for learning interests.
-  final void Function(Opportunity opportunity, InterestSignal signal)?
+  // Reports what the user did with topics (a card's tags, or the one topic
+  // of a card vote), for learning interests.
+  final void Function(List<String> tags, InterestSignal signal)?
       onInterestSignal;
   final void Function(Opportunity opportunity, ActionVia via)? onActionDone;
   final InterestConfig interestConfig;
@@ -121,7 +122,8 @@ class _AktionenTabState extends State<AktionenTab> {
           ? ActionVia.letter
           : ActionVia.inAppBrowser,
     );
-    widget.onInterestSignal?.call(opportunity, InterestSignal.acted);
+    widget.onInterestSignal
+        ?.call(opportunity.affectedTags, InterestSignal.acted);
   }
 
   @override
@@ -178,9 +180,11 @@ class _AktionenTabState extends State<AktionenTab> {
           onPlay: (ranked) => _takeAction(ranked.opportunity),
           onPlayed: (ranked) => _complete(ranked.opportunity),
           onOpened: (ranked) => widget.onInterestSignal?.call(
-            ranked.opportunity,
+            ranked.opportunity.affectedTags,
             InterestSignal.opened,
           ),
+          onVote: (tag, signal) =>
+              widget.onInterestSignal?.call([tag], signal),
         );
       },
     );
