@@ -404,9 +404,11 @@ class _CardFanState extends State<_CardFan>
   }) {
     final behind = max(0.0, delta);
     final leaving = min(0.0, delta);
-    final dx = behind * 22 + leaving * (width + 60);
+    // Fanned like a hand held up: the cards behind turn up about their
+    // bottom right corner, so they peek out above it to the right.
+    final dx = behind * 8 + leaving * (width + 60);
     final angle = behind * 0.07 - leaving * 0.12;
-    final scale = 1 - 0.035 * behind;
+    final scale = 1 - 0.02 * behind;
     final card = SizedBox(
       key: isFront ? widget.frontKey : null,
       width: width,
@@ -415,10 +417,10 @@ class _CardFanState extends State<_CardFan>
     );
     return Transform.translate(
       key: key,
-      offset: Offset(dx, behind * 6),
+      offset: Offset(dx, 0),
       child: Transform.rotate(
         angle: angle,
-        alignment: Alignment.bottomCenter,
+        alignment: behind > 0 ? Alignment.bottomRight : Alignment.bottomCenter,
         child: Transform.scale(
           scale: scale,
           child: Opacity(

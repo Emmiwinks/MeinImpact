@@ -124,8 +124,16 @@ class _MainTabScreenState extends State<MainTabScreen> {
                   label: l10n.tabProfile,
                 ),
                 NavigationDestination(
-                  icon: const Icon(Icons.style_outlined),
-                  selectedIcon: const Icon(Icons.style),
+                  // Turned so the cards fan up and to the right, like the
+                  // hand.
+                  icon: const RotatedBox(
+                    quarterTurns: 2,
+                    child: Icon(Icons.style_outlined),
+                  ),
+                  selectedIcon: const RotatedBox(
+                    quarterTurns: 2,
+                    child: Icon(Icons.style),
+                  ),
                   label: l10n.tabActions,
                 ),
                 NavigationDestination(
