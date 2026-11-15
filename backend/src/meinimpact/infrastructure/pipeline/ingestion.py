@@ -68,6 +68,8 @@ class IngestionSummary:
     relevant: int = 0
     # Council members stored by the weekly member sync; 0 when it did not run
     council_members: int = 0
+    # ISO timestamp of the stored members, also when this run skipped the sync
+    council_members_synced_at: str | None = None
     failed_sources: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
 

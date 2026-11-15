@@ -347,8 +347,17 @@ _SUMMARY_LABELS = (
     ("deactivated", "deaktiviert"),
     ("enriched", "angereichert"),
     ("relevant", "relevant"),
-    ("council_members", "Ratsmitglieder"),
 )
+
+
+def _members_count(summary: dict[str, Any]) -> str:
+    # The member sync runs weekly; a skipped run points at the stored list
+    count = summary.get("council_members", 0)
+    synced_at = summary.get("council_members_synced_at")
+    if count or not synced_at:
+        return f"{count} Ratsmitglieder"
+    last = datetime.fromisoformat(synced_at).astimezone(_BERLIN)
+    return f"Ratsmitglieder zuletzt {last:%d.%m.}"
 
 
 def _run_row(run: RunRecord) -> str:
@@ -366,7 +375,10 @@ def _run_row(run: RunRecord) -> str:
     summary: dict[str, Any] = run.summary or {}
     if summary:
         counts = " · ".join(
-            f"{summary.get(key, 0)} {label}" for key, label in _SUMMARY_LABELS
+            [
+                *(f"{summary.get(key, 0)} {label}" for key, label in _SUMMARY_LABELS),
+                _members_count(summary),
+            ]
         )
         details.append(f'<p class="counts">{counts}</p>')
     problems = [

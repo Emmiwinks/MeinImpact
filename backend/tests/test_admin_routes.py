@@ -221,6 +221,7 @@ def test_dashboard_shows_runs_and_schedule() -> None:
                 "listed": 956,
                 "kept": 241,
                 "relevant": 85,
+                "council_members_synced_at": "2026-11-05T18:30:00+00:00",
                 "failed_sources": ["weact: timeout"],
                 "errors": [],
             },
@@ -233,6 +234,7 @@ def test_dashboard_shows_runs_and_schedule() -> None:
     assert "08.11.2026 11:00" in page  # Berlin time
     assert "RuntimeError: &lt;boom&gt;" in page
     assert "956 gelistet" in page
+    assert "Ratsmitglieder zuletzt 05.11." in page
     assert "Quelle: weact: timeout" in page
     assert '<option value="48" selected>alle 2 Tage</option>' in page
     assert 'http-equiv="refresh"' not in page

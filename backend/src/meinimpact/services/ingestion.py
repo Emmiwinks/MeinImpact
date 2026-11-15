@@ -100,10 +100,12 @@ async def sync_council_members(
     live: Fraktionen dissolved in 2024 that OParl still shows there)."""
     last = await repository.last_synced(body.source_id)
     if last is not None and now - last < MEMBER_SYNC_INTERVAL:
+        summary.council_members_synced_at = last.isoformat()
         return
     members = await fetch_council_members(http, body, today=now.date())
     await repository.replace(body.source_id, members, synced_at=now)
     summary.council_members = len(members)
+    summary.council_members_synced_at = now.isoformat()
     unknown = sorted(
         {
             m.fraktion_name or m.fraktion_url

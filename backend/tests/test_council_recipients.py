@@ -253,15 +253,18 @@ class FakeCouncilRepository:
 async def test_member_sync_runs_at_most_weekly() -> None:
     now = datetime(2026, 11, 9, tzinfo=UTC)
     repository = FakeCouncilRepository(last=now - timedelta(days=3))
+    summary = IngestionSummary()
 
     await sync_council_members(
         None,  # type: ignore[arg-type]  # never reached: the sync is fresh
         repository,  # type: ignore[arg-type]
-        IngestionSummary(),
+        summary,
         now=now,
     )
 
     assert repository.replaced is None
+    assert summary.council_members == 0
+    assert summary.council_members_synced_at == "2026-11-06T00:00:00+00:00"
 
 
 async def test_member_sync_reports_fraktionen_without_an_office(
@@ -292,6 +295,7 @@ async def test_member_sync_reports_fraktionen_without_an_office(
 
     assert repository.replaced == members
     assert summary.council_members == 3
+    assert summary.council_members_synced_at == "2026-11-09T00:00:00+00:00"
     assert summary.errors == ["Fraktion ohne Büro-Adresse: Neue Fraktion"]
 
 
