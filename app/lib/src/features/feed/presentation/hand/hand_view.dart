@@ -182,7 +182,12 @@ class _HandViewState extends State<HandView>
             cards: hand,
             position: _position,
             frontKey: _frontKey,
-            builder: (ranked, {required isFront, required contentOpacity}) =>
+            builder: (
+              ranked, {
+              required isFront,
+              required contentOpacity,
+              required drift,
+            }) =>
                 ActionCard(
               // The front card's GlobalKey moves to the next card on a
               // swipe; keyed by action, the next one does not inherit the
@@ -192,6 +197,7 @@ class _HandViewState extends State<HandView>
               actionLabel: widget.actionLabel(ranked.opportunity),
               isFront: isFront,
               contentOpacity: contentOpacity,
+              drift: drift,
               onAction: isFront ? () => _play(ranked) : null,
               onOpened: () => widget.onOpened?.call(ranked),
               onVote: widget.onVote,
@@ -237,6 +243,7 @@ typedef _CardBuilder = Widget Function(
   RankedOpportunity ranked, {
   required bool isFront,
   required double contentOpacity,
+  required double drift,
 });
 
 typedef _EndBuilder = Widget Function({
@@ -376,6 +383,7 @@ class _CardFanState extends State<_CardFan>
                             cards[i],
                             isFront: i == front,
                             contentOpacity: contentOpacity,
+                            drift: i - pos,
                           )
                         : widget.endCard(
                             isFront: i == front,

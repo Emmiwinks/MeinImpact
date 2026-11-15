@@ -21,6 +21,7 @@ class ActionCard extends StatefulWidget {
     this.onVote,
     this.isFront = true,
     this.contentOpacity = 1,
+    this.drift = 0,
     super.key,
   });
 
@@ -36,6 +37,9 @@ class ActionCard extends StatefulWidget {
   final void Function(String tag, InterestSignal signal)? onVote;
   // Only the front card of the hand reacts to taps.
   final bool isFront;
+  // How far the card is from the front of the fan, -1 to 1; the art slides
+  // a little against it, so it seems to sit behind the card's window.
+  final double drift;
 
   @override
   State<ActionCard> createState() => _ActionCardState();
@@ -46,6 +50,13 @@ class _ActionCardState extends State<ActionCard>
   late final AnimationController _turn;
   // What the user said about this card's topic, once said.
   InterestSignal? _vote;
+  // A finger is on the card; it gives a little under it.
+  bool _pressed = false;
+
+  void _press(bool down) {
+    // The finger can lift after a swipe has already moved the card on.
+    if (mounted && _pressed != down) setState(() => _pressed = down);
+  }
 
   bool get _showsBack => _turn.value > 0.5;
 
@@ -88,7 +99,8 @@ class _ActionCardState extends State<ActionCard>
   @override
   Widget build(BuildContext context) {
     final colors = context.mi;
-    return AnimatedBuilder(
+    final still = MiMotion.reduced(context);
+    final card = AnimatedBuilder(
       animation: _turn,
       builder: (context, _) {
         final angle = MiMotion.ease.transform(_turn.value) * pi;
@@ -108,6 +120,7 @@ class _ActionCardState extends State<ActionCard>
                 onAction: widget.onAction,
                 onTurn: widget.isFront ? _toggle : null,
                 contentOpacity: widget.contentOpacity,
+                drift: still ? 0 : widget.drift.clamp(-1.0, 1.0),
               );
         return Transform(
           alignment: Alignment.center,
@@ -142,6 +155,18 @@ class _ActionCardState extends State<ActionCard>
         );
       },
     );
+    if (!widget.isFront || still) return card;
+    return Listener(
+      onPointerDown: (_) => _press(true),
+      onPointerUp: (_) => _press(false),
+      onPointerCancel: (_) => _press(false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.98 : 1,
+        duration: MiMotion.quick,
+        curve: MiMotion.ease,
+        child: card,
+      ),
+    );
   }
 }
 
@@ -152,6 +177,7 @@ class _CardFront extends StatelessWidget {
     required this.onAction,
     required this.onTurn,
     required this.contentOpacity,
+    required this.drift,
   });
 
   final RankedOpportunity ranked;
@@ -159,6 +185,7 @@ class _CardFront extends StatelessWidget {
   final VoidCallback? onAction;
   final VoidCallback? onTurn;
   final double contentOpacity;
+  final double drift;
 
   @override
   Widget build(BuildContext context) {
@@ -187,7 +214,15 @@ class _CardFront extends StatelessWidget {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(MiRadius.card - 8),
-                    child: TopicArt(look: TopicLook.of(opportunity)),
+                    // Drawn a little larger than its window, so the slide
+                    // never shows an edge.
+                    child: Transform.translate(
+                      offset: Offset(-drift * 18, 0),
+                      child: Transform.scale(
+                        scale: 1.12,
+                        child: TopicArt(look: TopicLook.of(opportunity)),
+                      ),
+                    ),
                   ),
                 ),
               ),
