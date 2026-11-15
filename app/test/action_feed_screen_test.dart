@@ -36,7 +36,7 @@ void main() {
       MeinImpactApp(opportunityRepository: _PoolRepository()),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Petition unterschreiben'), findsOneWidget);
+    expect(find.text('Petition ansehen'), findsOneWidget);
 
     await tester.tap(find.text('Petition zum Klimaschutz'));
     await tester.pumpAndSettle();
@@ -46,7 +46,7 @@ void main() {
       find.text('Eine Petition fordert mehr Klimaschutz.'),
       findsOneWidget,
     );
-    expect(find.text('Petition unterschreiben'), findsOneWidget);
+    expect(find.text('Petition ansehen'), findsOneWidget);
   });
 
   testWidgets('renders empty pool state', (tester) async {

@@ -163,7 +163,7 @@ class _AktionenTabState extends State<AktionenTab> {
           return pool.isEmpty
               ? const HandMessage(
                   title: 'Gerade gibt es keine offenen Aktionen.',
-                  body: 'Neue kommen dazu, sobald Stadt, Land oder EU sie '
+                  body: 'Neue kommen dazu, sobald Region, Land oder EU sie '
                       'veröffentlichen.',
                 )
               : const HandMessage(

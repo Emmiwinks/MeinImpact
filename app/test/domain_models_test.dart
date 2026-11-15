@@ -131,11 +131,11 @@ void main() {
     test('maps every backend kind and labels its call to action', () {
       expect(
         OpportunityKind.fromWire('petition').callToAction,
-        'Petition unterschreiben',
+        'Petition ansehen',
       );
       expect(
         OpportunityKind.fromWire('consultation').callToAction,
-        'Stellung nehmen',
+        'Konsultation ansehen',
       );
       expect(
         OpportunityKind.fromWire('public_display'),

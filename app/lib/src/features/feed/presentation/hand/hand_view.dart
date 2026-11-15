@@ -499,23 +499,29 @@ class _EndCard extends StatelessWidget {
                               const SizedBox(height: MiSpace.lg),
                             ],
                             Text(
-                              dealt == 1
-                                  ? 'Das war deine Karte.'
-                                  : 'Das war deine $dealt.',
+                              !more
+                                  ? 'Das waren alle offenen Aktionen.'
+                                  : dealt == 1
+                                      ? 'Das war die Aktion, die am besten '
+                                          'zu dir passt.'
+                                      : 'Das waren die $dealt, die am '
+                                          'besten zu dir passen.',
                               textAlign: TextAlign.center,
                               style: text.titleLarge
                                   ?.copyWith(color: colors.onCard),
                             ),
-                            if (!more) ...[
-                              const SizedBox(height: MiSpace.sm),
-                              Text(
-                                'Mehr gibt es gerade nicht. Neue Aktionen '
-                                'kommen dazu, sobald sie veröffentlicht werden.',
-                                textAlign: TextAlign.center,
-                                style: text.bodyMedium
-                                    ?.copyWith(color: colors.onCardMuted),
-                              ),
-                            ],
+                            const SizedBox(height: MiSpace.sm),
+                            Text(
+                              more
+                                  ? 'Ausgesucht nach deinen Werten und dem, '
+                                      'was dich betrifft. Gerade sind '
+                                      'insgesamt $total Aktionen offen.'
+                                  : 'Neue kommen dazu, sobald Region, Land '
+                                      'oder EU sie veröffentlichen.',
+                              textAlign: TextAlign.center,
+                              style: text.bodyMedium
+                                  ?.copyWith(color: colors.onCardMuted),
+                            ),
                           ],
                         ),
                       ),

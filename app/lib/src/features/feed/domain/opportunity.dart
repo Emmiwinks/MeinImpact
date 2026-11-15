@@ -2,15 +2,17 @@
 /// `ActionKind`; unknown wire values map to [other] so a new backend kind
 /// never breaks an older app.
 enum OpportunityKind {
-  petition('petition', 'Petition', 'Petition unterschreiben'),
-  consultation('consultation', 'Konsultation', 'Stellung nehmen'),
-  publicDisplay('public_display', 'Planauslegung', 'Plan ansehen & mitreden'),
-  survey('survey', 'Umfrage', 'An Umfrage teilnehmen'),
-  event('event', 'Veranstaltung', 'Zur Veranstaltung'),
+  // Labels say "ansehen": the button opens the source first, the person
+  // decides there whether to sign or take part.
+  petition('petition', 'Petition', 'Petition ansehen'),
+  consultation('consultation', 'Konsultation', 'Konsultation ansehen'),
+  publicDisplay('public_display', 'Planauslegung', 'Plan ansehen'),
+  survey('survey', 'Umfrage', 'Umfrage ansehen'),
+  event('event', 'Veranstaltung', 'Veranstaltung ansehen'),
   // An upcoming council vote; closesOn is the meeting day.
   decision('decision', 'Abstimmung im Rat', 'Brief schreiben'),
-  notice('notice', 'Bekanntmachung', 'Zur Quelle'),
-  other('other', 'Beteiligung', 'Zur Quelle');
+  notice('notice', 'Bekanntmachung', 'Ansehen'),
+  other('other', 'Beteiligung', 'Ansehen');
 
   const OpportunityKind(this.wire, this.label, this.callToAction);
 

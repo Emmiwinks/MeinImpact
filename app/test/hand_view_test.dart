@@ -280,7 +280,14 @@ void main() {
         await tester.pumpAndSettle();
       }
       expect(_fanAt('Ende deiner Hand'), findsOneWidget);
-      expect(find.text('Das war deine 5.'), findsOneWidget);
+      expect(
+        find.text('Das waren die 5, die am besten zu dir passen.'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('Gerade sind insgesamt 7 Aktionen offen.'),
+        findsOneWidget,
+      );
       // Only on the closing card; the link next to the dots steps back.
       expect(find.text('Alle 7 ansehen'), findsOneWidget);
 
@@ -300,8 +307,8 @@ void main() {
         900,
       );
       await tester.pumpAndSettle();
-      expect(find.text('Das war deine Karte.'), findsOneWidget);
-      expect(find.textContaining('Mehr gibt es gerade nicht.'), findsOneWidget);
+      expect(find.text('Das waren alle offenen Aktionen.'), findsOneWidget);
+      expect(find.textContaining('sobald Region, Land'), findsOneWidget);
     });
 
     testWidgets('screen readers can step through the hand', (tester) async {
