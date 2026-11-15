@@ -1,11 +1,12 @@
 """Tests for the admin ingestion-trigger route and the /admin page."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi.testclient import TestClient
 
-from meinimpact.api.dependencies import get_ingestion_runs
+from meinimpact.api.dependencies import get_ingestion_runs, get_usage_repository
 from meinimpact.api.routes import admin_portal
 from meinimpact.core.config import Settings
 from meinimpact.infrastructure.pipeline.run_repository import RunRecord, Schedule
@@ -39,6 +40,16 @@ class FakeRuns:
         self.schedule = schedule
 
 
+class FakeUsage:
+    def __init__(self, counts: dict[date, dict[str, int]] | None = None) -> None:
+        self.counts = counts or {}
+        self.asked_since: date | None = None
+
+    async def since(self, first_day: date) -> dict[date, dict[str, int]]:
+        self.asked_since = first_day
+        return self.counts
+
+
 @pytest.fixture(autouse=True)
 def _reset_throttle() -> None:
     admin_portal._failures.clear()
@@ -47,6 +58,7 @@ def _reset_throttle() -> None:
 def _client(
     runs: FakeRuns | None = None,
     *,
+    usage: FakeUsage | None = None,
     admin_api_key: str | None = "secret",
     admin_password: str | None = "pw",
     mistral_api_key: str | None = "key",
@@ -58,12 +70,19 @@ def _client(
     )
     app = create_app(settings)
     fake = runs or FakeRuns()
+    fake_usage = usage or FakeUsage()
     app.dependency_overrides[get_ingestion_runs] = lambda: fake
+    app.dependency_overrides[get_usage_repository] = lambda: fake_usage
     return TestClient(app, follow_redirects=False)
 
 
-def _signed_in(runs: FakeRuns | None = None, **kwargs: str | None) -> TestClient:
-    client = _client(runs, **kwargs)
+def _signed_in(
+    runs: FakeRuns | None = None,
+    *,
+    usage: FakeUsage | None = None,
+    **kwargs: str | None,
+) -> TestClient:
+    client = _client(runs, usage=usage, **kwargs)
     response = client.post("/admin/login", data={"password": "pw"})
     assert response.status_code == 303
     return client
@@ -279,6 +298,30 @@ def test_schedule_form_ignores_unknown_interval() -> None:
     runs = FakeRuns()
     _signed_in(runs).post("/admin/schedule", data={"interval_hours": "1"})
     assert runs.schedule == Schedule(enabled=True, interval_hours=48)
+
+
+def test_dashboard_shows_usage_per_day_and_week() -> None:
+    today = datetime.now(ZoneInfo("Europe/Berlin")).date()
+    monday = today - timedelta(days=today.weekday())
+    usage = FakeUsage(
+        {
+            monday: {"active_day": 3, "active_week": 3, "action_done": 2},
+            monday - timedelta(days=1): {"active_day": 1, "action_done": 5},
+        }
+    )
+
+    page = _signed_in(usage=usage).get("/admin").text
+
+    def row(label: str, *cells: int) -> str:
+        return f"<th>{label}</th>" + "".join(f"<td>{c}</td>" for c in cells)
+
+    assert usage.asked_since == monday - timedelta(weeks=3)
+    # Per day: active phones from active_day, Fertig as counted
+    assert row(f"Mo {monday:%d.%m.}", 3, 0, 0, 0, 2) in page
+    # Per week: active phones from active_week, Fertig summed over the week
+    assert row(f"ab {monday:%d.%m.}", 3, 0, 0, 0, 2) in page
+    last_week = monday - timedelta(weeks=1)
+    assert row(f"ab {last_week:%d.%m.}", 0, 0, 0, 0, 5) in page
 
 
 def test_logout_clears_session() -> None:

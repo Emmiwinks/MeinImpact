@@ -37,8 +37,7 @@ InterestWeights _vote(
 
 void main() {
   group('card votes', () {
-    test('count in full for the one topic and fade like everything else',
-        () {
+    test('count in full for the one topic and fade like everything else', () {
       final weights =
           _vote(const InterestWeights(), 'Umwelt/Natur', InterestSignal.more);
 

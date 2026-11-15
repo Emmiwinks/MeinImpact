@@ -14,6 +14,7 @@ from meinimpact.domain.entities import (
     TrackingEvent,
     UserProfile,
 )
+from meinimpact.infrastructure.usage.postgres_usage_repository import UsageEvent
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
@@ -528,6 +529,12 @@ class TrackedRequest(BaseModel):
     """
 
     opportunity_id: UUID
+
+
+class UsageRequest(BaseModel):
+    """One anonymous usage event: only its name, counted per day."""
+
+    event: UsageEvent
 
 
 class ImpactNewsItemResponse(BaseModel):

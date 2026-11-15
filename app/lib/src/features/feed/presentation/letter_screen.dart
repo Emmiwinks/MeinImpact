@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_email_sender/flutter_email_sender.dart';
 
 import '../../../app/theme/mi_theme.dart';
+import '../../../core/usage/usage.dart';
 import '../domain/letter_recipients.dart';
 import '../domain/opportunity.dart';
 import '../domain/opportunity_repository.dart';
@@ -140,6 +141,8 @@ class _LetterScreenState extends State<LetterScreen> {
       );
       return;
     }
+    // Only iOS says whether it was sent; this counts the hand-over.
+    Usage.current.count(UsageEvent.letterToMailApp);
     if (result == EmailSendResult.sent && mounted) {
       Navigator.of(context).pop(true);
     }

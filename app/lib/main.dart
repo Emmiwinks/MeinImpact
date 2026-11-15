@@ -7,6 +7,7 @@ import 'src/core/network/api_client.dart';
 import 'src/core/profile/user_profile_store.dart';
 import 'src/core/security/installation_id_store.dart';
 import 'src/core/security/token_store.dart';
+import 'src/core/usage/usage.dart';
 import 'src/features/feed/data/remote_opportunity_repository.dart';
 import 'src/features/tracking/data/action_log_store.dart';
 
@@ -43,6 +44,10 @@ void main() async {
   } catch (e) {
     debugPrint('Session creation failed: $e');
   }
+
+  Usage.current = Usage(
+    send: (event) => apiClient.postJson('/v1/usage', {'event': event}),
+  );
 
   final profileStore = UserProfileStore();
   final initialProfile = await profileStore.load();

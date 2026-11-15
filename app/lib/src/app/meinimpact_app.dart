@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:meinimpact/l10n/app_localizations.dart';
 
 import '../core/profile/user_profile_store.dart';
+import '../core/usage/usage.dart';
 import '../features/feed/domain/interest_config.dart';
 import '../features/feed/domain/interest_weights.dart';
 import '../features/feed/domain/opportunity.dart';
@@ -62,7 +63,8 @@ class MeinImpactApp extends StatefulWidget {
   State<MeinImpactApp> createState() => _MeinImpactAppState();
 }
 
-class _MeinImpactAppState extends State<MeinImpactApp> {
+class _MeinImpactAppState extends State<MeinImpactApp>
+    with WidgetsBindingObserver {
   UserProfile? _profile;
   // Onboarding steps (only used before a profile exists): 0 = value
   // profile, 1 = demographics.
@@ -84,10 +86,27 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
     super.initState();
     _profile = widget._initialProfile;
     _actionLog = widget._initialActionLog;
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(Usage.current.markActive());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // Phones keep the app alive for days, so coming back counts as use too.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(Usage.current.markActive());
+    }
   }
 
   Future<void> _onActionDone(Opportunity opportunity, ActionVia via) async {
     if (_actionLog.isDone(opportunity.id)) return;
+    Usage.current.count(UsageEvent.actionDone);
     final updated = _actionLog.withDone(
       ActionLogEntry.fromOpportunity(
         opportunity,
@@ -122,12 +141,14 @@ class _MeinImpactAppState extends State<MeinImpactApp> {
       mdbWahlkreis: patch.mdbWahlkreis,
       lebenslagen: patch.lebenslagen,
     );
+    Usage.current.count(UsageEvent.onboardingDone);
     await widget._profileStore?.save(profile);
     setState(() => _profile = profile);
   }
 
   Future<void> _onUseExampleProfile() async {
     const profile = UserProfile(lebenslagen: _kExampleLebenslagen);
+    Usage.current.count(UsageEvent.onboardingDone);
     await widget._profileStore?.save(profile);
     setState(() => _profile = profile);
   }

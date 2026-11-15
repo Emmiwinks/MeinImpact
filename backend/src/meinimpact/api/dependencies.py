@@ -45,6 +45,9 @@ from meinimpact.infrastructure.security.tokens import (
 from meinimpact.infrastructure.tracking.postgres_tracking_repository import (
     PostgresTrackingRepository,
 )
+from meinimpact.infrastructure.usage.postgres_usage_repository import (
+    PostgresUsageRepository,
+)
 from meinimpact.services.draft_service import DraftService
 from meinimpact.services.ingestion_runs import IngestionRuns
 from meinimpact.services.recommendation_service import RecommendationService
@@ -133,6 +136,13 @@ def get_impact_news_repository(
 ) -> PostgresImpactNewsRepository:
     """Returns the PostgreSQL-backed Mein Impact news repository."""
     return PostgresImpactNewsRepository(session)
+
+
+def get_usage_repository(
+    session: AsyncSession = Depends(get_db_session),
+) -> PostgresUsageRepository:
+    """Returns the PostgreSQL-backed anonymous usage counters."""
+    return PostgresUsageRepository(session)
 
 
 def get_action_stats_repository(

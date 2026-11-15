@@ -23,6 +23,7 @@ from meinimpact.api.routes import (
     news,
     opportunities,
     push,
+    usage,
 )
 from meinimpact.core.config import Settings, get_settings
 from meinimpact.core.middleware import (
@@ -130,6 +131,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(push.router)
     app.include_router(feedback.router)
     app.include_router(beta.router)
+    app.include_router(usage.router)
     app.include_router(admin.router)
     app.include_router(admin_portal.router)
     app.dependency_overrides[get_settings] = lambda: resolved_settings

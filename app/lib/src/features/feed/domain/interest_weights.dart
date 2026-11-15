@@ -84,8 +84,7 @@ class InterestWeights {
     ];
     return strong
       ..sort(
-        (a, b) =>
-            weightOf(b, now, config).compareTo(weightOf(a, now, config)),
+        (a, b) => weightOf(b, now, config).compareTo(weightOf(a, now, config)),
       );
   }
 

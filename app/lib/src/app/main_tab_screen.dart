@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:meinimpact/l10n/app_localizations.dart';
 
+import '../core/usage/usage.dart';
 import '../features/feed/domain/interest_config.dart';
 import '../features/feed/domain/interest_weights.dart';
 import '../features/feed/domain/opportunity.dart';
@@ -66,6 +67,9 @@ class _MainTabScreenState extends State<MainTabScreen> {
   late int _seenDone = widget.doneActions.length;
 
   void _select(int index) => setState(() {
+        if (index == 2 && _tabIndex != 2) {
+          Usage.current.count(UsageEvent.impactOpened);
+        }
         _tabIndex = index;
         if (index == 2) _seenDone = widget.doneActions.length;
       });

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../app/theme/mi_theme.dart';
+import '../../../core/usage/usage.dart';
 import '../../tracking/domain/action_log.dart';
 import '../data/opportunity_relevance_ranker.dart';
 import '../domain/interest_config.dart';
@@ -104,6 +105,7 @@ class _AktionenTabState extends State<AktionenTab> {
       await GetTheAppSheet.show(context);
       return false;
     }
+    Usage.current.count(UsageEvent.actionOpened);
     if (opportunity.kind == OpportunityKind.decision) {
       return widget.openLetter(
         context,
@@ -179,12 +181,14 @@ class _AktionenTabState extends State<AktionenTab> {
               : opportunity.kind.callToAction,
           onPlay: (ranked) => _takeAction(ranked.opportunity),
           onPlayed: (ranked) => _complete(ranked.opportunity),
-          onOpened: (ranked) => widget.onInterestSignal?.call(
-            ranked.opportunity.affectedTags,
-            InterestSignal.opened,
-          ),
-          onVote: (tag, signal) =>
-              widget.onInterestSignal?.call([tag], signal),
+          onOpened: (ranked) {
+            Usage.current.count(UsageEvent.cardTurned);
+            widget.onInterestSignal?.call(
+              ranked.opportunity.affectedTags,
+              InterestSignal.opened,
+            );
+          },
+          onVote: (tag, signal) => widget.onInterestSignal?.call([tag], signal),
         );
       },
     );

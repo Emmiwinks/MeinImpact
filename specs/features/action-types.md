@@ -68,6 +68,15 @@ Decided with the user for the MVP:
   Mein Impact follows outcomes and news only for tracked opportunities
   (deep search for few instead of shallow for all 170+). Outcome pushes
   stay local: the app matches a public outcome feed against its own log.
+- **Anonymous usage counters (user decided 2026-11-15):** `POST /v1/usage`
+  with only an event name (`core/usage/usage.dart`: onboarding done, card
+  turned, action opened, Fertig, letter handed to the mail app, Mein
+  Impact opened). The server adds one to `usage_counts` for that Berlin
+  day, nothing else. Active phones are counted without an id: the phone
+  remembers whether it already sent `active_day` / `active_week` and sends
+  each at most once. Shown on /admin per day (14) and per week (4). Known
+  limits: tiny tester groups can still point at a person; anyone with a
+  session could inflate counts.
 - **Letter pop-up for decisions (built 2026-11-08):** CTA "Brief
   schreiben" opens a full-screen letter view: an optional "Was ist dir
   wichtig?" field (max 1000 chars, sent as `notes`; nothing from the

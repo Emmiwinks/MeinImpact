@@ -317,6 +317,16 @@ class OpportunityNewsRecord(Base):
     found_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class UsageCountRecord(Base):
+    """How often an app event happened on one day (Berlin), nothing else."""
+
+    __tablename__ = "usage_counts"
+
+    day: Mapped[date] = mapped_column(Date, primary_key=True)
+    event: Mapped[str] = mapped_column(Text, primary_key=True)
+    count: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
 class NewsItemRecord(Base):
     """Persistent civic news item record."""
 

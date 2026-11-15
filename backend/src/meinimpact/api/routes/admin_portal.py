@@ -1,4 +1,5 @@
-"""The /admin page: start ingestion, set its schedule, see past runs.
+"""The /admin page: start ingestion, set its schedule, see past runs and the
+anonymous usage counters.
 
 Server-rendered HTML without JavaScript. Login is one password
 (MEINIMPACT_ADMIN_PASSWORD); a correct one gets a signed session cookie that
@@ -10,7 +11,7 @@ import hashlib
 import secrets
 import time
 from collections import defaultdict, deque
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from html import escape
 from typing import Any
 from urllib.parse import parse_qs
@@ -20,9 +21,12 @@ import jwt
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
-from meinimpact.api.dependencies import get_ingestion_runs
+from meinimpact.api.dependencies import get_ingestion_runs, get_usage_repository
 from meinimpact.core.config import Settings, get_settings
 from meinimpact.infrastructure.pipeline.run_repository import RunRecord, Schedule
+from meinimpact.infrastructure.usage.postgres_usage_repository import (
+    PostgresUsageRepository,
+)
 from meinimpact.services.ingestion_runs import (
     INTERVAL_CHOICES_HOURS,
     IngestionRuns,
@@ -62,14 +66,17 @@ async def dashboard(
     request: Request,
     settings: Settings = Depends(get_settings),
     runs: IngestionRuns = Depends(get_ingestion_runs),
+    usage: PostgresUsageRepository = Depends(get_usage_repository),
 ) -> Response:
     if not _signed_in(request, settings):
         return _redirect("/admin/login")
     overview = await runs.overview()
+    today = datetime.now(_BERLIN).date()
+    counts = await usage.since(_week_start(today) - timedelta(weeks=_USAGE_WEEKS - 1))
     notice = _NOTICES.get(request.query_params.get("notice", ""))
     return _page(
-        "Ingestion",
-        _dashboard_body(overview, settings, notice),
+        "Admin",
+        _dashboard_body(overview, settings, notice) + _usage_body(counts, today),
         refresh=overview.running is not None,
     )
 
@@ -255,7 +262,7 @@ def _login_body(error: str | None) -> str:
 def _dashboard_body(overview: Overview, settings: Settings, notice: str | None) -> str:
     running = overview.running
     parts = [
-        """<header><h1>Ingestion</h1>
+        """<header><h1>Admin</h1>
 <form method="post" action="/admin/logout"><button class="link">Abmelden</button>
 </form></header>"""
     ]
@@ -277,7 +284,7 @@ def _dashboard_body(overview: Overview, settings: Settings, notice: str | None) 
     disabled = " disabled" if running else ""
     parts.append(f"""
 <section class="card">
-  <h2>Jetzt</h2>
+  <h2>Ingestion jetzt</h2>
   <p>{status_line}</p>
   <form method="post" action="/admin/run">
     <button type="submit"{disabled}>Jetzt ausführen</button>
@@ -377,6 +384,63 @@ def _run_row(run: RunRecord) -> str:
     return f'<div class="run"><p>{head}</p>{"".join(details)}</div>'
 
 
+_WEEKDAYS = ("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")
+_USAGE_DAYS = 14
+_USAGE_WEEKS = 4
+# The "active" column reads active_day per day and active_week per week:
+# the app sends each at most once per day and week, so both count phones.
+_USAGE_COLUMNS = (
+    ("Aktive Handys", None),
+    ("Onboarding fertig", "onboarding_done"),
+    ("Karte umgedreht", "card_turned"),
+    ("Aktion geöffnet", "action_opened"),
+    ("Fertig", "action_done"),
+    ("Brief an Mail-App", "letter_to_mail_app"),
+    ("Mein Impact geöffnet", "impact_opened"),
+)
+
+
+def _usage_body(counts: dict[date, dict[str, int]], today: date) -> str:
+    head = "".join(f"<th>{label}</th>" for label, _ in _USAGE_COLUMNS)
+
+    def row(label: str, values: dict[str, int], active: str) -> str:
+        cells = "".join(
+            f"<td>{values.get(event or active, 0)}</td>" for _, event in _USAGE_COLUMNS
+        )
+        return f"<tr><th>{label}</th>{cells}</tr>"
+
+    day_rows = "".join(
+        row(
+            f"{_WEEKDAYS[day.weekday()]} {day:%d.%m.}",
+            counts.get(day, {}),
+            "active_day",
+        )
+        for day in (today - timedelta(days=n) for n in range(_USAGE_DAYS))
+    )
+    week_rows = ""
+    for n in range(_USAGE_WEEKS):
+        start = _week_start(today) - timedelta(weeks=n)
+        totals: dict[str, int] = {}
+        for offset in range(7):
+            for event, count in counts.get(start + timedelta(days=offset), {}).items():
+                totals[event] = totals.get(event, 0) + count
+        week_rows += row(f"ab {start:%d.%m.}", totals, "active_week")
+    return f"""
+<section class="card">
+  <h2>Nutzung</h2>
+  <p class="muted">Anonyme Zähler aus der App: nur Anzahl pro Tag, kein Gerät,
+  keine Aktion. Aktive Handys zählt jedes Handy einmal pro Tag bzw. Woche.</p>
+  <h3>Pro Woche</h3>
+  <div class="table"><table><tr><th>Woche</th>{head}</tr>{week_rows}</table></div>
+  <h3>Pro Tag</h3>
+  <div class="table"><table><tr><th>Tag</th>{head}</tr>{day_rows}</table></div>
+</section>"""
+
+
+def _week_start(day: date) -> date:
+    return day - timedelta(days=day.weekday())
+
+
 def _time(moment: datetime) -> str:
     return moment.astimezone(_BERLIN).strftime("%d.%m.%Y %H:%M")
 
@@ -418,6 +482,15 @@ button.link { background: none; color: var(--muted); padding: 0;
 .status.succeeded { color: var(--ok); }
 .status.failed { color: var(--bad); }
 .status.running { color: var(--run); }
+h3 { font-size: .95rem; margin: 16px 0 6px; }
+.table { overflow-x: auto; }
+table { border-collapse: collapse; font-size: .85rem;
+  font-variant-numeric: tabular-nums; }
+th, td { padding: 4px 8px; border-top: 1px solid var(--line); text-align: right;
+  white-space: nowrap; }
+tr:first-child th { border-top: 0; color: var(--muted); font-weight: 500;
+  white-space: normal; vertical-align: bottom; }
+tr > th:first-child { text-align: left; font-weight: 500; }
 details { margin-top: 6px; font-size: .9rem; }
 details li { overflow-wrap: anywhere; }
 """
