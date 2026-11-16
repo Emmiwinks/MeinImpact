@@ -23,6 +23,9 @@ import 'package:meinimpact/src/features/onboarding/rucksack/rucksack_screen.dart
 import 'package:meinimpact/src/features/onboarding/value_profile_screen.dart';
 import 'package:meinimpact/src/features/tracking/domain/action_log.dart';
 import 'package:meinimpact/src/features/tracking/domain/impact_news.dart';
+import 'package:meinimpact/src/features/tracking/domain/progress.dart';
+import 'package:meinimpact/src/features/tracking/progress_widgets.dart';
+import 'package:meinimpact/src/features/tracking/streak_flame.dart';
 
 const _out = '../.impeccable/review';
 final _boundary = GlobalKey();
@@ -170,6 +173,8 @@ void main() {
     Widget home, {
     Brightness brightness = Brightness.dark,
     Future<void> Function(WidgetTester tester)? act,
+    // False to catch an animation midway.
+    bool settle = true,
   }) async {
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3;
@@ -196,7 +201,7 @@ void main() {
     await tester.pumpAndSettle();
     if (act != null) {
       await act(tester);
-      await tester.pumpAndSettle();
+      if (settle) await tester.pumpAndSettle();
     }
     await tester.runAsync(() async {
       final boundary = _boundary.currentContext!.findRenderObject()!
@@ -392,6 +397,147 @@ void main() {
     (t) => pitch(t, '4-profile', act: (t) => t.tap(find.text('Mein Profil'))),
   );
   for (final brightness in Brightness.values) {
+    // Days back to this week's Monday, so the states hold on any weekday.
+    final monday = _now.weekday - 1;
+    for (final (name, history) in [
+      ('strong', _flameHistory(daysAgo: 0)),
+      // Last week's Monday: still running, at least a week ago.
+      ('ember', _flameHistory(daysAgo: monday + 7)),
+      // The week before last: one week missed, paused.
+      ('smoke', _flameHistory(daysAgo: monday + 10)),
+    ]) {
+      testWidgets(
+        'flame $name, ${brightness.name}',
+        (t) => shoot(
+          t,
+          'phone-flame-$name-${brightness.name}',
+          brightness: brightness,
+          doneActions: history,
+        ),
+      );
+      testWidgets(
+        'streak details $name, ${brightness.name}',
+        (t) => shoot(
+          t,
+          'phone-streak-$name-${brightness.name}',
+          brightness: brightness,
+          doneActions: history,
+          act: (t) => t.tap(find.byType(StreakFlame)),
+        ),
+      );
+    }
+    testWidgets(
+      'profile badges, ${brightness.name}',
+      (t) => shoot(
+        t,
+        'phone-profile-badges-${brightness.name}',
+        brightness: brightness,
+        profile: _pitchProfile,
+        doneActions: _playedHistory(),
+        act: (t) async {
+          await t.tap(find.text('Mein Profil'));
+          await t.pumpAndSettle();
+          await t.scrollUntilVisible(
+            find.text('Abzeichen'),
+            300,
+            scrollable: find.byType(Scrollable).first,
+          );
+          await t.drag(
+            find.byType(Scrollable).first,
+            const Offset(0, -200),
+          );
+        },
+      ),
+    );
+    testWidgets(
+      'profile, no badges yet, ${brightness.name}',
+      (t) => shoot(
+        t,
+        'phone-profile-nobadges-${brightness.name}',
+        brightness: brightness,
+        profile: _pitchProfile,
+        act: (t) async {
+          await t.tap(find.text('Mein Profil'));
+          await t.pumpAndSettle();
+          await t.scrollUntilVisible(
+            find.text('Abzeichen'),
+            300,
+            scrollable: find.byType(Scrollable).first,
+          );
+          await t.drag(
+            find.byType(Scrollable).first,
+            const Offset(0, -200),
+          );
+        },
+      ),
+    );
+    testWidgets(
+      'all badges, ${brightness.name}',
+      (t) => shoot(
+        t,
+        'phone-badges-${brightness.name}',
+        brightness: brightness,
+        profile: _pitchProfile,
+        doneActions: _playedHistory(),
+        act: (t) async {
+          await t.tap(find.text('Mein Profil'));
+          await t.pumpAndSettle();
+          await t.scrollUntilVisible(
+            find.text('Alle ansehen'),
+            300,
+            scrollable: find.byType(Scrollable).first,
+          );
+          await t.tap(find.text('Alle ansehen'));
+        },
+      ),
+    );
+    final cards = find.byWidgetPredicate(
+      (w) => w.runtimeType.toString() == '_DealtCard',
+    );
+    testWidgets(
+      'reveal, face down, ${brightness.name}',
+      (t) => screen(
+        t,
+        'phone-reveal-down-${brightness.name}',
+        brightness: brightness,
+        _MomentLauncher(_playedHistory()),
+        act: (t) => t.tap(find.text('show')),
+      ),
+    );
+    testWidgets(
+      'reveal, mid turn, ${brightness.name}',
+      (t) => screen(
+        t,
+        'phone-reveal-mid-${brightness.name}',
+        brightness: brightness,
+        _MomentLauncher(_playedHistory()),
+        settle: false,
+        act: (t) async {
+          await t.tap(find.text('show'));
+          await t.pumpAndSettle();
+          await t.tap(cards.first);
+          // The first frame starts the turn's clock.
+          await t.pump();
+          await t.pump(const Duration(milliseconds: 560));
+        },
+      ),
+    );
+    testWidgets(
+      'reveal, all turned, ${brightness.name}',
+      (t) => screen(
+        t,
+        'phone-reveal-up-${brightness.name}',
+        brightness: brightness,
+        _MomentLauncher(_playedHistory().take(7).toList()),
+        act: (t) async {
+          await t.tap(find.text('show'));
+          await t.pumpAndSettle();
+          await t.tap(cards.first);
+          await t.pumpAndSettle();
+          await t.tap(cards.last);
+        },
+      ),
+    );
     testWidgets(
       'profile, ${brightness.name}',
       (t) => shoot(
@@ -745,6 +891,77 @@ Future<void> _loadFonts() async {
 
 final _now = DateTime.now();
 DateTime _in(int days) => DateTime(_now.year, _now.month, _now.day + days);
+
+// Ten actions over six weeks with a week's pause, oldest first. The tenth
+// is the week's first: milestone, Wohnen's first badge and the streak at
+// once. The seventh gives Familie and Mobilität their first.
+List<ActionLogEntry> _playedHistory() {
+  final week = _now.weekday - 1;
+  final plan = <(int, List<String>)>[
+    (-week - 35, ['Umwelt/Natur', 'Familie/Kinder']),
+    (-week - 34, ['Umwelt/Natur']),
+    (-week - 28, ['Umwelt/Natur', 'Mobilität/Verkehr']),
+    (-week - 27, ['Familie/Kinder', 'Wohnen/Miete']),
+    (-week - 21, ['Umwelt/Natur', 'Mobilität/Verkehr']),
+    (-week - 20, ['Wohnen/Miete']),
+    (-week - 7, ['Umwelt/Natur', 'Familie/Kinder', 'Mobilität/Verkehr']),
+    (-week - 6, ['Umwelt/Natur', 'Gesundheit/Pflege']),
+    (-week - 2, ['Umwelt/Natur', 'Mobilität/Verkehr']),
+    (-week, ['Umwelt/Natur', 'Wohnen/Miete']),
+  ];
+  return [
+    for (final (i, (day, tags)) in plan.indexed)
+      ActionLogEntry(
+        opportunityId: 'played-$i',
+        doneAt: _in(day).add(const Duration(hours: 10)),
+        via: ActionVia.inAppBrowser,
+        title: 'Aktion $i',
+        kind: OpportunityKind.petition,
+        sourceOrg: 'openPetition',
+        sourceUrl: 'https://example.org/$i',
+        affectedTags: tags,
+      ),
+  ];
+}
+
+// Three weeks in a row, the last action [daysAgo] days ago.
+List<ActionLogEntry> _flameHistory({required int daysAgo}) => [
+      for (final (i, days) in [daysAgo + 14, daysAgo + 7, daysAgo].indexed)
+        ActionLogEntry(
+          opportunityId: 'flame-$i',
+          doneAt: _in(-days).add(const Duration(hours: 10)),
+          via: ActionVia.inAppBrowser,
+          title: 'Aktion $i',
+          kind: OpportunityKind.petition,
+          sourceOrg: 'openPetition',
+          sourceUrl: 'https://example.org/$i',
+          affectedTags: const ['Umwelt/Natur'],
+        ),
+    ];
+
+// Shows the moment the last of [log] brought, as after its "Fertig".
+class _MomentLauncher extends StatelessWidget {
+  const _MomentLauncher(this.log);
+
+  final List<ActionLogEntry> log;
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final moment = ProgressMoment.between(
+      Progress.of(ActionLog(log.sublist(0, log.length - 1)), now),
+      Progress.of(ActionLog(log), now),
+    )!;
+    return Scaffold(
+      body: Center(
+        child: TextButton(
+          onPressed: () => showProgressMoment(context, moment),
+          child: const Text('show'),
+        ),
+      ),
+    );
+  }
+}
 
 List<Opportunity> _opportunities() => [
       _o(

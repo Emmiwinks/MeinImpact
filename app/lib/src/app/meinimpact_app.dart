@@ -15,6 +15,8 @@ import '../features/onboarding/rucksack/rucksack_screen.dart';
 import '../features/onboarding/value_profile_screen.dart';
 import '../features/tracking/data/action_log_store.dart';
 import '../features/tracking/domain/action_log.dart';
+import '../features/tracking/domain/progress.dart';
+import '../features/tracking/progress_widgets.dart';
 import 'main_tab_screen.dart';
 import 'theme/mi_theme.dart';
 
@@ -80,6 +82,7 @@ class _MeinImpactAppState extends State<MeinImpactApp>
   // The tab the shell opens on: back from those two, it is Mein Profil.
   int _homeTab = 1;
   late ActionLog _actionLog;
+  final _navigatorKey = GlobalKey<NavigatorState>();
 
   @override
   void initState() {
@@ -107,14 +110,20 @@ class _MeinImpactAppState extends State<MeinImpactApp>
   Future<void> _onActionDone(Opportunity opportunity, ActionVia via) async {
     if (_actionLog.isDone(opportunity.id)) return;
     Usage.current.count(UsageEvent.actionDone);
+    final now = DateTime.now();
     final updated = _actionLog.withDone(
-      ActionLogEntry.fromOpportunity(
-        opportunity,
-        doneAt: DateTime.now(),
-        via: via,
-      ),
+      ActionLogEntry.fromOpportunity(opportunity, doneAt: now, via: via),
+    );
+    final moment = ProgressMoment.between(
+      Progress.of(_actionLog, now),
+      Progress.of(updated, now),
     );
     setState(() => _actionLog = updated);
+    // The card has landed on the Wirkung pile by now.
+    final navigator = _navigatorKey.currentContext;
+    if (moment != null && navigator != null) {
+      unawaited(showProgressMoment(navigator, moment));
+    }
     // Best effort: offline, the mark is lost and Mein Impact just doesn't
     // follow this one. Never blocks or fails the user's "Fertig".
     unawaited(
@@ -222,6 +231,7 @@ class _MeinImpactAppState extends State<MeinImpactApp>
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       // No language switcher — German only, matching the real user base.
       locale: const Locale('de'),
       supportedLocales: AppLocalizations.supportedLocales,

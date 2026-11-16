@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../../../../app/theme/mi_theme.dart';
 import '../../../onboarding/rucksack/hanging_tag.dart';
 import '../../../onboarding/rucksack/rucksack_bag.dart';
+import '../../../tracking/domain/progress.dart';
+import '../../../tracking/progress_widgets.dart';
 import '../../domain/interest_config.dart';
 import '../../domain/interest_weights.dart';
 import '../../domain/lebenslagen_catalog.g.dart';
@@ -23,10 +25,14 @@ class ProfileColumn extends StatelessWidget {
     required this.onLebenslagenChanged,
     required this.onInterestsChanged,
     this.onEditLebenslagen,
+    this.progress,
     super.key,
   });
 
   final UserProfile? profile;
+
+  /// For the badges; none without it.
+  final Progress? progress;
   final VoidCallback onEdit;
 
   /// Opens the Rucksack instead of the sheet to edit the Lebenslagen.
@@ -52,6 +58,9 @@ class ProfileColumn extends StatelessWidget {
               onOpen: onEditLebenslagen,
             ),
           ),
+          if (progress case final progress?)
+            // The medals scroll to the screen's edges.
+            _Section(flush: true, child: ProfileBadges(progress: progress)),
           _Section(
             child: _TopicsSection(
               interests: p.interests,
@@ -67,18 +76,25 @@ class ProfileColumn extends StatelessWidget {
 /// One block on the table, below a keyline like the rows in "Alle
 /// Aktionen" and Wirkung.
 class _Section extends StatelessWidget {
-  const _Section({required this.child, this.first = false});
+  const _Section({
+    required this.child,
+    this.first = false,
+    this.flush = false,
+  });
 
   final Widget child;
   final bool first;
+  // No side margins: the child keeps its own.
+  final bool flush;
 
   @override
   Widget build(BuildContext context) {
+    final side = flush ? 0.0 : MiSpace.lg;
     return Container(
       padding: EdgeInsets.fromLTRB(
-        MiSpace.lg,
+        side,
         first ? 0 : MiSpace.lg,
-        MiSpace.lg,
+        side,
         MiSpace.lg,
       ),
       decoration: first

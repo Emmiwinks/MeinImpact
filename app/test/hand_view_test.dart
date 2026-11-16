@@ -425,20 +425,25 @@ void main() {
       via: ActionVia.inAppBrowser,
     );
 
+    // The streak's flame shows a number too.
+    final unseen = find.descendant(
+      of: find.byType(Badge),
+      matching: find.text('1'),
+    );
     await tester.pumpWidget(shell(const []));
     await tester.pumpAndSettle();
     expect(find.byType(Badge), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(unseen, findsNothing);
 
     await tester.pumpWidget(shell([entry]));
     await tester.pumpAndSettle();
-    expect(find.text('1'), findsOneWidget);
+    expect(unseen, findsOneWidget);
 
     await tester.tap(find.text('Mein Impact'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Meine Aktionen'));
     await tester.pumpAndSettle();
-    expect(find.text('1'), findsNothing);
+    expect(unseen, findsNothing);
   });
 }
 

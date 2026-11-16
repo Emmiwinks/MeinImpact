@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import '../../../app/theme/mi_theme.dart';
 import '../../../core/usage/usage.dart';
 import '../../tracking/domain/action_log.dart';
+import '../../tracking/domain/progress.dart';
+import '../../tracking/streak_flame.dart';
 import '../data/opportunity_relevance_ranker.dart';
 import '../domain/interest_config.dart';
 import '../domain/interest_weights.dart';
@@ -42,6 +44,7 @@ class AktionenTab extends StatefulWidget {
     required this.opportunityRepository,
     required this.profile,
     this.doneIds = const {},
+    this.streak,
     this.onInterestSignal,
     this.onActionDone,
     this.interestConfig = const InterestConfig(),
@@ -55,6 +58,8 @@ class AktionenTab extends StatefulWidget {
   final UserProfile profile;
   // Opportunity ids in the action log; hidden from the feed.
   final Set<String> doneIds;
+  // The flame top right; none without it.
+  final Streak? streak;
   // Reports what the user did with topics (a card's tags, or the one topic
   // of a card vote), for learning interests.
   final void Function(List<String> tags, InterestSignal signal)?
@@ -130,7 +135,13 @@ class _AktionenTabState extends State<AktionenTab> {
 
   @override
   Widget build(BuildContext context) {
-    final hand = _buildHand();
+    final hand = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _TopLine(streak: widget.streak),
+        Expanded(child: _buildHand()),
+      ],
+    );
     // On the card table already when inside the app shell.
     return Theme.of(context).extension<MiColors>() != null
         ? hand
@@ -191,6 +202,46 @@ class _AktionenTabState extends State<AktionenTab> {
           onVote: (tag, signal) => widget.onInterestSignal?.call([tag], signal),
         );
       },
+    );
+  }
+}
+
+/// Above the hand: that the card texts are AI-written, and the streak.
+class _TopLine extends StatelessWidget {
+  const _TopLine({required this.streak});
+
+  final Streak? streak;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.mi;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        MiSpace.lg,
+        MiSpace.sm,
+        MiSpace.base,
+        0,
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.auto_awesome_outlined,
+            size: 16,
+            color: colors.onTableMuted,
+          ),
+          const SizedBox(width: MiSpace.xs),
+          Expanded(
+            child: Text(
+              'Texte mit KI erstellt, können Fehler enthalten.',
+              style: Theme.of(context)
+                  .textTheme
+                  .labelMedium
+                  ?.copyWith(color: colors.onTableMuted),
+            ),
+          ),
+          if (streak case final streak?) StreakFlame(streak: streak),
+        ],
+      ),
     );
   }
 }

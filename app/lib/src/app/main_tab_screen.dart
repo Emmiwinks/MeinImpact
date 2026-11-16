@@ -11,6 +11,7 @@ import '../features/feed/domain/user_profile.dart';
 import '../features/feed/presentation/aktionen_tab.dart';
 import '../features/feed/presentation/widgets/profile_column.dart';
 import '../features/tracking/domain/action_log.dart';
+import '../features/tracking/domain/progress.dart';
 import '../features/tracking/wirkung_tab.dart';
 import 'theme/mi_theme.dart';
 
@@ -79,10 +80,12 @@ class _MainTabScreenState extends State<MainTabScreen> {
     final l10n = AppLocalizations.of(context);
     final effectiveProfile = widget.profile ?? MainTabScreen._fallbackProfile;
     final unseen = widget.doneActions.length - _seenDone;
+    final progress = Progress.of(ActionLog(widget.doneActions), DateTime.now());
 
     final tabs = [
       _ProfileTab(
         profile: effectiveProfile,
+        progress: progress,
         onEdit: widget.onEditProfile,
         onEditLebenslagen: widget.onEditLebenslagen,
         onLebenslagenChanged: widget.onLebenslagenChanged,
@@ -93,6 +96,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
         profile: effectiveProfile,
         onInterestSignal: widget.onInterestSignal,
         doneIds: widget.doneIds,
+        streak: progress.streak,
         onActionDone: widget.onActionDone,
         interestConfig: widget.interestConfig,
       ),
@@ -161,6 +165,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
 class _ProfileTab extends StatelessWidget {
   const _ProfileTab({
     required this.profile,
+    required this.progress,
     required this.onEdit,
     required this.onEditLebenslagen,
     required this.onLebenslagenChanged,
@@ -168,6 +173,7 @@ class _ProfileTab extends StatelessWidget {
   });
 
   final UserProfile profile;
+  final Progress progress;
   final VoidCallback? onEdit;
   final VoidCallback? onEditLebenslagen;
   final ValueChanged<Set<String>>? onLebenslagenChanged;
@@ -179,6 +185,7 @@ class _ProfileTab extends StatelessWidget {
       padding: const EdgeInsets.only(top: MiSpace.lg, bottom: MiSpace.xl),
       child: ProfileColumn(
         profile: profile,
+        progress: progress,
         onEdit: onEdit ?? () {},
         onEditLebenslagen: onEditLebenslagen,
         onLebenslagenChanged: onLebenslagenChanged ?? (_) {},
