@@ -62,13 +62,16 @@ CANDIDATE_TOPICS: dict[str, str] = {
 }
 
 # Each axis in its own bipolar language, never a generic left/right label.
+# The signs must match the app's questionnaire (value_profile_screen.dart:
+# left statement = -2, right = +2), or alignment silently inverts.
 AXIS_LANGUAGE: dict[str, str] = {
     "tradition_progress": "-1 = Bewahrung/Tradition ... +1 = Reform/Wandel",
     "equality_markets": (
         "-1 = Umverteilung/Sozialstaat ... +1 = freier Markt/Privatisierung"
     ),
     "liberty_authority": (
-        "-1 = staatliche Regulierung/Eingriff ... +1 = individuelle Freiheit"
+        "-1 = individuelle Freiheit/Bürgerrechte ... "
+        "+1 = staatliche Kontrolle/Sicherheit"
     ),
     "nation_globe": "-1 = nationaler Fokus ... +1 = international/multilateral",
 }
