@@ -22,6 +22,7 @@ from meinimpact.infrastructure.ai.taxonomy import (
     TAG_HINTS,
 )
 from meinimpact.infrastructure.geo.districts import District, DistrictMatcher
+from meinimpact.infrastructure.geo.locality import Reach
 from meinimpact.infrastructure.listings.model import Region
 from tests.listing_fakes import make_listing
 
@@ -255,6 +256,34 @@ def test_candidate_topic_is_kept_only_from_the_candidate_list() -> None:
     )
     assert parse_enrichment(_relevant(kandidat="Erfunden")).topic_candidate == ""
     assert parse_enrichment(_relevant()).topic_candidate == ""
+
+
+def test_reach_and_places_are_kept_up_to_three_places() -> None:
+    enrichment = parse_enrichment(
+        _relevant(
+            scope="sachsen",
+            reichweite="umland",
+            orte=["Pirna", "Neustadt in Sachsen", "Sebnitz", "Bad Schandau", 7],
+        )
+    )
+
+    assert enrichment.reach is Reach.SURROUNDINGS
+    assert enrichment.places == ("Pirna", "Neustadt in Sachsen", "Sebnitz")
+
+
+@pytest.mark.parametrize("reichweite", ["", "landesweit", None])
+def test_no_or_unknown_reach_drops_the_places(reichweite: str | None) -> None:
+    enrichment = parse_enrichment(_relevant(reichweite=reichweite, orte=["Dresden"]))
+
+    assert enrichment.reach is None
+    assert enrichment.places == ()
+
+
+def test_prompt_separates_who_decides_from_where_it_matters() -> None:
+    prompt = build_prompt(make_listing(), None)
+
+    assert '"reichweite": "nachbarschaft" | "ort" | "stadt" | "umland" | ""' in prompt
+    assert "Wer berät, macht eine Vorlage nicht" in prompt
 
 
 _DRESDEN = DistrictMatcher(

@@ -10,6 +10,8 @@ from meinimpact.infrastructure.geo.geonames import (
     GeoNamesPlzSource,
     PlzRow,
     condense,
+    condense_places,
+    kreis_names,
     parse_rows,
 )
 from meinimpact.infrastructure.geo.plz import (
@@ -24,15 +26,50 @@ _GEONAMES = (
     "\t14612\t51.0507\t13.7366\t4\n"
     "DE\t01067\tDresden\tSaxony\tSN\t\t00\tKreisfreie Stadt Dresden"
     "\t14612\t51.0547\t13.7269\t4\n"
+    "DE\t01069\tBundesagentur\tSaxony\tSN\t\t\tKreisfreie Stadt Dresden"
+    "\t14612\t51.04\t13.73\t\n"
     "DE\t87491\tJungholz\t\t\t\t\t\t\t47.5741\t10.4472\t\n"
 )
 
 
 def test_parse_rows_skips_places_without_a_kreis() -> None:
+    kreis = "Kreisfreie Stadt Dresden"
     assert parse_rows(_GEONAMES) == [
-        PlzRow("01067", "Dresden Innere Altstadt", "14612", 51.0507, 13.7366),
-        PlzRow("01067", "Dresden", "14612", 51.0547, 13.7269),
+        PlzRow("01067", "Dresden Innere Altstadt", "14612", 51.0507, 13.7366, kreis),
+        PlzRow("01067", "Dresden", "14612", 51.0547, 13.7269, kreis),
+        PlzRow("01069", "Bundesagentur", "14612", 51.04, 13.73, kreis, False),
     ]
+
+
+def test_condense_places_spans_each_municipality_without_large_customers() -> None:
+    rows = [
+        PlzRow("01067", "Dresden", "14612", 51.05, 13.73),
+        PlzRow("01099", "Dresden", "14612", 51.10, 13.73),
+        PlzRow("01109", "Dresden", "14612", 51.12, 13.73),
+        PlzRow("01069", "Bundesagentur", "14612", 51.04, 13.73, municipal=False),
+        PlzRow("03253", "Schönborn", "12062", 51.6002, 13.4897),
+        PlzRow("55469", "Schönborn", "07140", 49.95, 7.4667),
+    ]
+
+    places = condense_places(rows)
+
+    assert set(places) == {"Dresden", "Schönborn"}
+    [(kreis, lat, lon, km)] = places["Dresden"]
+    assert (kreis, lat, lon) == ("14612", 51.1, 13.73)
+    assert km == pytest.approx(5.6, abs=0.1)  # down to 51.05
+    assert [entry[0] for entry in places["Schönborn"]] == ["07140", "12062"]
+
+
+def test_kreis_names_keep_every_spelling() -> None:
+    rows = [
+        PlzRow("09111", "Chemnitz", "14511", 50.8, 12.9, "Chemnitz, Stadt"),
+        PlzRow("09112", "Chemnitz", "14511", 50.8, 12.9, "Kreisfreie Stadt Chemnitz"),
+    ]
+
+    assert kreis_names(rows) == {
+        "Chemnitz, Stadt": "14511",
+        "Kreisfreie Stadt Chemnitz": "14511",
+    }
 
 
 def test_condense_takes_the_medoid_so_a_stray_place_cannot_drag_the_point() -> None:
@@ -68,7 +105,7 @@ async def test_source_reads_the_zipped_table() -> None:
         httpx.AsyncClient(transport=httpx.MockTransport(handler))
     )
 
-    assert len(await source.fetch()) == 2
+    assert len(await source.fetch()) == 3
     await source.aclose()
 
 

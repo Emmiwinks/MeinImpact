@@ -207,6 +207,13 @@ class OpportunityRecord(Base):
     districts: Mapped[list[str]] = mapped_column(
         ARRAY(Text()), nullable=False, server_default="{}"
     )
+    # Where the consequences are felt, as enrichment reads the text
+    # (geo/locality.py Reach), and the municipalities, Kreise or city parts
+    # it names; null/[] = enriched before it read them
+    reach: Mapped[str | None] = mapped_column(String(length=20), nullable=True)
+    places: Mapped[list[str]] = mapped_column(
+        ARRAY(Text()), nullable=False, server_default="{}"
+    )
     # Free topic label, for taxonomy maintenance (scripts/topic_report.py)
     free_topic: Mapped[str | None] = mapped_column(Text, nullable=True)
     topic_candidate: Mapped[str | None] = mapped_column(Text, nullable=True)

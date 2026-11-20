@@ -129,6 +129,31 @@ def test_pool_says_where_each_opportunity_lies() -> None:
     assert items[2]["umkreis"] is None
 
 
+def test_pool_locates_by_enrichments_reach_and_places() -> None:
+    repository = FakeRepository()
+    repository.open = [
+        _variant(
+            1,
+            region="dresden",
+            organizer="Ortschaftsrat Schönborn",
+            reach="stadt",
+            places=("Dresden",),
+        ),
+        _variant(2, region="sachsen", reach="ort", places=("Weinböhla",)),
+    ]
+    client = _client(repository)
+
+    items = client.get("/v1/opportunities/pool", headers=_auth(client)).json()[
+        "opportunities"
+    ]
+
+    assert [(i["gebiet"], i["reichweite"]) for i in items] == [
+        ("14612", "stadt"),
+        ("14", "ort"),
+    ]
+    assert items[1]["umkreis"]["km"] < 5
+
+
 def test_pool_carries_each_options_bundle() -> None:
     repository = FakeRepository()
     bundle = OpportunityBundle(

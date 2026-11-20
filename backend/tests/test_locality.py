@@ -7,6 +7,7 @@ import pytest
 from meinimpact.infrastructure.geo.districts import District, DistrictMatcher
 from meinimpact.infrastructure.geo.locality import (
     NEIGHBOURHOOD_KM,
+    SURROUNDINGS_KM,
     Coverage,
     Locality,
     LocalityResolver,
@@ -14,7 +15,14 @@ from meinimpact.infrastructure.geo.locality import (
     Reach,
     coverage_of,
 )
-from meinimpact.infrastructure.geo.plz import Area, PlzIndex, PlzLocation, Point
+from meinimpact.infrastructure.geo.places import MIN_PLACE_KM, PlaceIndex
+from meinimpact.infrastructure.geo.plz import (
+    Area,
+    PlzIndex,
+    PlzLocation,
+    Point,
+    distance_km,
+)
 from meinimpact.infrastructure.listings.catalog import default_locality_resolver
 
 _DISTRICTS = (
@@ -25,6 +33,10 @@ _DISTRICTS = (
 )
 
 
+_WEINBOEHLA = Point(51.1667, 13.5667)
+_PIRNA, _SEBNITZ = Point(50.9584, 13.937), Point(50.9754, 14.2758)
+
+
 @pytest.fixture
 def resolver() -> LocalityResolver:
     plz = PlzIndex(
@@ -32,6 +44,15 @@ def resolver() -> LocalityResolver:
             "01067": PlzLocation("14612", Point(51.05, 13.73)),
             "01099": PlzLocation("14612", Point(51.08, 13.80)),
         }
+    )
+    places = PlaceIndex(
+        {
+            "Weinböhla": [("14627", Area(_WEINBOEHLA, 0.0))],
+            "Pirna": [("14628", Area(_PIRNA, 1.0))],
+            "Sebnitz": [("14628", Area(_SEBNITZ, 0.0))],
+        },
+        {},
+        plz,
     )
     hoods = Neighbourhoods(
         bodies=(
@@ -41,7 +62,7 @@ def resolver() -> LocalityResolver:
         districts=_DISTRICTS,
         matcher=DistrictMatcher("Dresden", _DISTRICTS),
     )
-    return LocalityResolver(plz, {"dresden": hoods})
+    return LocalityResolver(plz, places, {"dresden": hoods})
 
 
 def test_bund_and_eu_concern_everyone(resolver: LocalityResolver) -> None:
@@ -87,6 +108,84 @@ def test_an_unlocatable_neighbourhood_falls_back_to_the_city(
         assert resolver.of("dresden", organizer).reach is Reach.CITY
 
 
+def test_a_city_wide_reach_beats_the_neighbourhood_body(
+    resolver: LocalityResolver,
+) -> None:
+    # An Ortschaftsrat advising on the city budget
+    locality = resolver.of(
+        "dresden", "Ortschaftsrat Schönfeld-Weißig", Reach.CITY, ("Dresden",)
+    )
+
+    assert locality.reach is Reach.CITY
+    assert locality == resolver.of("dresden", "Stadtrat")
+
+
+def test_a_named_part_of_the_city_locates_a_matter_without_a_body(
+    resolver: LocalityResolver,
+) -> None:
+    locality = resolver.of("dresden", "Stadtrat", Reach.NEIGHBOURHOOD, ("Pieschen",))
+
+    assert locality == Locality(
+        "14612", Reach.NEIGHBOURHOOD, Area(Point(51.08, 13.72), NEIGHBOURHOOD_KM)
+    )
+
+
+def test_an_unknown_part_of_the_city_falls_back_to_the_body(
+    resolver: LocalityResolver,
+) -> None:
+    by_body = resolver.of("dresden", "Ortschaftsrat Schönfeld-Weißig")
+
+    assert (
+        resolver.of(
+            "dresden", "Ortschaftsrat Schönfeld-Weißig", Reach.NEIGHBOURHOOD, ("Hm",)
+        )
+        == by_body
+    )
+
+
+def test_a_land_matter_in_one_place_covers_that_place(
+    resolver: LocalityResolver,
+) -> None:
+    locality = resolver.of("sachsen", None, Reach.PLACE, ("Weinböhla",))
+
+    assert locality == Locality("14", Reach.PLACE, Area(_WEINBOEHLA, MIN_PLACE_KM))
+
+
+def test_a_surrounding_area_covers_all_its_places_and_a_margin(
+    resolver: LocalityResolver,
+) -> None:
+    locality = resolver.of(
+        "sachsen", None, Reach.SURROUNDINGS, ("Pirna", "Nirgendwo", "Sebnitz")
+    )
+
+    assert locality.gebiet == "14" and locality.reach is Reach.SURROUNDINGS
+    assert locality.area is not None
+    half = distance_km(_PIRNA, _SEBNITZ) / 2
+    assert locality.area.km == pytest.approx(half + 2.0 + SURROUNDINGS_KM, abs=0.2)
+
+
+def test_a_place_outside_the_region_or_without_reach_is_ignored(
+    resolver: LocalityResolver,
+) -> None:
+    assert resolver.of("bund", None, Reach.PLACE, ("Nirgendwo",)) == Locality("")
+    assert resolver.of("sachsen", None, None, ("Weinböhla",)) == Locality("14")
+
+
+def test_a_bund_matter_in_one_place_keeps_its_gebiet(
+    resolver: LocalityResolver,
+) -> None:
+    locality = resolver.of("bund", "WeAct", Reach.PLACE, ("Weinböhla",))
+
+    assert locality.gebiet == ""
+    assert locality.area == Area(_WEINBOEHLA, MIN_PLACE_KM)
+
+
+def test_reach_of_a_stored_value() -> None:
+    assert Reach.of("umland") is Reach.SURROUNDINGS
+    assert Reach.of(None) is None
+    assert Reach.of("galaxie") is None
+
+
 def test_an_unknown_region_concerns_everyone(resolver: LocalityResolver) -> None:
     assert resolver.of("mars", None) == Locality(gebiet="")
 
@@ -107,3 +206,17 @@ def test_the_configured_resolver_locates_dresdens_ortschaften() -> None:
     assert city.reach is Reach.CITY
     assert village.area is not None and city.area is not None
     assert village.area.km < city.area.km
+
+
+def test_the_configured_resolver_locates_saxon_places_from_the_prod_pool() -> None:
+    resolver = default_locality_resolver(PlzIndex.load())
+
+    school = resolver.of("sachsen", None, Reach.PLACE, ("Weinböhla",))
+    railway = resolver.of(
+        "sachsen", None, Reach.SURROUNDINGS, ("Pirna", "Neustadt (Sachsen)", "Sebnitz")
+    )
+    region = resolver.of("sachsen", None, Reach.SURROUNDINGS, ("Erzgebirgskreis",))
+
+    assert school.area is not None and school.area.km < 5
+    assert railway.area is not None and 15 < railway.area.km < 30
+    assert region.area is not None and region.area.km > 20

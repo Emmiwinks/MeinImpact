@@ -2,19 +2,28 @@
 
 The region says who decides (and whom a letter goes to); the locality says
 whom to show it to. `gebiet` is the area key (AGS) prefix of everyone it
-concerns. A city's matters also get an `area` around a centre, so the app
-can rank by distance: a city-wide one covers the city's Kreis area, one
-from a neighbourhood body (Ortschaftsrat, Stadtbezirksbeirat ...) only
-that part of the city. All of it is derived from synced data (PLZ table,
-Wikidata districts); a city adds no place data by hand.
+concerns. Where possible an opportunity also gets an `area` around a
+centre, so the app can rank by distance:
+- A city's matter covers the city's Kreis area, or only one part of the
+  city: the part enrichment names, else the part its neighbourhood body
+  (Ortschaftsrat, Stadtbezirksbeirat ...) stands for. A city-wide reach
+  beats the body: an Ortschaftsrat advising on the city budget is no
+  neighbourhood matter.
+- A Land or Bund matter that enrichment places in one or a few
+  municipalities or Kreise (a school in Weinböhla, a railway from Pirna to
+  Sebnitz) covers those. Its `gebiet` stays the region's: a wrongly placed
+  matter is ranked lower far away, never withheld.
+All of it is derived from synced data (PLZ and place table, Wikidata
+districts); a city adds no place data by hand.
 """
 
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 
 from meinimpact.infrastructure.geo.districts import District, DistrictMatcher
+from meinimpact.infrastructure.geo.places import PlaceIndex
 from meinimpact.infrastructure.geo.plz import (
     Area,
     PlzIndex,
@@ -27,11 +36,24 @@ from meinimpact.infrastructure.listings.model import REGION_AGS, Region
 # Radius around a neighbourhood's centre(s) that still counts as it: about
 # a Stadtbezirk or Ortschaft, whose district names locate only its core.
 NEIGHBOURHOOD_KM = 2.5
+# Margin around the places of a matter for a whole area (a forest, a
+# mine): the villages next to them are concerned too.
+SURROUNDINGS_KM = 5.0
 
 
 class Reach(StrEnum):
-    CITY = "stadt"
     NEIGHBOURHOOD = "nachbarschaft"
+    PLACE = "ort"  # one whole municipality or small town
+    CITY = "stadt"
+    SURROUNDINGS = "umland"  # several municipalities: a railway, a forest
+
+    @classmethod
+    def of(cls, value: str | None) -> Reach | None:
+        """The reach named `value`; None for none or an unknown one."""
+        try:
+            return cls(value) if value else None
+        except ValueError:
+            return None
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,10 +78,11 @@ class Neighbourhoods:
         for body in self.bodies:
             match = body.match(organizer)
             if match:
-                return self._points(match.group("area"))
+                return self.points(match.group("area"))
         return []
 
-    def _points(self, area: str) -> list[Point]:
+    def points(self, area: str) -> list[Point]:
+        """The district points of the part of the city called `area`."""
         names = set(self.matcher.find(area))
         if not names:
             # A Stadtbezirk "Altstadt" is no district itself but names
@@ -91,27 +114,62 @@ class LocalityResolver:
     def __init__(
         self,
         plz: PlzIndex,
+        places: PlaceIndex,
         neighbourhoods: Mapping[str, Neighbourhoods] | None = None,
     ) -> None:
         """`neighbourhoods` maps a region to its city's neighbourhood
         bodies (Dresden today)."""
         self._plz = plz
+        self._places = places
         self._neighbourhoods = neighbourhoods or {}
 
-    def of(self, region: str, organizer: str | None) -> Locality:
+    def of(
+        self,
+        region: str,
+        organizer: str | None,
+        reach: Reach | None = None,
+        places: Sequence[str] = (),
+    ) -> Locality:
+        """`reach` and `places` are enrichment's reading of the text; both
+        are missing for opportunities enriched before it read them."""
         try:
             gebiet = REGION_AGS[Region(region)]
         except ValueError:
             return Locality(gebiet="")
-        if len(gebiet) < 5:
-            return Locality(gebiet=gebiet)
+        if len(gebiet) >= 5:
+            return self._in_city(region, gebiet, organizer, reach, places)
+        area = self._around(places, gebiet, reach) if reach else None
+        return Locality(gebiet, reach, area) if area else Locality(gebiet)
+
+    def _in_city(
+        self,
+        region: str,
+        gebiet: str,
+        organizer: str | None,
+        reach: Reach | None,
+        places: Sequence[str],
+    ) -> Locality:
         neighbourhoods = self._neighbourhoods.get(region)
-        points = (
-            neighbourhoods.locate(organizer) if neighbourhoods and organizer else []
-        )
-        if points:
-            centre = centroid(points)
-            km = max(NEIGHBOURHOOD_KM, *(distance_km(centre, p) for p in points))
-            return Locality(gebiet, Reach.NEIGHBOURHOOD, Area(centre, round(km, 1)))
+        if neighbourhoods and reach in (None, Reach.NEIGHBOURHOOD):
+            points = [p for name in places for p in neighbourhoods.points(name)]
+            if not points and organizer:
+                points = neighbourhoods.locate(organizer)
+            if points:
+                centre = centroid(points)
+                km = max(NEIGHBOURHOOD_KM, *(distance_km(centre, p) for p in points))
+                area = Area(centre, round(km, 1))
+                return Locality(gebiet, Reach.NEIGHBOURHOOD, area)
         city = self._plz.kreis_area(gebiet)
         return Locality(gebiet, Reach.CITY if city else None, city)
+
+    def _around(self, places: Sequence[str], gebiet: str, reach: Reach) -> Area | None:
+        """The area covering every place named that lies in `gebiet`;
+        places that cannot be located are left out."""
+        areas = [area for name in places if (area := self._places.locate(name, gebiet))]
+        if not areas:
+            return None
+        centre = centroid([area.centre for area in areas])
+        km = max(distance_km(centre, area.centre) + area.km for area in areas)
+        if reach is Reach.SURROUNDINGS:
+            km += SURROUNDINGS_KM
+        return Area(centre, round(km, 1))

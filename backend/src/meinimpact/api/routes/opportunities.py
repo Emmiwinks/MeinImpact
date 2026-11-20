@@ -29,7 +29,7 @@ from meinimpact.infrastructure.council.offices import FRAKTION_OFFICES
 from meinimpact.infrastructure.council.postgres_council_repository import (
     PostgresCouncilRepository,
 )
-from meinimpact.infrastructure.geo.locality import LocalityResolver
+from meinimpact.infrastructure.geo.locality import LocalityResolver, Reach
 from meinimpact.infrastructure.impact.postgres_news_repository import (
     PostgresImpactNewsRepository,
 )
@@ -141,7 +141,10 @@ async def get_opportunity_pool(
     (app versions before the Kreis), all of them."""
     now = datetime.now(UTC)
     opportunities = await opportunity_repository.list_open(now.date())
-    located = [(o, localities.of(o.region, o.organizer)) for o in opportunities]
+    located = [
+        (o, localities.of(o.region, o.organizer, Reach.of(o.reach), o.places))
+        for o in opportunities
+    ]
     return schemas.OpportunityPoolResponse(
         opportunities=[
             schemas.OpportunityResponse.from_domain(o, locality)

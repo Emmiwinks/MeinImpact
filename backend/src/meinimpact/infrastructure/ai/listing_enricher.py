@@ -18,6 +18,10 @@ One LLM call per listing covers the first four points:
    not asked: in a live run it mapped streets to the wrong districts
    (Postplatz -> Innere Neustadt), and a wrong district is worse than none.
    Street-level inference needs real geodata, not model guesses.
+6. Where the consequences are felt: a reach (one neighbourhood, place,
+   city or surrounding area) and the municipalities, Kreise or city parts
+   the text names. The model only names them; `geo/locality.py` locates
+   them in synced data and skips what it cannot place unambiguously.
 
 Registry facts (dates, counts, URL) never come from the model; they stay
 with the listing. The model's structured output is normalized in code:
@@ -43,6 +47,7 @@ from meinimpact.infrastructure.ai.taxonomy import (
     TAG_HINTS,
 )
 from meinimpact.infrastructure.geo.districts import DistrictMatcher
+from meinimpact.infrastructure.geo.locality import Reach
 from meinimpact.infrastructure.listings.model import Listing, Region
 
 ENRICHMENT_VERSION = "12"
@@ -50,6 +55,7 @@ ENRICHMENT_VERSION = "12"
 
 _MAX_DETAIL_CHARS = 4000
 _MAX_ARGUMENTS = 3
+_MAX_PLACES = 3
 _SCORE_RANGE = range(1, 6)
 
 _SCOPES: Mapping[str, Region | None] = {
@@ -93,6 +99,10 @@ class Enrichment:
     free_topic: str = ""
     # One of `CANDIDATE_TOPICS` when it fits, counted by the same report
     topic_candidate: str = ""
+    # Where the consequences are felt, as the model reads the text: places
+    # are names only, located by `geo/locality.py` from synced data
+    reach: Reach | None = None
+    places: tuple[str, ...] = ()
     # Set by `ListingEnricher` from the registry text, never by the model
     districts: tuple[str, ...] = ()
 
@@ -148,6 +158,8 @@ Eintrag unten und antworte NUR mit JSON in genau dieser Struktur:
   "is_participation": <bool>,
   "reason": "<ein kurzer Satz, warum (nicht)>",
   "scope": "eu" | "bund" | "sachsen" | "dresden" | "andere_kommune" | "andere_region",
+  "reichweite": "nachbarschaft" | "ort" | "stadt" | "umland" | "",
+  "orte": ["<Gemeinde, Stadt, Landkreis oder Stadtteil>", ...],
   "alltagsbezug": <1-5>,
   "zugaenglichkeit": <1-5>,
   "title": "<kurze, neutrale Frage>",
@@ -201,7 +213,34 @@ scope = wo das Thema für Menschen zählt: "dresden" (Stadt Dresden),
 "sachsen" (Freistaat Sachsen oder sachsenweit), "bund" (bundesweit
 relevant, auch wenn es anderswo angestoßen wurde), "eu", "andere_kommune"
 (nur eine andere sächsische Stadt/Gemeinde/einen Landkreis), "andere_region"
-(nur ein anderes Bundesland oder eine Stadt außerhalb Sachsens).
+(nur ein anderes Bundesland oder eine Stadt außerhalb Sachsens). Bei
+Ratsvorlagen ist scope immer die Stadt, deren Rat entscheidet, auch wenn
+die Folgen ins Umland reichen.
+
+reichweite und orte = wo die Folgen spürbar sind. Das ist nicht dasselbe
+wie scope: scope sagt, wer entscheidet, reichweite, wen es als Ort betrifft.
+"nachbarschaft" = ein Stadtteil oder Viertel, eine Straße, ein Platz oder
+eine einzelne Einrichtung (z.B. eine Schule, ein Park); "ort" = eine ganze
+Gemeinde oder Kleinstadt; "stadt" = eine ganze Großstadt; "umland" = eine
+Gegend über mehrere Gemeinden (z.B. eine Bahnstrecke, eine Stromleitung,
+ein Tagebau, ein Wald, ein Landkreis); "" = kein bestimmter Ort, die
+Folgen treffen Menschen im ganzen Land, in ganz Deutschland oder der EU,
+auch wenn ein einzelner Ort den Anlass gab. Ein Gesetz, eine Verordnung
+oder eine Regel für ein ganzes Land ist immer "", auch wenn der Text Orte
+als Beispiele nennt.
+orte: höchstens 3 amtliche Namen der betroffenen Gemeinden, Städte oder
+Landkreise (z.B. "Weinböhla", "Pirna", "Erzgebirgskreis"). Liegt etwas in
+einem Wald, Tal oder Ortsteil, nenne die Gemeinde, in der es liegt. Bei
+"nachbarschaft" in einer Großstadt nenne den Stadtteil (z.B. "Pieschen").
+Bei einer Strecke oder Leitung nenne Anfang und Ende. Nur Orte, die im
+Text stehen oder in denen das Genannte sicher liegt; im Zweifel []. Bei
+reichweite "" immer [].
+Ratsvorlagen eines Ortschaftsrats oder Stadtbezirksbeirats: "nachbarschaft"
+nur, wenn die Vorlage diesen Stadtteil selbst betrifft (z.B. sein eigenes
+Budget, eine Straße dort). Berät das Gremium eine Vorlage für die ganze
+Stadt (z.B. die Haushaltssatzung der Stadt oder Einwendungen dagegen, das
+städtische Klinikum), dann "stadt": Wer berät, macht eine Vorlage nicht
+zur Sache des Stadtteils.
 
 alltagsbezug = wie direkt das den Alltag eines durchschnittlichen Menschen
 in Dresden/Sachsen berührt:
@@ -304,6 +343,7 @@ def parse_enrichment(raw: Mapping[str, Any]) -> Enrichment:
     snippet_keys = {key for tag in tags for key in TAG_BETROFFENHEIT_KEYS.get(tag, [])}
     candidate = _text(raw.get("kandidat"))
     lebenslagen = _lebenslagen(raw.get("lebenslagen"))
+    reach = Reach.of(_text(raw.get("reichweite")))
     return Enrichment(
         is_relevant=True,
         reason=reason,
@@ -330,6 +370,8 @@ def parse_enrichment(raw: Mapping[str, Any]) -> Enrichment:
         },
         free_topic=_text(raw.get("thema")),
         topic_candidate=candidate if candidate in CANDIDATE_TOPICS else "",
+        reach=reach,
+        places=_strings(raw.get("orte"))[:_MAX_PLACES] if reach else (),
     )
 
 

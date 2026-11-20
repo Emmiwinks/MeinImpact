@@ -14,6 +14,7 @@ from meinimpact.infrastructure.geo.districts import (
     load_districts,
 )
 from meinimpact.infrastructure.geo.locality import LocalityResolver, Neighbourhoods
+from meinimpact.infrastructure.geo.places import PlaceIndex
 from meinimpact.infrastructure.geo.plz import PlzIndex
 from meinimpact.infrastructure.listings.http import PoliteHttpClient
 from meinimpact.infrastructure.listings.model import Region
@@ -76,7 +77,7 @@ def default_sources(http: PoliteHttpClient) -> list[ListingSource]:
 
 def default_locality_resolver(plz: PlzIndex) -> LocalityResolver:
     """Locates opportunities with the councils' neighbourhood bodies, each
-    city's synced districts and the PLZ table."""
+    city's synced districts and the PLZ and place tables."""
     neighbourhoods = {}
     for body in OPARL_BODIES:
         city = CITIES.get(body.region.value)
@@ -88,7 +89,7 @@ def default_locality_resolver(plz: PlzIndex) -> LocalityResolver:
             districts=tuple(districts),
             matcher=DistrictMatcher(city.name, districts),
         )
-    return LocalityResolver(plz, neighbourhoods)
+    return LocalityResolver(plz, PlaceIndex.load(plz), neighbourhoods)
 
 
 def default_detail_readers(http: PoliteHttpClient) -> dict[str, DetailReader]:

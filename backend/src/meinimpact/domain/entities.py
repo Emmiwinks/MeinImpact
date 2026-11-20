@@ -109,6 +109,10 @@ class Opportunity:
     first_seen_at: datetime
     # Decisions: OParl bodies whose members a letter goes to
     recipient_bodies: tuple[str, ...] = ()
+    # Enrichment's reading of where it matters (geo/locality.py): reach
+    # ("nachbarschaft", "ort", "stadt", "umland") and the places it names
+    reach: str | None = None
+    places: tuple[str, ...] = ()
     bundle: OpportunityBundle | None = None
 
 

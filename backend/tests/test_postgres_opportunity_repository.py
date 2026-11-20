@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from meinimpact.infrastructure.ai.bundler import Bundle, BundleOption
 from meinimpact.infrastructure.ai.listing_enricher import Enrichment
+from meinimpact.infrastructure.geo.locality import Reach
 from meinimpact.infrastructure.listings.model import Region
 from meinimpact.infrastructure.models import OpportunityRecord, SupportSnapshotRecord
 from meinimpact.infrastructure.opportunities.postgres_opportunity_repository import (
@@ -45,6 +46,8 @@ def _relevant(
         lebenslagen=("eltern",),
         lebenslage_frei="Kita-Personal",
         districts=("Hellerau",),
+        reach=Reach.NEIGHBOURHOOD,
+        places=("Hellerau",),
         free_topic="Kita-Schließung",
         pro_argumente=("Plätze",),
         personal_impact_snippets={"hat_kinder:true": "Betrifft dich."},
@@ -195,6 +198,7 @@ async def test_list_open_serves_relevant_active_unexpired_except_expert_only(
     assert opportunity.title == "Soll die Kita bleiben?"
     assert opportunity.region == "dresden"
     assert opportunity.districts == ("Hellerau",)
+    assert (opportunity.reach, opportunity.places) == ("nachbarschaft", ("Hellerau",))
     assert opportunity.lebenslagen == ("eltern",)
     assert opportunity.source_org == "src"  # unknown registry: id as name
     assert opportunity.personal_impact_snippets == {"hat_kinder:true": "Betrifft dich."}
