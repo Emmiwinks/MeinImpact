@@ -7,7 +7,7 @@
 // in the rotation and b the one after (so a motif never paints itself in the
 // colour it sits on).
 
-import { KEYS, PACIFIER } from './references.mjs';
+import { KEYS, PACIFIER } from './shapes.mjs';
 
 export const K = '#101820';
 export const W = '#F4F1EA';
@@ -130,8 +130,8 @@ export const motifs = {
       <circle cx="65" cy="${y + 5}" r="2.2" fill="${K}"/>`).join('')}
     ${line('M82 30 q6 4 4 12 M88 24 q10 8 6 22', 3)}`,
   // The ring runs through each key's hole, drawn over the keys.
-  // After the user's reference (keys, SVG Repo): an open ring and two keys
-  // hanging from it through their holes, as one shape.
+  // An open ring and two keys hanging from it through their holes, as one
+  // shape.
   schluesselbund: (p) => `
     <g transform="translate(25 13) scale(.6)" data-cut="20">
       <path d="${KEYS}" fill="${AMBER}" stroke="${K}" stroke-width="4.5" stroke-linejoin="round"/>
@@ -509,9 +509,8 @@ export const motifs = {
     ${sparkle(30, 18, 8, W)}${sparkle(76, 84, 6, AMBER)}${sparkle(56, 22, 4, W)}`,
 
   // ── Familie ─────────────────────────────────────────────────────────────
-  // After the user's reference (pacifier, SVG Repo): the teat at the top
-  // right, the shield across, the ring at the bottom left, with the
-  // reference's own outline in ink.
+  // The teat at the top right, the shield across, the ring at the bottom
+  // left, with the outline in ink.
   schnuller: (p) => `
     <g transform="translate(13 15) scale(.15)" data-cut="80">
       <g transform="translate(1 1)">
