@@ -12,6 +12,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from meinimpact.infrastructure.ai.bundler import Bundle, BundleOption
 from meinimpact.infrastructure.ai.listing_enricher import Enrichment
 from meinimpact.infrastructure.listings.model import Region
 from meinimpact.infrastructure.models import OpportunityRecord, SupportSnapshotRecord
@@ -197,6 +198,54 @@ async def test_list_open_serves_relevant_active_unexpired_except_expert_only(
     assert opportunity.lebenslagen == ("eltern",)
     assert opportunity.source_org == "src"  # unknown registry: id as name
     assert opportunity.personal_impact_snippets == {"hat_kinder:true": "Betrifft dich."}
+
+
+async def test_bundles_are_stored_kept_and_cleared(db_session: AsyncSession) -> None:
+    repository = PostgresOpportunityRepository(db_session)
+    synced = await repository.sync(
+        [make_listing("b1"), make_listing("b2"), make_listing("solo")],
+        complete_source_ids={"src"},
+        observed_at=NOW,
+    )
+    for pending in synced.pending:
+        await repository.save_enrichment(
+            pending.opportunity_id,
+            _relevant(),
+            input_hash=pending.input_hash,
+            enriched_at=NOW,
+        )
+    ids = {p.listing.external_id: p.opportunity_id for p in synced.pending}
+    bundle = Bundle(
+        header="2 Petitionen · ähnliches Anliegen",
+        title="Bleibt die Kita?",
+        summary="Zwei Petitionen.",
+        options={
+            ids["b1"]: BundleOption("An die Stadt", "Will A."),
+            ids["b2"]: BundleOption("An das Land", "Will B."),
+        },
+    )
+
+    await repository.save_bundles(TODAY, described=[(bundle, "hash")], kept=())
+
+    items = {i.id: i for i in await repository.bundle_items(TODAY)}
+    assert items[ids["b1"]].bundle_id == items[ids["b2"]].bundle_id is not None
+    assert items[ids["b1"]].bundle_input_hash == "hash"
+    assert items[ids["solo"]].bundle_id is None
+    served = {o.id: o for o in await repository.list_open(TODAY)}
+    option = served[ids["b2"]].bundle
+    assert option is not None
+    assert (option.title, option.label, option.difference) == (
+        "Bleibt die Kita?",
+        "An das Land",
+        "Will B.",
+    )
+
+    # Kept bundles stay; everything else leaves its bundle.
+    await repository.save_bundles(TODAY, described=[], kept={ids["b1"], ids["b2"]})
+    assert (await _record(db_session, "b1")).bundle_id is not None
+    await repository.save_bundles(TODAY, described=[], kept=())
+    assert (await _record(db_session, "b1")).bundle_id is None
+    assert (await _record(db_session, "b2")).bundle_label is None
 
 
 async def test_save_enrichment_for_unknown_id_raises(db_session: AsyncSession) -> None:

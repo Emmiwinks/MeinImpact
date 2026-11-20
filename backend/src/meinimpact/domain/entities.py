@@ -56,6 +56,19 @@ class CivicAction:
 
 
 @dataclass(frozen=True)
+class OpportunityBundle:
+    """The card an opportunity shares with others on the same matter: the
+    shared texts, and this option's label and how it differs."""
+
+    id: uuid.UUID
+    header: str
+    title: str
+    summary: str
+    label: str
+    difference: str
+
+
+@dataclass(frozen=True)
 class Opportunity:
     """An open way to participate, as shown in the app.
 
@@ -96,6 +109,7 @@ class Opportunity:
     first_seen_at: datetime
     # Decisions: OParl bodies whose members a letter goes to
     recipient_bodies: tuple[str, ...] = ()
+    bundle: OpportunityBundle | None = None
 
 
 @dataclass(frozen=True)

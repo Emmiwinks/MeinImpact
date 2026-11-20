@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 from meinimpact.api.dependencies import get_opportunity_repository
 from meinimpact.api.routes.opportunities import PREVIEW_SIZE, preview_selection
 from meinimpact.core.config import Settings
-from meinimpact.domain.entities import Opportunity
+from meinimpact.domain.entities import Opportunity, OpportunityBundle
 from meinimpact.main import create_app
 
 _OPPORTUNITY = Opportunity(
@@ -127,6 +127,34 @@ def test_pool_says_where_each_opportunity_lies() -> None:
     city, village = items[0]["umkreis"], items[1]["umkreis"]
     assert village["km"] < city["km"]
     assert items[2]["umkreis"] is None
+
+
+def test_pool_carries_each_options_bundle() -> None:
+    repository = FakeRepository()
+    bundle = OpportunityBundle(
+        id=uuid.UUID(int=9),
+        header="2 Petitionen · ähnliches Anliegen",
+        title="Bleibt die Kita?",
+        summary="Zwei Petitionen.",
+        label="An die Stadt",
+        difference="Will, dass die Stadt zahlt.",
+    )
+    repository.open = [_variant(1, bundle=bundle), _variant(2)]
+    client = _client(repository)
+
+    first, second = client.get("/v1/opportunities/pool", headers=_auth(client)).json()[
+        "opportunities"
+    ]
+
+    assert first["bundle"] == {
+        "id": str(bundle.id),
+        "header": "2 Petitionen · ähnliches Anliegen",
+        "title": "Bleibt die Kita?",
+        "summary": "Zwei Petitionen.",
+        "label": "An die Stadt",
+        "difference": "Will, dass die Stadt zahlt.",
+    }
+    assert second["bundle"] is None
 
 
 def test_pool_for_a_kreis_keeps_its_land_bund_and_eu() -> None:

@@ -9,6 +9,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 
 from meinimpact.core.config import Settings
+from meinimpact.infrastructure.ai.bundler import Bundler
 from meinimpact.infrastructure.ai.listing_enricher import ListingEnricher
 from meinimpact.infrastructure.ai.mistral_json import MistralJsonCompleter
 from meinimpact.infrastructure.council.offices import FRAKTION_OFFICES
@@ -54,6 +55,13 @@ async def run_configured_ingestion(settings: Settings) -> IngestionSummary:
         base_url=settings.mistral_base_url,
         model=settings.mistral_extraction_model,
     )
+    # The bundler's list pass answers with groups over the whole pool
+    bundle_completer = MistralJsonCompleter(
+        api_key=settings.mistral_api_key,
+        base_url=settings.mistral_base_url,
+        model=settings.mistral_extraction_model,
+        max_tokens=2000,
+    )
     database = Database(settings.database_url)
     try:
         async with (
@@ -68,6 +76,7 @@ async def run_configured_ingestion(settings: Settings) -> IngestionSummary:
                     {Region.DRESDEN: DistrictMatcher.for_city(CITIES["dresden"])},
                 ),
                 store=PostgresOpportunityRepository(session),
+                bundler=Bundler(bundle_completer),
             )
             try:
                 await sync_council_members(

@@ -234,6 +234,18 @@ class OpportunityRecord(Base):
         JSONB, nullable=False, server_default="{}"
     )
 
+    # Bundle (ai/bundler.py): members share the id and the bundle's texts,
+    # each keeps its label and how it differs; all null outside a bundle
+    bundle_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )
+    bundle_header: Mapped[str | None] = mapped_column(Text, nullable=True)
+    bundle_title: Mapped[str | None] = mapped_column(Text, nullable=True)
+    bundle_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    bundle_label: Mapped[str | None] = mapped_column(Text, nullable=True)
+    bundle_difference: Mapped[str | None] = mapped_column(Text, nullable=True)
+    bundle_input_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
+
 
 class CouncilMemberRecord(Base):
     """A current voting member of a council body, with their Fraktion.

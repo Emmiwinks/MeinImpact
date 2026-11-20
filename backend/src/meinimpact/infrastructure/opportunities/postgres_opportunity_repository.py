@@ -7,6 +7,8 @@ Write side, used by the ingestion pipeline:
   read completely this run). It reports which rows need enrichment: new
   ones and those whose registry text changed.
 - `save_enrichment()` stores one enrichment result.
+- `bundle_items()` / `save_bundles()` read and store the bundles of
+  opportunities on one matter (`ai/bundler.py`).
 
 Read side: `list_open()` serves the feed, applying the feed policy below.
 
@@ -23,7 +25,8 @@ from datetime import date, datetime
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from meinimpact.domain.entities import Opportunity
+from meinimpact.domain.entities import Opportunity, OpportunityBundle
+from meinimpact.infrastructure.ai.bundler import Bundle, BundleItem
 from meinimpact.infrastructure.ai.listing_enricher import (
     Enrichment,
     enrichment_input_hash,
@@ -146,6 +149,44 @@ class PostgresOpportunityRepository:
         await self._session.flush()
 
     async def list_open(self, today: date) -> list[Opportunity]:
+        return [_to_domain(record) for record in await self._open_records(today)]
+
+    async def bundle_items(self, today: date) -> list[BundleItem]:
+        """Everything the feed serves, as the bundler sees it."""
+        return [_bundle_item(record) for record in await self._open_records(today)]
+
+    async def save_bundles(
+        self,
+        today: date,
+        *,
+        described: Sequence[tuple[Bundle, str]],
+        kept: Collection[uuid.UUID],
+    ) -> None:
+        """Stores the newly described bundles (each with its input hash),
+        leaves the `kept` members' bundles as they are and takes every other
+        open opportunity out of any bundle it was in."""
+        records = {record.id: record for record in await self._open_records(today)}
+        bundled: set[uuid.UUID] = set(kept)
+        for bundle, input_hash in described:
+            bundle_id = uuid.uuid4()
+            for member_id, option in bundle.options.items():
+                record = records.get(member_id)
+                if record is None:
+                    continue
+                record.bundle_id = bundle_id
+                record.bundle_header = bundle.header
+                record.bundle_title = bundle.title
+                record.bundle_summary = bundle.summary
+                record.bundle_label = option.label
+                record.bundle_difference = option.difference
+                record.bundle_input_hash = input_hash
+                bundled.add(member_id)
+        for record_id, record in records.items():
+            if record_id not in bundled and record.bundle_id is not None:
+                _clear_bundle(record)
+        await self._session.flush()
+
+    async def _open_records(self, today: date) -> Sequence[OpportunityRecord]:
         result = await self._session.execute(
             select(OpportunityRecord)
             .where(
@@ -164,7 +205,7 @@ class PostgresOpportunityRepository:
             )
             .order_by(OpportunityRecord.first_seen_at.desc())
         )
-        return [_to_domain(record) for record in result.scalars().all()]
+        return result.scalars().all()
 
     async def get(self, opportunity_id: uuid.UUID) -> Opportunity | None:
         record = await self._session.get(OpportunityRecord, opportunity_id)
@@ -257,4 +298,45 @@ def _to_domain(record: OpportunityRecord) -> Opportunity:
         support_count_as_of=record.support_count_as_of,
         first_seen_at=record.first_seen_at,
         recipient_bodies=tuple(record.recipient_bodies),
+        bundle=_bundle_of(record),
     )
+
+
+def _bundle_of(record: OpportunityRecord) -> OpportunityBundle | None:
+    if record.bundle_id is None:
+        return None
+    return OpportunityBundle(
+        id=record.bundle_id,
+        header=record.bundle_header or "",
+        title=record.bundle_title or "",
+        summary=record.bundle_summary or "",
+        label=record.bundle_label or "",
+        difference=record.bundle_difference or "",
+    )
+
+
+def _bundle_item(record: OpportunityRecord) -> BundleItem:
+    return BundleItem(
+        id=record.id,
+        key=(record.source_id, record.external_id),
+        kind=record.kind,
+        source_org=SOURCE_NAMES.get(record.source_id, record.source_id),
+        organizer=record.organizer,
+        registry_title=record.registry_title,
+        title=record.title or record.registry_title,
+        summary=record.summary or record.registry_summary or "",
+        closes_on=record.closes_on,
+        enrichment_input_hash=record.enrichment_input_hash or "",
+        bundle_id=record.bundle_id,
+        bundle_input_hash=record.bundle_input_hash,
+    )
+
+
+def _clear_bundle(record: OpportunityRecord) -> None:
+    record.bundle_id = None
+    record.bundle_header = None
+    record.bundle_title = None
+    record.bundle_summary = None
+    record.bundle_label = None
+    record.bundle_difference = None
+    record.bundle_input_hash = None

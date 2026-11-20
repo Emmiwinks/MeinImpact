@@ -222,6 +222,19 @@ class AreaResponse(BaseModel):
     km: float
 
 
+class BundleResponse(BaseModel):
+    """The card this opportunity shares with others on the same matter:
+    shared header, title and summary, and this option's label and the
+    sentence saying how it differs from the others."""
+
+    id: UUID
+    header: str
+    title: str
+    summary: str
+    label: str
+    difference: str
+
+
 class OpportunityResponse(BaseModel):
     """One open opportunity: everything the feed card and its detail view
     need, no follow-up request required.
@@ -259,6 +272,7 @@ class OpportunityResponse(BaseModel):
     gebiet: str
     reichweite: str | None
     umkreis: AreaResponse | None
+    bundle: BundleResponse | None = None
 
     @classmethod
     def from_domain(
@@ -267,7 +281,20 @@ class OpportunityResponse(BaseModel):
         """Builds an API response from a domain opportunity and where it
         lies."""
         area = locality.area
+        bundle = opportunity.bundle
         return cls(
+            bundle=(
+                BundleResponse(
+                    id=bundle.id,
+                    header=bundle.header,
+                    title=bundle.title,
+                    summary=bundle.summary,
+                    label=bundle.label,
+                    difference=bundle.difference,
+                )
+                if bundle
+                else None
+            ),
             gebiet=locality.gebiet,
             reichweite=locality.reach.value if locality.reach else None,
             umkreis=(
