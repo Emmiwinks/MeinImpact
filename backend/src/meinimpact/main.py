@@ -19,6 +19,7 @@ from meinimpact.api.routes import (
     feedback,
     health,
     letters,
+    location,
     mdb,
     news,
     opportunities,
@@ -37,8 +38,9 @@ from meinimpact.services.ingestion_runs import IngestionRuns, run_scheduler
 logger = logging.getLogger(__name__)
 
 # Requests the access log must never show, so no log line ties a caller's
-# address to having done an action.
-_UNLOGGED_PATHS = frozenset({"/v1/opportunities/tracked"})
+# address to having done an action, or to their PLZ (old app versions send
+# it in the URL of /v1/mdb).
+_UNLOGGED_PATHS = frozenset({"/v1/opportunities/tracked", "/v1/mdb"})
 
 
 class _SkipUnloggedPaths(logging.Filter):
@@ -127,6 +129,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(opportunities.router)
     app.include_router(letters.router)
     app.include_router(mdb.router)
+    app.include_router(location.router)
     app.include_router(news.router)
     app.include_router(push.router)
     app.include_router(feedback.router)

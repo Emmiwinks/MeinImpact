@@ -20,6 +20,16 @@ class Region(StrEnum):
     DRESDEN = "dresden"
 
 
+# Official area key (AGS) of each region: who a listing concerns is
+# everyone whose Kreis key starts with it. Empty for Bund and EU.
+REGION_AGS: dict[Region, str] = {
+    Region.EU: "",
+    Region.BUND: "",
+    Region.SACHSEN: "14",
+    Region.DRESDEN: "14612",
+}
+
+
 class ActionKind(StrEnum):
     """What a citizen actually does with a listing."""
 

@@ -13,6 +13,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from meinimpact.infrastructure.geo.plz import Point
+
 DATA_DIR = Path(__file__).parent / "data"
 
 _LETTER = r"[\wÄÖÜäöüß]"
@@ -31,6 +33,8 @@ class CityConfig:
 class District:
     name: str
     wikidata_id: str
+    # Wikidata's coordinate, where it has one
+    point: Point | None = None
 
 
 ORTSTEIL = "Q253019"
@@ -51,7 +55,14 @@ def data_file(city: CityConfig) -> Path:
 
 def load_districts(city: CityConfig) -> list[District]:
     raw = json.loads(data_file(city).read_text(encoding="utf-8"))
-    return [District(d["name"], d["wikidata_id"]) for d in raw["districts"]]
+    return [
+        District(
+            d["name"],
+            d["wikidata_id"],
+            Point(d["lat"], d["lon"]) if "lat" in d else None,
+        )
+        for d in raw["districts"]
+    ]
 
 
 class DistrictMatcher:

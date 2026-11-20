@@ -1,6 +1,7 @@
 """FastAPI dependency factories."""
 
 from collections.abc import AsyncIterator
+from functools import cache
 
 from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -27,9 +28,12 @@ from meinimpact.infrastructure.database import Database
 from meinimpact.infrastructure.feedback.postgres_feedback_repository import (
     PostgresFeedbackRepository,
 )
+from meinimpact.infrastructure.geo.locality import LocalityResolver
+from meinimpact.infrastructure.geo.plz import PlzIndex
 from meinimpact.infrastructure.impact.postgres_news_repository import (
     PostgresImpactNewsRepository,
 )
+from meinimpact.infrastructure.listings.catalog import default_locality_resolver
 from meinimpact.infrastructure.news.dummy_news_repository import DummyNewsRepository
 from meinimpact.infrastructure.opportunities.postgres_opportunity_repository import (
     PostgresOpportunityRepository,
@@ -178,6 +182,18 @@ def get_beta_repository(
 ) -> repositories.BetaTokenRepository:
     """Returns the PostgreSQL-backed beta token repository."""
     return PostgresBetaTokenRepository(session)
+
+
+@cache
+def get_plz_index() -> PlzIndex:
+    """Returns the committed PLZ table, loaded on first use."""
+    return PlzIndex.load()
+
+
+@cache
+def get_locality_resolver() -> LocalityResolver:
+    """Returns the resolver that locates opportunities, built on first use."""
+    return default_locality_resolver(get_plz_index())
 
 
 def get_news_repository() -> repositories.NewsRepository:

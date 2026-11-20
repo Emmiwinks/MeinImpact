@@ -5,8 +5,16 @@ Adding a registry means writing its module under `sources/` and adding it
 here; nothing else changes.
 """
 
+import re
 from collections.abc import Mapping
 
+from meinimpact.infrastructure.geo.districts import (
+    CITIES,
+    DistrictMatcher,
+    load_districts,
+)
+from meinimpact.infrastructure.geo.locality import LocalityResolver, Neighbourhoods
+from meinimpact.infrastructure.geo.plz import PlzIndex
 from meinimpact.infrastructure.listings.http import PoliteHttpClient
 from meinimpact.infrastructure.listings.model import Region
 from meinimpact.infrastructure.listings.source import DetailReader, ListingSource
@@ -35,6 +43,8 @@ from meinimpact.infrastructure.listings.sources.sachsen_beteiligung import (
 )
 from meinimpact.infrastructure.listings.sources.weact import WeActSource
 
+OPARL_BODIES = (oparl.DRESDEN,)
+
 OPENPETITION_SCOPES = (
     OpenPetitionScope(Region.BUND, "/region/petition/Deutschland"),
     OpenPetitionScope(Region.SACHSEN, "/region/petition/Sachsen"),
@@ -57,8 +67,25 @@ def default_sources(http: PoliteHttpClient) -> list[ListingSource]:
         SachsenBeteiligungSource(http),
         EuHaveYourSaySource(http),
         WeActSource(http),
-        OParlSource(http, oparl.DRESDEN),
+        *(OParlSource(http, body) for body in OPARL_BODIES),
     ]
+
+
+def default_locality_resolver(plz: PlzIndex) -> LocalityResolver:
+    """Locates opportunities with the councils' neighbourhood bodies, each
+    city's synced districts and the PLZ table."""
+    neighbourhoods = {}
+    for body in OPARL_BODIES:
+        city = CITIES.get(body.region.value)
+        if city is None or not body.neighbourhoods:
+            continue
+        districts = load_districts(city)
+        neighbourhoods[body.region.value] = Neighbourhoods(
+            bodies=tuple(re.compile(pattern) for pattern in body.neighbourhoods),
+            districts=tuple(districts),
+            matcher=DistrictMatcher(city.name, districts),
+        )
+    return LocalityResolver(plz, neighbourhoods)
 
 
 def default_detail_readers(http: PoliteHttpClient) -> dict[str, DetailReader]:

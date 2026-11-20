@@ -1,4 +1,8 @@
-"""MdB lookup routes — PLZ to Bundestagsabgeordneter."""
+"""MdB lookup routes — PLZ to Bundestagsabgeordneter.
+
+Only app versions from before `POST /v1/location` still call this; it puts
+the PLZ in the URL, so the access log skips the path (`main.py`).
+"""
 
 import re
 
@@ -6,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from meinimpact.api import schemas
 from meinimpact.api.dependencies import require_principal
-from meinimpact.infrastructure.mdb.wks_service import WksService
+from meinimpact.infrastructure.mdb.wks_service import MdbInfo, WksService
 
 router = APIRouter(
     prefix="/v1/mdb",
@@ -17,7 +21,7 @@ router = APIRouter(
 _PLZ_RE = re.compile(r"^\d{5}$")
 
 
-def _get_wks(request: Request) -> WksService:
+def get_wks(request: Request) -> WksService:
     wks: WksService = request.app.state.wks_service
     return wks
 
@@ -25,7 +29,7 @@ def _get_wks(request: Request) -> WksService:
 @router.get("")
 async def get_mdb_for_plz(
     plz: str,
-    wks: WksService = Depends(_get_wks),
+    wks: WksService = Depends(get_wks),
 ) -> schemas.MdbResponse:
     """Returns the MdB(s) for a German PLZ.
 
@@ -57,16 +61,17 @@ async def get_mdb_for_plz(
             detail=f"No Wahlkreis found for PLZ {plz}.",
         )
 
-    return schemas.MdbResponse(
-        plz=plz,
-        results=[
-            schemas.MdbOption(
-                wahlkreis_nr=r.wahlkreis_nr,
-                wahlkreis_name=r.wahlkreis_name,
-                mdb_name=r.mdb_name,
-                mdb_party=r.mdb_party,
-                mdb_link=r.mdb_link,
-            )
-            for r in results
-        ],
-    )
+    return schemas.MdbResponse(plz=plz, results=mdb_options(results))
+
+
+def mdb_options(results: list[MdbInfo]) -> list[schemas.MdbOption]:
+    return [
+        schemas.MdbOption(
+            wahlkreis_nr=r.wahlkreis_nr,
+            wahlkreis_name=r.wahlkreis_name,
+            mdb_name=r.mdb_name,
+            mdb_party=r.mdb_party,
+            mdb_link=r.mdb_link,
+        )
+        for r in results
+    ]

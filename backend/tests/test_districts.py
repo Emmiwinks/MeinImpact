@@ -9,6 +9,7 @@ from meinimpact.infrastructure.geo.districts import (
     DistrictMatcher,
     load_districts,
 )
+from meinimpact.infrastructure.geo.plz import Point
 from meinimpact.infrastructure.geo.wikidata import (
     WikidataDistrictSource,
     build_query,
@@ -56,6 +57,7 @@ def test_committed_dresden_data_loads_and_covers_known_districts() -> None:
 
     assert len(districts) > 100
     assert {"Mockritz", "Hellerau", "Äußere Neustadt", "Gorbitz"} <= names
+    assert all(d.point is not None for d in districts)
 
 
 def test_wikidata_query_and_parsing() -> None:
@@ -70,18 +72,20 @@ def test_wikidata_query_and_parsing() -> None:
                 {
                     "item": {"value": "http://www.wikidata.org/entity/Q1"},
                     "name": {"value": "Mockritz"},
+                    "coord": {"value": "Point(13.7347 51.0164)"},
                 },
                 {
                     "item": {"value": "http://www.wikidata.org/entity/Q1"},
                     "name": {"value": "Mockritz"},
+                    "coord": {"value": "Point(13.7 51.0)"},
                 },
             ]
         }
     }
 
-    assert "wd:Q1731" in query and "wd:Q253019" in query
+    assert "wd:Q1731" in query and "wd:Q253019" in query and "P625" in query
     assert parse_bindings(payload) == [
-        District("Mockritz", "Q1"),
+        District("Mockritz", "Q1", Point(lat=51.0164, lon=13.7347)),
         District("Plauen", "Q2"),
     ]
 

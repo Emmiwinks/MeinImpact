@@ -31,7 +31,12 @@ async def main(city_key: str) -> None:
         "district_types": list(city.district_types),
         "synced_at": datetime.now(UTC).date().isoformat(),
         "districts": [
-            {"name": d.name, "wikidata_id": d.wikidata_id} for d in districts
+            {
+                "name": d.name,
+                "wikidata_id": d.wikidata_id,
+                **({"lat": d.point.lat, "lon": d.point.lon} if d.point else {}),
+            }
+            for d in districts
         ],
     }
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", "utf-8")

@@ -14,6 +14,7 @@ from meinimpact.domain.entities import (
     TrackingEvent,
     UserProfile,
 )
+from meinimpact.infrastructure.geo.locality import Locality
 from meinimpact.infrastructure.usage.postgres_usage_repository import UsageEvent
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -53,6 +54,26 @@ class MdbResponse(BaseModel):
 
     plz: str
     results: list[MdbOption]
+
+
+class LocationRequest(BaseModel):
+    """A PLZ to locate. In the body, so no access log line carries it."""
+
+    plz: str = Field(pattern=r"^\d{5}$")
+
+
+class LocationResponse(BaseModel):
+    """Where a PLZ lies: what the app keeps on the device instead of it.
+
+    `kreis` is the only part it sends again (to narrow the pool); the
+    point stays for ranking by distance. `wahlkreise` lists the PLZ's
+    members of the Bundestag, several where it straddles Wahlkreise, and
+    is empty while the Bundestag data is unavailable."""
+
+    kreis: str
+    lat: float
+    lon: float
+    wahlkreise: list[MdbOption]
 
 
 # ── Admin ─────────────────────────────────────────────────────────────────────
@@ -191,9 +212,20 @@ class ActionPoolResponse(BaseModel):
 # ── Opportunities ─────────────────────────────────────────────────────────────
 
 
+class AreaResponse(BaseModel):
+    lat: float
+    lon: float
+    km: float
+
+
 class OpportunityResponse(BaseModel):
     """One open opportunity: everything the feed card and its detail view
-    need, no follow-up request required."""
+    need, no follow-up request required.
+
+    `gebiet`, `reichweite` and `umkreis` say whom it concerns as a place
+    (`geo/locality.py`): the AGS prefix of everyone concerned ("" for Bund
+    and EU), and for a city's matters the area around a centre, city-wide
+    or one neighbourhood's, that the app ranks by distance from."""
 
     id: UUID
     source_org: str
@@ -220,11 +252,25 @@ class OpportunityResponse(BaseModel):
     support_goal: int | None
     support_count_as_of: datetime | None
     first_seen_at: datetime
+    gebiet: str
+    reichweite: str | None
+    umkreis: AreaResponse | None
 
     @classmethod
-    def from_domain(cls, opportunity: Opportunity) -> OpportunityResponse:
-        """Builds an API response from a domain opportunity."""
+    def from_domain(
+        cls, opportunity: Opportunity, locality: Locality
+    ) -> OpportunityResponse:
+        """Builds an API response from a domain opportunity and where it
+        lies."""
+        area = locality.area
         return cls(
+            gebiet=locality.gebiet,
+            reichweite=locality.reach.value if locality.reach else None,
+            umkreis=(
+                AreaResponse(lat=area.centre.lat, lon=area.centre.lon, km=area.km)
+                if area
+                else None
+            ),
             id=opportunity.id,
             source_org=opportunity.source_org,
             source_url=opportunity.source_url,

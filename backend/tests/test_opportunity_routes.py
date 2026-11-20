@@ -104,6 +104,55 @@ def test_pool_serves_open_opportunities_for_today() -> None:
     }
 
 
+def test_pool_says_where_each_opportunity_lies() -> None:
+    repository = FakeRepository()
+    repository.open = [
+        _OPPORTUNITY,
+        _variant(1, region="dresden", organizer="Ortschaftsrat Schönborn"),
+        _variant(2, region="sachsen"),
+        _variant(3, region="bund"),
+    ]
+    client = _client(repository)
+
+    items = client.get("/v1/opportunities/pool", headers=_auth(client)).json()[
+        "opportunities"
+    ]
+
+    assert [(i["gebiet"], i["reichweite"]) for i in items] == [
+        ("14612", "stadt"),
+        ("14612", "nachbarschaft"),
+        ("14", None),
+        ("", None),
+    ]
+    city, village = items[0]["umkreis"], items[1]["umkreis"]
+    assert village["km"] < city["km"]
+    assert items[2]["umkreis"] is None
+
+
+def test_pool_for_a_kreis_keeps_its_land_bund_and_eu() -> None:
+    repository = FakeRepository()
+    repository.open = [
+        _OPPORTUNITY,
+        _variant(1, region="sachsen"),
+        _variant(2, region="bund"),
+        _variant(3, region="eu"),
+    ]
+    client = _client(repository)
+    headers = _auth(client)
+
+    def titles(kreis: str) -> list[str]:
+        response = client.get(f"/v1/opportunities/pool?kreis={kreis}", headers=headers)
+        return [i["title"] for i in response.json()["opportunities"]]
+
+    # Weinböhla (Landkreis Meißen) still sees Dresden, ranked by distance.
+    assert titles("14627") == [_OPPORTUNITY.title, "Frage 1", "Frage 2", "Frage 3"]
+    assert titles("09162") == ["Frage 2", "Frage 3"]  # München
+    assert (
+        client.get("/v1/opportunities/pool?kreis=146", headers=headers).status_code
+        == 422
+    )
+
+
 def _variant(n: int, **changes: Any) -> Opportunity:
     return replace(
         _OPPORTUNITY, id=uuid.UUID(int=100 + n), title=f"Frage {n}", **changes

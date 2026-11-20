@@ -4,499 +4,745 @@
   "district_types": [
     "Q253019"
   ],
-  "synced_at": "2026-11-01",
+  "synced_at": "2026-11-20",
   "districts": [
     {
       "name": "Albertstadt",
-      "wikidata_id": "Q8893"
+      "wikidata_id": "Q8893",
+      "lat": 51.08,
+      "lon": 13.7575
     },
     {
       "name": "Alt-Leuteritz",
-      "wikidata_id": "Q432952"
+      "wikidata_id": "Q432952",
+      "lat": 51.0717,
+      "lon": 13.6353
     },
     {
       "name": "Altfranken",
-      "wikidata_id": "Q8888"
+      "wikidata_id": "Q8888",
+      "lat": 51.033333333,
+      "lon": 13.645833333
     },
     {
       "name": "Blasewitz",
-      "wikidata_id": "Q8897"
+      "wikidata_id": "Q8897",
+      "lat": 51.052777777,
+      "lon": 13.795833333
     },
     {
       "name": "Borsberg",
-      "wikidata_id": "Q894174"
+      "wikidata_id": "Q894174",
+      "lat": 51.0125,
+      "lon": 13.8969
     },
     {
       "name": "Brabschütz",
-      "wikidata_id": "Q896514"
+      "wikidata_id": "Q896514",
+      "lat": 51.0703,
+      "lon": 13.6211
     },
     {
       "name": "Briesnitz",
-      "wikidata_id": "Q915219"
+      "wikidata_id": "Q915219",
+      "lat": 51.0667,
+      "lon": 13.6744
     },
     {
       "name": "Burgstädtel",
-      "wikidata_id": "Q1016036"
+      "wikidata_id": "Q1016036",
+      "lat": 51.0553,
+      "lon": 13.6631
     },
     {
       "name": "Bühlau",
-      "wikidata_id": "Q13427151"
+      "wikidata_id": "Q13427151",
+      "lat": 51.0611,
+      "lon": 13.8486
     },
     {
       "name": "Coschütz",
-      "wikidata_id": "Q8898"
+      "wikidata_id": "Q8898",
+      "lat": 51.0169,
+      "lon": 13.7014
     },
     {
       "name": "Cossebaude",
-      "wikidata_id": "Q1117549"
+      "wikidata_id": "Q1117549",
+      "lat": 51.085,
+      "lon": 13.6272
     },
     {
       "name": "Cotta",
-      "wikidata_id": "Q8899"
+      "wikidata_id": "Q8899",
+      "lat": 51.0564,
+      "lon": 13.6875
     },
     {
       "name": "Cunnersdorf",
-      "wikidata_id": "Q1143995"
+      "wikidata_id": "Q1143995",
+      "lat": 51.0431,
+      "lon": 13.8778
     },
     {
       "name": "Dobritz",
-      "wikidata_id": "Q1233447"
+      "wikidata_id": "Q1233447",
+      "lat": 51.0189,
+      "lon": 13.8108
     },
     {
       "name": "Dölzschen",
-      "wikidata_id": "Q8904"
+      "wikidata_id": "Q8904",
+      "lat": 51.025,
+      "lon": 13.6875
     },
     {
       "name": "Eichbusch",
-      "wikidata_id": "Q1301291"
+      "wikidata_id": "Q1301291",
+      "lat": 51.0333,
+      "lon": 13.8772
     },
     {
       "name": "Eschdorf",
-      "wikidata_id": "Q8960"
+      "wikidata_id": "Q8960",
+      "lat": 51.0369,
+      "lon": 13.9406
     },
     {
       "name": "Friedersdorf",
-      "wikidata_id": "Q1457133"
+      "wikidata_id": "Q1457133",
+      "lat": 51.1478,
+      "lon": 13.8092
     },
     {
       "name": "Gittersee",
-      "wikidata_id": "Q8912"
+      "wikidata_id": "Q8912",
+      "lat": 51.009166666,
+      "lon": 13.690555555
     },
     {
       "name": "Gohlis",
-      "wikidata_id": "Q1534373"
+      "wikidata_id": "Q1534373",
+      "lat": 51.0936,
+      "lon": 13.6439
     },
     {
       "name": "Gomlitz",
-      "wikidata_id": "Q1536869"
+      "wikidata_id": "Q1536869",
+      "lat": 51.1494,
+      "lon": 13.7972
     },
     {
       "name": "Gompitz",
-      "wikidata_id": "Q1536934"
+      "wikidata_id": "Q1536934",
+      "lat": 51.0442,
+      "lon": 13.6403
     },
     {
       "name": "Gorbitz",
-      "wikidata_id": "Q8915"
+      "wikidata_id": "Q8915",
+      "lat": 51.045555555,
+      "lon": 13.67
     },
     {
       "name": "Gostritz",
-      "wikidata_id": "Q1538647"
+      "wikidata_id": "Q1538647",
+      "lat": 51.0103,
+      "lon": 13.7494
     },
     {
       "name": "Großzschachwitz",
-      "wikidata_id": "Q8917"
+      "wikidata_id": "Q8917",
+      "lat": 51.002222222,
+      "lon": 13.841666666
     },
     {
       "name": "Gruna",
-      "wikidata_id": "Q1550409"
+      "wikidata_id": "Q1550409",
+      "lat": 51.0347,
+      "lon": 13.7867
     },
     {
       "name": "Gönnsdorf",
-      "wikidata_id": "Q1559387"
+      "wikidata_id": "Q1559387",
+      "lat": 51.0482,
+      "lon": 13.8699
     },
     {
       "name": "Helfenberg",
-      "wikidata_id": "Q1602090"
+      "wikidata_id": "Q1602090",
+      "lat": 51.0372,
+      "lon": 13.8642
     },
     {
       "name": "Hellerau",
-      "wikidata_id": "Q8920"
+      "wikidata_id": "Q8920",
+      "lat": 51.113888888,
+      "lon": 13.753055555
     },
     {
       "name": "Hellerberge",
-      "wikidata_id": "Q123295605"
+      "wikidata_id": "Q123295605",
+      "lat": 51.0978519,
+      "lon": 13.7471755
     },
     {
       "name": "Hosterwitz",
-      "wikidata_id": "Q1630590"
+      "wikidata_id": "Q1630590",
+      "lat": 51.015,
+      "lon": 13.8578
     },
     {
       "name": "Innere Neustadt",
-      "wikidata_id": "Q8924"
+      "wikidata_id": "Q8924",
+      "lat": 51.058333333,
+      "lon": 13.741666666
     },
     {
       "name": "Johannstadt-Nord",
-      "wikidata_id": "Q123181362"
+      "wikidata_id": "Q123181362",
+      "lat": 51.0579,
+      "lon": 13.7704
     },
     {
       "name": "Johannstadt-Süd",
-      "wikidata_id": "Q123181367"
+      "wikidata_id": "Q123181367",
+      "lat": 51.0483,
+      "lon": 13.764
     },
     {
       "name": "Kaditz",
-      "wikidata_id": "Q1720959"
+      "wikidata_id": "Q1720959",
+      "lat": 51.0833,
+      "lon": 13.6717
     },
     {
       "name": "Kaitz",
-      "wikidata_id": "Q1721801"
+      "wikidata_id": "Q1721801",
+      "lat": 51.0139,
+      "lon": 13.7253
     },
     {
       "name": "Kauscha",
-      "wikidata_id": "Q1737172"
+      "wikidata_id": "Q1737172",
+      "lat": 50.9925,
+      "lon": 13.7778
     },
     {
       "name": "Kemnitz",
-      "wikidata_id": "Q1738517"
+      "wikidata_id": "Q1738517",
+      "lat": 51.0708,
+      "lon": 13.6678
     },
     {
       "name": "Kleinpestitz",
-      "wikidata_id": "Q8925"
+      "wikidata_id": "Q8925",
+      "lat": 51.02,
+      "lon": 13.724722222
     },
     {
       "name": "Kleinzschachwitz",
-      "wikidata_id": "Q8926"
+      "wikidata_id": "Q8926",
+      "lat": 51.006944444,
+      "lon": 13.851388888
     },
     {
       "name": "Klotzsche",
-      "wikidata_id": "Q8931"
+      "wikidata_id": "Q8931",
+      "lat": 51.116388888,
+      "lon": 13.778333333
     },
     {
       "name": "Krieschendorf",
-      "wikidata_id": "Q1773752"
+      "wikidata_id": "Q1773752",
+      "lat": 51.0236,
+      "lon": 13.8861
     },
     {
       "name": "Langebrück",
-      "wikidata_id": "Q1804939"
+      "wikidata_id": "Q1804939",
+      "lat": 51.1308,
+      "lon": 13.8394
     },
     {
       "name": "Laubegast",
-      "wikidata_id": "Q8933"
+      "wikidata_id": "Q8933",
+      "lat": 51.024672222,
+      "lon": 13.833008333
     },
     {
       "name": "Lausa",
-      "wikidata_id": "Q1713713"
+      "wikidata_id": "Q1713713",
+      "lat": 51.1511,
+      "lon": 13.8075
     },
     {
       "name": "Leipziger Vorstadt",
-      "wikidata_id": "Q1815646"
+      "wikidata_id": "Q1815646",
+      "lat": 51.0719,
+      "lon": 13.7392
     },
     {
       "name": "Leuben",
-      "wikidata_id": "Q8936"
+      "wikidata_id": "Q8936",
+      "lat": 51.011111111,
+      "lon": 13.826111111
     },
     {
       "name": "Leubnitz",
-      "wikidata_id": "Q94725580"
+      "wikidata_id": "Q94725580",
+      "lat": 51.013954,
+      "lon": 13.766245
     },
     {
       "name": "Leubnitz-Neuostra",
-      "wikidata_id": "Q8938"
+      "wikidata_id": "Q8938",
+      "lat": 51.0122,
+      "lon": 13.7658
     },
     {
       "name": "Leutewitz",
-      "wikidata_id": "Q1821636"
+      "wikidata_id": "Q1821636",
+      "lat": 51.0583,
+      "lon": 13.6692
     },
     {
       "name": "Lockwitz",
-      "wikidata_id": "Q1867643"
+      "wikidata_id": "Q1867643",
+      "lat": 50.9872,
+      "lon": 13.8064
     },
     {
       "name": "Loschwitz",
-      "wikidata_id": "Q8939"
+      "wikidata_id": "Q8939",
+      "lat": 51.063611111,
+      "lon": 13.821666666
     },
     {
       "name": "Luga",
-      "wikidata_id": "Q1688946"
+      "wikidata_id": "Q1688946",
+      "lat": 50.9833,
+      "lon": 13.8333
     },
     {
       "name": "Löbtau",
-      "wikidata_id": "Q1879617"
+      "wikidata_id": "Q1879617",
+      "lat": 51.0427,
+      "lon": 13.6979
     },
     {
       "name": "Malschendorf",
-      "wikidata_id": "Q1605903"
+      "wikidata_id": "Q1605903",
+      "lat": 51.025,
+      "lon": 13.885
     },
     {
       "name": "Marsdorf",
-      "wikidata_id": "Q1902666"
+      "wikidata_id": "Q1902666",
+      "lat": 51.1628,
+      "lon": 13.7667
     },
     {
       "name": "Merbitz",
-      "wikidata_id": "Q1921127"
+      "wikidata_id": "Q1921127",
+      "lat": 51.0675,
+      "lon": 13.64
     },
     {
       "name": "Meußlitz",
-      "wikidata_id": "Q8941"
+      "wikidata_id": "Q8941",
+      "lat": 50.996944444,
+      "lon": 13.854166666
     },
     {
       "name": "Mickten",
-      "wikidata_id": "Q8942"
+      "wikidata_id": "Q8942",
+      "lat": 51.074444444,
+      "lon": 13.700833333
     },
     {
       "name": "Mobschatz",
-      "wikidata_id": "Q1941602"
+      "wikidata_id": "Q1941602",
+      "lat": 51.0758,
+      "lon": 13.6433
     },
     {
       "name": "Mockritz",
-      "wikidata_id": "Q8943"
+      "wikidata_id": "Q8943",
+      "lat": 51.015,
+      "lon": 13.7414
     },
     {
       "name": "Naußlitz",
-      "wikidata_id": "Q1972162"
+      "wikidata_id": "Q1972162",
+      "lat": 51.035,
+      "lon": 13.6847
     },
     {
       "name": "Neu-Leuteritz",
-      "wikidata_id": "Q1979106"
+      "wikidata_id": "Q1979106",
+      "lat": 51.0803,
+      "lon": 13.6269
     },
     {
       "name": "Neudorf",
-      "wikidata_id": "Q15122699"
+      "wikidata_id": "Q15122699",
+      "lat": 51.074329,
+      "lon": 13.726473
     },
     {
       "name": "Neunimptsch",
-      "wikidata_id": "Q1981045"
+      "wikidata_id": "Q1981045",
+      "lat": 51.0364,
+      "lon": 13.6728
     },
     {
       "name": "Nickern",
-      "wikidata_id": "Q1805968"
+      "wikidata_id": "Q1805968",
+      "lat": 50.9958,
+      "lon": 13.7886
     },
     {
       "name": "Niederpoyritz",
-      "wikidata_id": "Q1425961"
+      "wikidata_id": "Q1425961",
+      "lat": 51.0283,
+      "lon": 13.8469
     },
     {
       "name": "Niedersedlitz",
-      "wikidata_id": "Q1988463"
+      "wikidata_id": "Q1988463",
+      "lat": 50.9983,
+      "lon": 13.8211
     },
     {
       "name": "Niederwartha",
-      "wikidata_id": "Q8964"
+      "wikidata_id": "Q8964",
+      "lat": 51.093333333,
+      "lon": 13.603611111
     },
     {
       "name": "Oberpoyritz",
-      "wikidata_id": "Q2010639"
+      "wikidata_id": "Q2010639",
+      "lat": 51.0033,
+      "lon": 13.895
     },
     {
       "name": "Oberwartha",
-      "wikidata_id": "Q1674903"
+      "wikidata_id": "Q1674903",
+      "lat": 51.0778,
+      "lon": 13.6028
     },
     {
       "name": "Ockerwitz",
-      "wikidata_id": "Q2013740"
+      "wikidata_id": "Q2013740",
+      "lat": 51.056,
+      "lon": 13.6417
     },
     {
       "name": "Omsewitz",
-      "wikidata_id": "Q8944"
+      "wikidata_id": "Q8944",
+      "lat": 51.054722222,
+      "lon": 13.660555555
     },
     {
       "name": "Pappritz",
-      "wikidata_id": "Q8966"
+      "wikidata_id": "Q8966",
+      "lat": 51.0361,
+      "lon": 13.8542
     },
     {
       "name": "Pennrich",
-      "wikidata_id": "Q8967"
+      "wikidata_id": "Q8967",
+      "lat": 51.043055555,
+      "lon": 13.625213888
     },
     {
       "name": "Pieschen",
-      "wikidata_id": "Q8945"
+      "wikidata_id": "Q8945",
+      "lat": 51.077777777,
+      "lon": 13.717222222
     },
     {
       "name": "Pillnitz",
-      "wikidata_id": "Q8946"
+      "wikidata_id": "Q8946",
+      "lat": 51.012777777,
+      "lon": 13.872777777
     },
     {
       "name": "Plauen",
-      "wikidata_id": "Q8949"
+      "wikidata_id": "Q8949",
+      "lat": 51.0294,
+      "lon": 13.7072
     },
     {
       "name": "Podemus",
-      "wikidata_id": "Q2100231"
+      "wikidata_id": "Q2100231",
+      "lat": 51.0606,
+      "lon": 13.6272
     },
     {
       "name": "Prohlis",
-      "wikidata_id": "Q2112285"
+      "wikidata_id": "Q2112285",
+      "lat": 51.0065,
+      "lon": 13.7986
     },
     {
       "name": "Quohren",
-      "wikidata_id": "Q2123609"
+      "wikidata_id": "Q2123609",
+      "lat": 51.055,
+      "lon": 13.8639
     },
     {
       "name": "Reick",
-      "wikidata_id": "Q2139856"
+      "wikidata_id": "Q2139856",
+      "lat": 51.0158,
+      "lon": 13.787
     },
     {
       "name": "Reitzendorf",
-      "wikidata_id": "Q2142233"
+      "wikidata_id": "Q2142233",
+      "lat": 51.0256,
+      "lon": 13.9036
     },
     {
       "name": "Rennersdorf",
-      "wikidata_id": "Q1448972"
+      "wikidata_id": "Q1448972",
+      "lat": 51.0694,
+      "lon": 13.6083
     },
     {
       "name": "Rochwitz",
-      "wikidata_id": "Q2160346"
+      "wikidata_id": "Q2160346",
+      "lat": 51.0499,
+      "lon": 13.8468
     },
     {
       "name": "Rockau",
-      "wikidata_id": "Q1697072"
+      "wikidata_id": "Q1697072",
+      "lat": 51.0264,
+      "lon": 13.8667
     },
     {
       "name": "Roitzsch",
-      "wikidata_id": "Q2162510"
+      "wikidata_id": "Q2162510",
+      "lat": 51.0542,
+      "lon": 13.6089
     },
     {
       "name": "Rosinendörfchen",
-      "wikidata_id": "Q2167437"
+      "wikidata_id": "Q2167437",
+      "lat": 51.0369,
+      "lon": 13.9583
     },
     {
       "name": "Rossendorf",
-      "wikidata_id": "Q2167680"
+      "wikidata_id": "Q2167680",
+      "lat": 51.0536,
+      "lon": 13.9361
     },
     {
       "name": "Roßthal",
-      "wikidata_id": "Q2171376"
+      "wikidata_id": "Q2171376",
+      "lat": 51.03277778,
+      "lon": 13.67611111
     },
     {
       "name": "Räcknitz",
-      "wikidata_id": "Q1252764"
+      "wikidata_id": "Q1252764",
+      "lat": 51.025,
+      "lon": 13.7331
     },
     {
       "name": "Rähnitz",
-      "wikidata_id": "Q1563739"
+      "wikidata_id": "Q1563739",
+      "lat": 51.1194,
+      "lon": 13.7369
     },
     {
       "name": "Schullwitz",
-      "wikidata_id": "Q2251323"
+      "wikidata_id": "Q2251323",
+      "lat": 51.0403,
+      "lon": 13.9222
     },
     {
       "name": "Schönborn",
-      "wikidata_id": "Q2258794"
+      "wikidata_id": "Q2258794",
+      "lat": 51.1472,
+      "lon": 13.8658
     },
     {
       "name": "Schönfeld",
-      "wikidata_id": "Q1287867"
+      "wikidata_id": "Q1287867",
+      "lat": 51.0333,
+      "lon": 13.8947
     },
     {
       "name": "Seevorstadt",
-      "wikidata_id": "Q8952"
+      "wikidata_id": "Q8952",
+      "lat": 51.044444444,
+      "lon": 13.740277777
     },
     {
       "name": "Sporbitz",
-      "wikidata_id": "Q2312167"
+      "wikidata_id": "Q2312167",
+      "lat": 50.994,
+      "lon": 13.8511
     },
     {
       "name": "Steinbach",
-      "wikidata_id": "Q1668480"
+      "wikidata_id": "Q1668480",
+      "lat": 51.0458,
+      "lon": 13.6033
     },
     {
       "name": "Stetzsch",
-      "wikidata_id": "Q2346357"
+      "wikidata_id": "Q2346357",
+      "lat": 51.0836,
+      "lon": 13.6589
     },
     {
       "name": "Strehlen",
-      "wikidata_id": "Q1336962"
+      "wikidata_id": "Q1336962",
+      "lat": 51.0272,
+      "lon": 13.763
     },
     {
       "name": "Striesen",
-      "wikidata_id": "Q8954"
+      "wikidata_id": "Q8954",
+      "lat": 51.043333333,
+      "lon": 13.788611111
     },
     {
       "name": "Söbrigen",
-      "wikidata_id": "Q2379589"
+      "wikidata_id": "Q2379589",
+      "lat": 50.9944,
+      "lon": 13.8803
     },
     {
       "name": "Südvorstadt",
-      "wikidata_id": "Q2381672"
+      "wikidata_id": "Q2381672",
+      "lat": 51.032,
+      "lon": 13.7257
     },
     {
       "name": "Südvorstadt-Ost",
-      "wikidata_id": "Q123181377"
+      "wikidata_id": "Q123181377",
+      "lat": 51.0326,
+      "lon": 13.7404
     },
     {
       "name": "Südvorstadt-West",
-      "wikidata_id": "Q123181380"
+      "wikidata_id": "Q123181380",
+      "lat": 51.0366,
+      "lon": 13.7211
     },
     {
       "name": "Tolkewitz",
-      "wikidata_id": "Q2439280"
+      "wikidata_id": "Q2439280",
+      "lat": 51.0319,
+      "lon": 13.8217
     },
     {
       "name": "Torna",
-      "wikidata_id": "Q2444201"
+      "wikidata_id": "Q2444201",
+      "lat": 51.0067,
+      "lon": 13.7783
     },
     {
       "name": "Trachau",
-      "wikidata_id": "Q1805303"
+      "wikidata_id": "Q1805303",
+      "lat": 51.085,
+      "lon": 13.7103
     },
     {
       "name": "Trachenberge",
-      "wikidata_id": "Q2447490"
+      "wikidata_id": "Q2447490",
+      "lat": 51.0956,
+      "lon": 13.7267
     },
     {
       "name": "Unkersdorf",
-      "wikidata_id": "Q110653"
+      "wikidata_id": "Q110653",
+      "lat": 51.0569,
+      "lon": 13.5897
     },
     {
       "name": "Wachwitz",
-      "wikidata_id": "Q2538540"
+      "wikidata_id": "Q2538540",
+      "lat": 51.0375,
+      "lon": 13.8319
     },
     {
       "name": "Weixdorf",
-      "wikidata_id": "Q2556719"
+      "wikidata_id": "Q2556719",
+      "lat": 51.1478,
+      "lon": 13.7972
     },
     {
       "name": "Weißer Hirsch",
-      "wikidata_id": "Q8956"
+      "wikidata_id": "Q8956",
+      "lat": 51.063888888,
+      "lon": 13.821388888
     },
     {
       "name": "Weißig",
-      "wikidata_id": "Q1760584"
+      "wikidata_id": "Q1760584",
+      "lat": 51.0608,
+      "lon": 13.8844
     },
     {
       "name": "Wilschdorf",
-      "wikidata_id": "Q2582505"
+      "wikidata_id": "Q2582505",
+      "lat": 51.1228,
+      "lon": 13.7228
     },
     {
       "name": "Wilsdruffer Vorstadt",
-      "wikidata_id": "Q1286088"
+      "wikidata_id": "Q1286088",
+      "lat": 51.0567,
+      "lon": 13.7331
     },
     {
       "name": "Wölfnitz",
-      "wikidata_id": "Q2596418"
+      "wikidata_id": "Q2596418",
+      "lat": 51.0411,
+      "lon": 13.6778
     },
     {
       "name": "Zaschendorf",
-      "wikidata_id": "Q148183"
+      "wikidata_id": "Q148183",
+      "lat": 51.0178,
+      "lon": 13.9136
     },
     {
       "name": "Zschertnitz",
-      "wikidata_id": "Q8957"
+      "wikidata_id": "Q8957",
+      "lat": 51.022777777,
+      "lon": 13.7425
     },
     {
       "name": "Zschieren",
-      "wikidata_id": "Q227251"
+      "wikidata_id": "Q227251",
+      "lat": 50.9922,
+      "lon": 13.8681
     },
     {
       "name": "Zöllmen",
-      "wikidata_id": "Q247778"
+      "wikidata_id": "Q247778",
+      "lat": 51.0431,
+      "lon": 13.6106
     },
     {
       "name": "Äußere Neustadt",
-      "wikidata_id": "Q8894"
+      "wikidata_id": "Q8894",
+      "lat": 51.066666666,
+      "lon": 13.75
     },
     {
       "name": "Übigau",
-      "wikidata_id": "Q8955"
+      "wikidata_id": "Q8955",
+      "lat": 51.071388888,
+      "lon": 13.699166666
     }
   ]
 }

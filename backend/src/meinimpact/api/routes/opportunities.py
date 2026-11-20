@@ -12,12 +12,13 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from meinimpact.api import schemas
 from meinimpact.api.dependencies import (
     get_council_repository,
     get_impact_news_repository,
+    get_locality_resolver,
     get_opportunity_repository,
     require_principal,
 )
@@ -28,6 +29,7 @@ from meinimpact.infrastructure.council.offices import FRAKTION_OFFICES
 from meinimpact.infrastructure.council.postgres_council_repository import (
     PostgresCouncilRepository,
 )
+from meinimpact.infrastructure.geo.locality import LocalityResolver
 from meinimpact.infrastructure.impact.postgres_news_repository import (
     PostgresImpactNewsRepository,
 )
@@ -119,18 +121,32 @@ async def get_opportunity_preview(
     )
 
 
+def concerns_land_of(gebiet: str, kreis: str) -> bool:
+    """Whether an opportunity for `gebiet` is served to someone in `kreis`:
+    everything Bund and EU, and all of their Land, neighbouring places
+    included; the app ranks by distance within that."""
+    return gebiet == "" or gebiet[:2] == kreis[:2]
+
+
 @router.get("/pool")
 async def get_opportunity_pool(
+    kreis: str | None = Query(default=None, pattern=r"^\d{5}$"),
     opportunity_repository: repositories.OpportunityRepository = Depends(
         get_opportunity_repository
     ),
+    localities: LocalityResolver = Depends(get_locality_resolver),
 ) -> schemas.OpportunityPoolResponse:
-    """Returns every relevant opportunity that is still open today."""
+    """Returns every relevant opportunity that is still open today; with
+    the caller's `kreis`, only those of their Land and above. Without it
+    (app versions before the Kreis), all of them."""
     now = datetime.now(UTC)
     opportunities = await opportunity_repository.list_open(now.date())
+    located = [(o, localities.of(o.region, o.organizer)) for o in opportunities]
     return schemas.OpportunityPoolResponse(
         opportunities=[
-            schemas.OpportunityResponse.from_domain(o) for o in opportunities
+            schemas.OpportunityResponse.from_domain(o, locality)
+            for o, locality in located
+            if kreis is None or concerns_land_of(locality.gebiet, kreis)
         ],
         generated_at=now,
     )

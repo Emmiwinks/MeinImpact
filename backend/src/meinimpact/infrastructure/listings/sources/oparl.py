@@ -54,6 +54,9 @@ class OParlBody:
     its committees, district and village councils; not advisory boards or
     party groups). `council` is the full council's name and `committees`
     match its committees, for choosing a letter's recipients.
+    `neighbourhoods` match the bodies of one part of the city (their names
+    differ per Land: Ortschaftsrat, Bezirksvertretung, Ortsbeirat ...);
+    the group `area` captures that part's name, which locates it.
     """
 
     source_id: str
@@ -64,6 +67,7 @@ class OParlBody:
     bodies: tuple[str, ...]
     council: str
     committees: tuple[str, ...]
+    neighbourhoods: tuple[str, ...] = ()
 
 
 DRESDEN = OParlBody(
@@ -81,6 +85,10 @@ DRESDEN = OParlBody(
     ),
     council="Stadtrat",
     committees=(r"^Ausschuss ", r"ausschuss$"),
+    neighbourhoods=(
+        r"^Stadtbezirksbeirat (?P<area>.+)$",
+        r"^Ortschaftsrat (?P<area>.+)$",
+    ),
 )
 
 
