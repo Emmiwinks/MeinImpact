@@ -112,7 +112,9 @@ class _AktionenTabState extends State<AktionenTab> with WidgetsBindingObserver {
   Future<List<RankedOpportunity>> _load() async {
     _loadFailed = false;
     try {
-      final pool = await widget.opportunityRepository.pool();
+      final pool = await widget.opportunityRepository.pool(
+        kreis: widget.profile.home?.kreis,
+      );
       final ranker = OpportunityRelevanceRanker(
         interestConfig: widget.interestConfig,
       );
@@ -253,7 +255,7 @@ class _TopLine extends StatelessWidget {
           const SizedBox(width: MiSpace.xs),
           Expanded(
             child: Text(
-              'Texte mit KI erstellt, können Fehler enthalten.',
+              'Diese KI-Texte können Fehler enthalten.',
               style: Theme.of(context)
                   .textTheme
                   .labelMedium

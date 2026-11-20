@@ -1,3 +1,4 @@
+import 'home_location.dart';
 import 'interest_weights.dart';
 import 'lebenslage.dart';
 import 'situation_keys.dart';
@@ -23,6 +24,7 @@ class UserProfile {
     this.mdbName,
     this.mdbParty,
     this.mdbWahlkreis,
+    this.home,
     this.lebenslagen = const {},
     this.interests = const InterestWeights(),
   });
@@ -32,6 +34,7 @@ class UserProfile {
     final lebenslagenRaw = json['lebenslagen'] as List<Object?>?;
     final legacyRaw = json['betroffenheitsprofil'] as Map<String, Object?>?;
     final interestsRaw = json['interests'] as Map<String, Object?>?;
+    final homeRaw = json['home'] as Map<String, Object?>?;
     return UserProfile(
       // Saved as whole steps before the slider went continuous.
       werte: werteRaw.map((k, v) => MapEntry(k, (v as num).toDouble())),
@@ -40,6 +43,7 @@ class UserProfile {
       mdbName: json['mdb_name'] as String?,
       mdbParty: json['mdb_party'] as String?,
       mdbWahlkreis: json['mdb_wahlkreis'] as String?,
+      home: homeRaw != null ? HomeLocation.fromJson(homeRaw) : null,
       // Profiles saved before the catalog carry the old Betroffenheitsprofil
       // instead; their answers are carried over, never dropped.
       lebenslagen: lebenslagenRaw != null
@@ -58,6 +62,7 @@ class UserProfile {
 
   UserProfile copyWith({
     Map<String, double>? werte,
+    HomeLocation? home,
     Set<String>? lebenslagen,
     InterestWeights? interests,
   }) {
@@ -68,6 +73,7 @@ class UserProfile {
       mdbName: mdbName,
       mdbParty: mdbParty,
       mdbWahlkreis: mdbWahlkreis,
+      home: home ?? this.home,
       lebenslagen: lebenslagen ?? this.lebenslagen,
       interests: interests ?? this.interests,
     );
@@ -81,6 +87,10 @@ class UserProfile {
   final String? mdbName;
   final String? mdbParty;
   final String? mdbWahlkreis;
+
+  // Where the PLZ lies (see HomeLocation); null until the server located
+  // it, e.g. when the PLZ was entered offline.
+  final HomeLocation? home;
 
   // Lebenslagen catalog ids the user marked as important to them (see
   // Lebenslage). On-device only, never sent to the backend; drives feed
@@ -129,6 +139,7 @@ class UserProfile {
       'mdb_name': mdbName,
       'mdb_party': mdbParty,
       'mdb_wahlkreis': mdbWahlkreis,
+      'home': home?.toJson(),
       'lebenslagen': lebenslagen.toList(),
       'interests': interests.toJson(),
     };

@@ -1,15 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meinimpact/src/app/theme/mi_theme.dart';
+import 'package:meinimpact/src/features/feed/domain/home_location.dart';
+import 'package:meinimpact/src/features/feed/domain/local_coverage.dart';
 import 'package:meinimpact/src/features/feed/domain/mdb.dart';
 import 'package:meinimpact/src/features/feed/domain/user_profile.dart';
 import 'package:meinimpact/src/features/onboarding/rucksack/rucksack_screen.dart';
+
+const _home = HomeLocation(kreis: '14612', lat: 51.05, lon: 13.73);
+
+PlzLookup _found([List<MdbOption> wahlkreise = const []]) =>
+    PlzLookup(home: _home, wahlkreise: wahlkreise);
 
 void main() {
   Future<void> pump(
     WidgetTester tester,
     void Function(UserProfile) onComplete, {
-    Future<List<MdbOption>> Function(String)? lookup,
+    Future<PlzLookup?> Function(String)? locate,
   }) async {
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3;
@@ -20,20 +27,29 @@ void main() {
         home: RucksackScreen(
           werte: const {'wirtschaft_gleichheit': -1.2},
           onComplete: onComplete,
-          onLookupMdb: lookup ??
-              (_) async => const [
+          onLocate: locate ??
+              (_) async => _found(const [
                     MdbOption(
                       wahlkreisNr: 159,
                       wahlkreisName: 'Dresden I',
                       mdbName: 'Jana Beispiel',
                       mdbParty: 'Partei A',
                     ),
-                  ],
+                  ]),
         ),
       ),
     );
     await tester.pumpAndSettle();
   }
+
+  Future<void> enterPlz(WidgetTester tester, [String plz = '01067']) async {
+    await tester.enterText(find.byType(TextField), plz);
+    await tester.pumpAndSettle();
+  }
+
+  bool weiterEnabled(WidgetTester tester) => tester
+      .widget<FilledButton>(find.widgetWithText(FilledButton, 'Weiter'))
+      .enabled;
 
   testWidgets('asks where you live first, then packs Lebenslagen',
       (tester) async {
@@ -41,8 +57,7 @@ void main() {
     await pump(tester, (p) => result = p);
 
     expect(find.text('Wo bist du zuhause?'), findsOneWidget);
-    await tester.enterText(find.byType(TextField), '01067');
-    await tester.pumpAndSettle();
+    await enterPlz(tester);
     expect(find.text('Im Bundestag: Jana Beispiel, Partei A'), findsOneWidget);
 
     await tester.tap(find.text('Weiter'));
@@ -63,15 +78,81 @@ void main() {
 
     await tester.tap(find.text('Fertig'));
     expect(result!.plz, '01067');
+    expect(result!.home?.kreis, '14612');
     expect(result!.mdbName, 'Jana Beispiel');
     expect(result!.mdbWahlkreis, 'Dresden I');
     expect(result!.lebenslagen, {'mieter'});
   });
 
+  testWidgets('the PLZ is required: no skipping, Weiter waits for it',
+      (tester) async {
+    await pump(tester, (_) {});
+
+    expect(find.text('Überspringen'), findsNothing);
+    expect(weiterEnabled(tester), isFalse);
+    await enterPlz(tester);
+    expect(weiterEnabled(tester), isTrue);
+  });
+
+  testWidgets('says so when there are no topics from there yet',
+      (tester) async {
+    await pump(
+      tester,
+      (_) {},
+      locate: (plz) async => plz == '80331'
+          ? const PlzLookup(
+              home: HomeLocation(kreis: '09162', lat: 48.14, lon: 11.57),
+              coverage: LocalCoverage.none,
+            )
+          : _found(),
+    );
+
+    await enterPlz(tester, '80331');
+
+    expect(find.text(LocalCoverage.none.note!), findsOneWidget);
+    expect(weiterEnabled(tester), isTrue);
+
+    // A covered PLZ takes the note away again.
+    await enterPlz(tester, '01067');
+    expect(find.text(LocalCoverage.none.note!), findsNothing);
+  });
+
+  testWidgets('an unknown PLZ cannot go in', (tester) async {
+    await pump(tester, (_) {}, locate: (_) async => null);
+
+    await enterPlz(tester, '99999');
+
+    expect(
+      find.text('Diese PLZ kennen wir nicht. Stimmt sie?'),
+      findsOneWidget,
+    );
+    expect(weiterEnabled(tester), isFalse);
+  });
+
+  testWidgets('offline the PLZ still goes in, to be located later',
+      (tester) async {
+    UserProfile? result;
+    await pump(
+      tester,
+      (p) => result = p,
+      locate: (_) async => throw Exception('offline'),
+    );
+
+    await enterPlz(tester);
+    expect(find.textContaining('Gerade keine Verbindung'), findsOneWidget);
+    await tester.tap(find.text('Weiter'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Fertig'));
+
+    expect(result!.plz, '01067');
+    expect(result!.home, isNull);
+  });
+
   testWidgets('private ones go into the Privatfach', (tester) async {
     UserProfile? result;
     await pump(tester, (p) => result = p);
-    await tester.tap(find.text('Überspringen'));
+    await enterPlz(tester);
+    await tester.tap(find.text('Weiter'));
     await tester.pumpAndSettle();
 
     for (var i = 0; i < 3; i++) {
@@ -83,7 +164,6 @@ void main() {
     expect(find.text('0 ausgewählt · 1 im Privatfach'), findsOneWidget);
 
     await tester.tap(find.text('Fertig'));
-    expect(result!.plz, isNull);
     expect(result!.lebenslagen, {'chronisch_krank'});
   });
 
@@ -99,7 +179,7 @@ void main() {
           initialPlz: '01067',
           initialLebenslagen: const {'mieter', 'chronisch_krank'},
           onComplete: (p) => result = p,
-          onLookupMdb: (_) async => const [],
+          onLocate: (_) async => _found(),
         ),
       ),
     );
@@ -115,15 +195,8 @@ void main() {
 
     await tester.tap(find.text('Fertig'));
     expect(result!.plz, '01067');
+    expect(result!.home?.kreis, '14612');
     expect(result!.lebenslagen, {'mieter', 'chronisch_krank'});
-  });
-
-  testWidgets('a given PLZ cannot be skipped away by accident', (tester) async {
-    await pump(tester, (_) {});
-    expect(find.text('Überspringen'), findsOneWidget);
-    await tester.enterText(find.byType(TextField), '01067');
-    await tester.pumpAndSettle();
-    expect(find.text('Überspringen'), findsNothing);
   });
 
   testWidgets('re-packing picks the Wahlkreis chosen before', (tester) async {
@@ -138,7 +211,7 @@ void main() {
           initialPlz: '01067',
           initialWahlkreis: 'Dresden II – Bautzen II',
           onComplete: (p) => result = p,
-          onLookupMdb: (_) async => const [
+          onLocate: (_) async => _found(const [
             MdbOption(
               wahlkreisNr: 159,
               wahlkreisName: 'Dresden I',
@@ -151,7 +224,7 @@ void main() {
               mdbName: 'Tom Muster',
               mdbParty: 'Partei B',
             ),
-          ],
+          ]),
         ),
       ),
     );
@@ -173,13 +246,14 @@ void main() {
         theme: miTheme(Brightness.dark),
         home: RucksackScreen(
           onComplete: (_) {},
-          onLookupMdb: (_) async => const [],
+          onLocate: (_) async => _found(),
           onBack: () => left = true,
         ),
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Überspringen'));
+    await enterPlz(tester);
+    await tester.tap(find.text('Weiter'));
     await tester.pumpAndSettle();
     expect(find.text('Was gehört zu dir?'), findsOneWidget);
 
@@ -193,18 +267,16 @@ void main() {
     expect(left, isTrue);
   });
 
-  testWidgets('keeps the PLZ when no Wahlkreis is found', (tester) async {
+  testWidgets('a PLZ without Bundestag data still locates', (tester) async {
     UserProfile? result;
-    await pump(tester, (p) => result = p, lookup: (_) async => const []);
+    await pump(tester, (p) => result = p, locate: (_) async => _found());
 
-    await tester.enterText(find.byType(TextField), '99999');
-    await tester.pumpAndSettle();
-    expect(find.textContaining('Keinen Wahlkreis gefunden'), findsOneWidget);
+    await enterPlz(tester);
     await tester.tap(find.text('Weiter'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Fertig'));
 
-    expect(result!.plz, '99999');
+    expect(result!.home?.kreis, '14612');
     expect(result!.mdbName, isNull);
   });
 }

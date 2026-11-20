@@ -6,7 +6,7 @@ import 'package:meinimpact/src/app/theme/mi_theme.dart';
 import 'package:meinimpact/src/features/feed/data/opportunity_relevance_ranker.dart';
 import 'package:meinimpact/src/features/feed/domain/interest_weights.dart';
 import 'package:meinimpact/src/features/feed/domain/letter_recipients.dart';
-import 'package:meinimpact/src/features/feed/domain/mdb.dart';
+import 'package:meinimpact/src/features/feed/domain/home_location.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity_repository.dart';
 import 'package:meinimpact/src/features/feed/domain/topic_tags.g.dart';
@@ -568,13 +568,13 @@ class _Repository implements OpportunityRepository {
   final bool slow;
 
   @override
-  Future<List<Opportunity>> pool() async {
+  Future<List<Opportunity>> pool({String? kreis}) async {
     if (slow) await Future<void>.delayed(const Duration(milliseconds: 50));
     return items;
   }
 
   @override
-  Future<List<MdbOption>> lookupMdb(String plz) async => const [];
+  Future<PlzLookup?> locate(String plz) async => null;
 
   @override
   Stream<String> streamLetter(String opportunityId, {String? notes}) =>

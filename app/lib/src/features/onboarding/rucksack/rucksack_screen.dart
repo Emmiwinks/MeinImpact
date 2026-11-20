@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../app/theme/mi_theme.dart';
+import '../../feed/domain/home_location.dart';
 import '../../feed/domain/lebenslage.dart';
+import '../../feed/domain/local_coverage.dart';
 import '../../feed/domain/lebenslagen_catalog.g.dart';
 import '../../feed/domain/lebenslagen_search.dart';
 import '../../feed/domain/mdb.dart';
@@ -16,14 +18,16 @@ import 'rucksack_bag.dart';
 /// The second onboarding step: the Rucksack. "Dein Bild" from the values
 /// questionnaire drops in first. Then, asked big, where the user lives
 /// (for actions nearby, and to find their members of parliament); the PLZ
-/// flies onto the bag as its luggage tag. Then what belongs to them: one
-/// card per area, swiped like the hand, with the Lebenslagen as hanging
-/// tags that fly over the bag and drop in. Private ones go into the
-/// Privatfach at the front. Everything is optional and stays on the device.
+/// flies onto the bag as its luggage tag. It is required: the server
+/// locates it once and the app keeps only where it lies. Then what belongs
+/// to them: one card per area, swiped like the hand, with the Lebenslagen
+/// as hanging tags that fly over the bag and drop in. Private ones go into
+/// the Privatfach at the front. The Lebenslagen are optional and stay on
+/// the device.
 class RucksackScreen extends StatefulWidget {
   const RucksackScreen({
     required this.onComplete,
-    required this.onLookupMdb,
+    required this.onLocate,
     this.werte = const {},
     this.dropPicture = true,
     this.initialPlz,
@@ -43,7 +47,9 @@ class RucksackScreen extends StatefulWidget {
   final Set<String> initialLebenslagen;
 
   final ValueChanged<UserProfile> onComplete;
-  final Future<List<MdbOption>> Function(String plz) onLookupMdb;
+
+  /// Locates a PLZ (see OpportunityRepository.locate); null when unknown.
+  final Future<PlzLookup?> Function(String plz) onLocate;
 
   /// The answers from the questionnaire, for the picture in the bag.
   final Map<String, double> werte;
@@ -73,6 +79,8 @@ class _RucksackScreenState extends State<RucksackScreen>
 
   final _plz = TextEditingController();
   _Lookup _lookup = _Lookup.idle;
+  HomeLocation? _home;
+  LocalCoverage _coverage = LocalCoverage.local;
   List<MdbOption> _results = const [];
   MdbOption? _mdb;
   bool _luggageOn = false;
@@ -142,6 +150,8 @@ class _RucksackScreenState extends State<RucksackScreen>
       if (_lookup != _Lookup.idle) {
         setState(() {
           _lookup = _Lookup.idle;
+          _home = null;
+          _coverage = LocalCoverage.local;
           _results = const [];
           _mdb = null;
         });
@@ -153,13 +163,18 @@ class _RucksackScreenState extends State<RucksackScreen>
     FocusScope.of(context).unfocus();
     setState(() {
       _lookup = _Lookup.loading;
+      _home = null;
+      _coverage = LocalCoverage.local;
       _results = const [];
       _mdb = null;
     });
     try {
-      final results = await widget.onLookupMdb(value);
+      final found = await widget.onLocate(value);
       if (!mounted || _plz.text != value) return;
+      final results = found?.wahlkreise ?? const <MdbOption>[];
       setState(() {
+        _home = found?.home;
+        _coverage = found?.coverage ?? LocalCoverage.local;
         _results = results;
         _mdb = results.isEmpty
             ? null
@@ -167,7 +182,7 @@ class _RucksackScreenState extends State<RucksackScreen>
                 (r) => r.wahlkreisName == widget.initialWahlkreis,
                 orElse: () => results.first,
               );
-        _lookup = results.isEmpty ? _Lookup.notFound : _Lookup.done;
+        _lookup = found == null ? _Lookup.notFound : _Lookup.done;
       });
     } catch (_) {
       if (!mounted || _plz.text != value) return;
@@ -321,6 +336,7 @@ class _RucksackScreenState extends State<RucksackScreen>
         mdbName: _mdb?.mdbName,
         mdbParty: _mdb?.mdbParty,
         mdbWahlkreis: _mdb?.wahlkreisName,
+        home: _home,
         lebenslagen: {..._packed.keys},
       ),
     );
@@ -367,7 +383,8 @@ class _RucksackScreenState extends State<RucksackScreen>
                           ? const _Heading(
                               key: ValueKey('plz'),
                               title: 'Wo bist du zuhause?',
-                              line: 'Damit du Aktionen in deiner Nähe findest.',
+                              line: 'Damit du Aktionen in deiner Nähe findest. '
+                                  'Wir speichern deine PLZ nicht.',
                             )
                           : const _Heading(
                               key: ValueKey('ll'),
@@ -447,34 +464,15 @@ class _RucksackScreenState extends State<RucksackScreen>
                       MiSpace.base,
                     ),
                     child: onPlz
-                        ? Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              FilledButton(
-                                onPressed:
-                                    _plzValue == null ? null : _toLebenslagen,
-                                style: colors.tableButton,
-                                child: const Text('Weiter'),
-                              ),
-                              // Only while no PLZ is given: skipping drops
-                              // it, so it never clears one by accident.
-                              if (_plzValue == null)
-                                TextButton(
-                                  onPressed: () {
-                                    _plz.clear();
-                                    _lookup = _Lookup.idle;
-                                    _mdb = null;
-                                    _luggageOn = false;
-                                    _toLebenslagen();
-                                  },
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: colors.onTableMuted,
-                                  ),
-                                  child: const Text('Überspringen'),
-                                )
-                              else
-                                const SizedBox(height: 48),
-                            ],
+                        ? FilledButton(
+                            // Offline the PLZ still goes in; the app locates
+                            // it later. An unknown one does not.
+                            onPressed:
+                                _plzValue == null || _lookup == _Lookup.notFound
+                                    ? null
+                                    : _toLebenslagen,
+                            style: colors.tableButton,
+                            child: const Text('Weiter'),
                           )
                         : FilledButton(
                             onPressed: _inFlight.isEmpty ? _done : null,
@@ -623,8 +621,7 @@ class _RucksackScreenState extends State<RucksackScreen>
           ),
         );
       case _Lookup.notFound:
-        return note('Keinen Wahlkreis gefunden. Die PLZ nehmen wir trotzdem '
-            'mit.');
+        return note('Diese PLZ kennen wir nicht. Stimmt sie?');
       case _Lookup.error:
         return note('Gerade keine Verbindung. Die PLZ nehmen wir trotzdem '
             'mit.');
@@ -681,6 +678,11 @@ class _RucksackScreenState extends State<RucksackScreen>
                       ),
                     ),
                   ],
+                ),
+              if (_coverage.note case final coverageNote?)
+                Padding(
+                  padding: EdgeInsets.only(top: mdb != null ? MiSpace.md : 0),
+                  child: Text(coverageNote, style: muted),
                 ),
             ],
           ),

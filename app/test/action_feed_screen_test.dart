@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meinimpact/src/app/meinimpact_app.dart';
 import 'package:meinimpact/src/features/feed/domain/letter_recipients.dart';
-import 'package:meinimpact/src/features/feed/domain/mdb.dart';
+import 'package:meinimpact/src/features/feed/domain/home_location.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity_repository.dart';
 import 'package:meinimpact/src/features/tracking/domain/impact_news.dart';
@@ -112,10 +112,11 @@ Opportunity _petitionOpportunity() => Opportunity(
 
 class _PoolRepository implements OpportunityRepository {
   @override
-  Future<List<Opportunity>> pool() async => [_petitionOpportunity()];
+  Future<List<Opportunity>> pool({String? kreis}) async =>
+      [_petitionOpportunity()];
 
   @override
-  Future<List<MdbOption>> lookupMdb(String plz) async => const [];
+  Future<PlzLookup?> locate(String plz) async => null;
 
   @override
   Stream<String> streamLetter(String opportunityId, {String? notes}) =>
@@ -134,10 +135,10 @@ class _PoolRepository implements OpportunityRepository {
 
 class _EmptyRepository implements OpportunityRepository {
   @override
-  Future<List<Opportunity>> pool() async => const [];
+  Future<List<Opportunity>> pool({String? kreis}) async => const [];
 
   @override
-  Future<List<MdbOption>> lookupMdb(String plz) async => const [];
+  Future<PlzLookup?> locate(String plz) async => null;
 
   @override
   Stream<String> streamLetter(String opportunityId, {String? notes}) =>
@@ -158,13 +159,13 @@ class _FailingRepository implements OpportunityRepository {
   int calls = 0;
 
   @override
-  Future<List<Opportunity>> pool() async {
+  Future<List<Opportunity>> pool({String? kreis}) async {
     calls++;
     throw StateError('Backend unavailable');
   }
 
   @override
-  Future<List<MdbOption>> lookupMdb(String plz) async => const [];
+  Future<PlzLookup?> locate(String plz) async => null;
 
   @override
   Stream<String> streamLetter(String opportunityId, {String? notes}) =>

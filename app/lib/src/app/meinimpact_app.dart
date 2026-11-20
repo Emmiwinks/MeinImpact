@@ -6,6 +6,7 @@ import 'package:meinimpact/l10n/app_localizations.dart';
 
 import '../core/profile/user_profile_store.dart';
 import '../core/usage/usage.dart';
+import '../features/feed/domain/home_location.dart';
 import '../features/feed/domain/interest_config.dart';
 import '../features/feed/domain/interest_weights.dart';
 import '../features/feed/domain/opportunity.dart';
@@ -24,6 +25,8 @@ import 'theme/mi_theme.dart';
 /// onboarding shortcut. Deliberately not configurable: it exists to skip
 /// setup, not to represent a real answer.
 const _kExampleLebenslagen = {'mieter', 'oepnv', 'angestellt'};
+// Its PLZ is located like any other once the app is running.
+const _kExamplePlz = '01067';
 
 class MeinImpactApp extends StatefulWidget {
   /// Direct constructor — bypasses onboarding (used in tests and demos).
@@ -91,6 +94,41 @@ class _MeinImpactAppState extends State<MeinImpactApp>
     _actionLog = widget._initialActionLog;
     WidgetsBinding.instance.addObserver(this);
     unawaited(Usage.current.markActive());
+    unawaited(_locateHomeIfMissing());
+  }
+
+  // A PLZ entered offline, or saved before the app kept where it lies, is
+  // located on the next start: quietly, best effort, the next feed load
+  // uses it.
+  Future<void> _locateHomeIfMissing() async {
+    final current = _profile;
+    final plz = current?.plz;
+    if (current == null || plz == null || current.home != null) return;
+    final PlzLookup? found;
+    try {
+      found = await widget._opportunityRepository.locate(plz);
+    } catch (_) {
+      return;
+    }
+    if (found == null || !mounted || _profile?.plz != plz) return;
+    final latest = _profile!;
+    // A member of the Bundestag only when the PLZ has just one.
+    final mdb = latest.mdbWahlkreis == null && found.wahlkreise.length == 1
+        ? found.wahlkreise.single
+        : null;
+    final updated = UserProfile(
+      werte: latest.werte,
+      region: latest.region,
+      plz: latest.plz,
+      mdbName: mdb?.mdbName ?? latest.mdbName,
+      mdbParty: mdb?.mdbParty ?? latest.mdbParty,
+      mdbWahlkreis: mdb?.wahlkreisName ?? latest.mdbWahlkreis,
+      home: found.home,
+      lebenslagen: latest.lebenslagen,
+      interests: latest.interests,
+    );
+    await widget._profileStore?.save(updated);
+    if (mounted) setState(() => _profile = updated);
   }
 
   @override
@@ -148,18 +186,24 @@ class _MeinImpactAppState extends State<MeinImpactApp>
       mdbName: patch.mdbName,
       mdbParty: patch.mdbParty,
       mdbWahlkreis: patch.mdbWahlkreis,
+      home: patch.home,
       lebenslagen: patch.lebenslagen,
     );
     Usage.current.count(UsageEvent.onboardingDone);
     await widget._profileStore?.save(profile);
     setState(() => _profile = profile);
+    unawaited(_locateHomeIfMissing());
   }
 
   Future<void> _onUseExampleProfile() async {
-    const profile = UserProfile(lebenslagen: _kExampleLebenslagen);
+    const profile = UserProfile(
+      plz: _kExamplePlz,
+      lebenslagen: _kExampleLebenslagen,
+    );
     Usage.current.count(UsageEvent.onboardingDone);
     await widget._profileStore?.save(profile);
     setState(() => _profile = profile);
+    unawaited(_locateHomeIfMissing());
   }
 
   Future<void> _onWerteRequizComplete(Map<String, double> werte) async {
@@ -174,17 +218,18 @@ class _MeinImpactAppState extends State<MeinImpactApp>
 
   Future<void> _onRepackComplete(UserProfile patch) async {
     final current = _profile!;
-    final keepMdb = patch.plz != null &&
-        patch.plz == current.plz &&
-        patch.mdbWahlkreis == null;
+    final samePlz = patch.plz != null && patch.plz == current.plz;
+    final keepMdb = samePlz && patch.mdbWahlkreis == null;
     final updated = UserProfile(
       werte: current.werte,
       region: current.region,
       plz: patch.plz,
-      // The same PLZ without a fresh lookup (offline) keeps its members.
+      // The same PLZ without a fresh lookup (offline) keeps its members
+      // and where it lies.
       mdbName: keepMdb ? current.mdbName : patch.mdbName,
       mdbParty: keepMdb ? current.mdbParty : patch.mdbParty,
       mdbWahlkreis: keepMdb ? current.mdbWahlkreis : patch.mdbWahlkreis,
+      home: patch.home ?? (samePlz ? current.home : null),
       lebenslagen: patch.lebenslagen,
       interests: current.interests,
     );
@@ -194,6 +239,7 @@ class _MeinImpactAppState extends State<MeinImpactApp>
       _repack = false;
       _homeTab = 0;
     });
+    unawaited(_locateHomeIfMissing());
   }
 
   Future<void> _onLebenslagenChanged(Set<String> lebenslagen) async {
@@ -273,7 +319,7 @@ class _MeinImpactAppState extends State<MeinImpactApp>
         initialWahlkreis: _profile!.mdbWahlkreis,
         initialLebenslagen: _profile!.lebenslagen,
         onComplete: _onRepackComplete,
-        onLookupMdb: widget._opportunityRepository.lookupMdb,
+        onLocate: widget._opportunityRepository.locate,
         onBack: () => setState(() {
           _repack = false;
           _homeTab = 0;
@@ -324,7 +370,7 @@ class _MeinImpactAppState extends State<MeinImpactApp>
     return RucksackScreen(
       werte: _pendingWerte ?? const {},
       onComplete: _onDemographicComplete,
-      onLookupMdb: widget._opportunityRepository.lookupMdb,
+      onLocate: widget._opportunityRepository.locate,
       onBack: () => setState(() => _onboardingStep = 0),
     );
   }

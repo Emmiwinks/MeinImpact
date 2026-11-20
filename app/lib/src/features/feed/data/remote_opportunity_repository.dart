@@ -1,7 +1,7 @@
 import '../../../core/network/api_client.dart';
 import '../../tracking/domain/impact_news.dart';
+import '../domain/home_location.dart';
 import '../domain/letter_recipients.dart';
-import '../domain/mdb.dart';
 import '../domain/opportunity.dart';
 import '../domain/opportunity_repository.dart';
 
@@ -11,8 +11,12 @@ class RemoteOpportunityRepository implements OpportunityRepository {
   final ApiClient _apiClient;
 
   @override
-  Future<List<Opportunity>> pool() async {
-    final response = await _apiClient.getJson('/v1/opportunities/pool');
+  Future<List<Opportunity>> pool({String? kreis}) async {
+    final response = await _apiClient.getJson(
+      kreis == null
+          ? '/v1/opportunities/pool'
+          : '/v1/opportunities/pool?kreis=$kreis',
+    );
     final rawItems = response['opportunities'];
     if (rawItems is! List<Object?>) {
       throw const ApiException('Expected opportunities list.');
@@ -24,17 +28,13 @@ class RemoteOpportunityRepository implements OpportunityRepository {
   }
 
   @override
-  Future<List<MdbOption>> lookupMdb(String plz) async {
+  Future<PlzLookup?> locate(String plz) async {
+    // The PLZ goes in the body: the server's access log never shows it.
     try {
-      final response = await _apiClient.getJson('/v1/mdb?plz=$plz');
-      final rawItems = response['results'];
-      if (rawItems is! List<Object?>) return const [];
-      return rawItems
-          .whereType<Map<String, Object?>>()
-          .map(MdbOption.fromJson)
-          .toList(growable: false);
+      final response = await _apiClient.postJson('/v1/location', {'plz': plz});
+      return PlzLookup.fromJson(response);
     } on ApiException catch (e) {
-      if (e.statusCode == 404) return const [];
+      if (e.statusCode == 404) return null;
       rethrow;
     }
   }

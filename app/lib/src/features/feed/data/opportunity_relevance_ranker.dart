@@ -2,6 +2,7 @@ import 'dart:math';
 
 import '../domain/interest_config.dart';
 import '../domain/interest_weights.dart';
+import '../domain/locality_config.dart';
 import '../domain/opportunity.dart';
 import '../domain/user_profile.dart';
 
@@ -48,7 +49,10 @@ class RankedOpportunity {
 ///   + [InterestConfig.matchBonus] scaled by the match strength, if the
 ///     card concerns the user's situation (a personal snippet, or one of
 ///     their Lebenslagen weighted by its rarity in the pool)
-///   + learned topic interest, scaled by [InterestConfig.rankingInfluence].
+///   + learned topic interest, scaled by [InterestConfig.rankingInfluence]
+///   + nearness to home: a city's or neighbourhood's matters sink with
+///     distance from where the user lives, their own neighbourhood's rise
+///     ([LocalityConfig]).
 /// Ties fall back to Werteprofil alignment. (A hard "matched first" tier
 /// used to sit above all of this; with ~45% of cards matched it made
 /// learned interests in unmatched topics invisible.)
@@ -63,9 +67,11 @@ class RankedOpportunity {
 class OpportunityRelevanceRanker {
   const OpportunityRelevanceRanker({
     this.interestConfig = const InterestConfig(),
+    this.localityConfig = const LocalityConfig(),
   });
 
   final InterestConfig interestConfig;
+  final LocalityConfig localityConfig;
 
   static const _minAnsweredForWerteMatch = 4;
 
@@ -86,7 +92,8 @@ class OpportunityRelevanceRanker {
               r.opportunity.affectedTags,
               at,
               interestConfig,
-            );
+            ) +
+        localityConfig.adjustment(r.opportunity, profile.home);
     ranked.sort((a, b) {
       final byScore = score(b).compareTo(score(a));
       if (byScore != 0) return byScore;

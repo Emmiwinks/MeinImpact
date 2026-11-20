@@ -13,6 +13,8 @@ import 'package:meinimpact/src/app/main_tab_screen.dart';
 import 'package:meinimpact/src/app/theme/mi_theme.dart';
 import 'package:meinimpact/src/features/feed/domain/interest_weights.dart';
 import 'package:meinimpact/src/features/feed/domain/letter_recipients.dart';
+import 'package:meinimpact/src/features/feed/domain/local_coverage.dart';
+import 'package:meinimpact/src/features/feed/domain/home_location.dart';
 import 'package:meinimpact/src/features/feed/domain/mdb.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity_repository.dart';
@@ -281,21 +283,28 @@ void main() {
     RucksackScreen rucksack() => RucksackScreen(
           werte: someAnswers,
           onComplete: (_) {},
-          onLookupMdb: (_) async => const [
-            MdbOption(
-              wahlkreisNr: 159,
-              wahlkreisName: 'Dresden I',
-              mdbName: 'Jana Beispiel',
-              mdbParty: 'Partei A',
-            ),
-            MdbOption(
-              wahlkreisNr: 160,
-              wahlkreisName: 'Dresden II – Bautzen II',
-              mdbName: 'Tom Muster',
-              mdbParty: 'Partei B',
-            ),
-          ],
+          // As the Bundestag's data has 01067: Dresden I only.
+          onLocate: (_) async => const PlzLookup(
+            home: HomeLocation(kreis: '14612', lat: 51.05, lon: 13.73),
+            wahlkreise: [
+              MdbOption(
+                wahlkreisNr: 158,
+                wahlkreisName: 'Dresden I',
+                mdbName: 'Jana Beispiel',
+                mdbParty: 'Partei A',
+              ),
+            ],
+          ),
         );
+    testWidgets(
+      'rucksack, where you live, empty, ${brightness.name}',
+      (t) => screen(
+        t,
+        'phone-rucksack-plz-empty-${brightness.name}',
+        rucksack(),
+        brightness: brightness,
+      ),
+    );
     testWidgets(
       'rucksack, where you live, ${brightness.name}',
       (t) => screen(
@@ -305,6 +314,49 @@ void main() {
         brightness: brightness,
         act: (t) async {
           await t.enterText(find.byType(TextField).first, '01067');
+        },
+      ),
+    );
+    testWidgets(
+      'rucksack, no local topics yet, ${brightness.name}',
+      (t) => screen(
+        t,
+        'phone-rucksack-plz-no-local-${brightness.name}',
+        RucksackScreen(
+          werte: someAnswers,
+          onComplete: (_) {},
+          onLocate: (_) async => const PlzLookup(
+            home: HomeLocation(kreis: '09162', lat: 48.14, lon: 11.57),
+            wahlkreise: [
+              MdbOption(
+                wahlkreisNr: 218,
+                wahlkreisName: 'München-Süd',
+                mdbName: 'Jana Beispiel',
+                mdbParty: 'Partei A',
+              ),
+            ],
+            coverage: LocalCoverage.none,
+          ),
+        ),
+        brightness: brightness,
+        act: (t) async {
+          await t.enterText(find.byType(TextField).first, '80331');
+        },
+      ),
+    );
+    testWidgets(
+      'rucksack, unknown PLZ, ${brightness.name}',
+      (t) => screen(
+        t,
+        'phone-rucksack-plz-unknown-${brightness.name}',
+        RucksackScreen(
+          werte: someAnswers,
+          onComplete: (_) {},
+          onLocate: (_) async => null,
+        ),
+        brightness: brightness,
+        act: (t) async {
+          await t.enterText(find.byType(TextField).first, '09999');
         },
       ),
     );
@@ -1109,10 +1161,10 @@ class _Pool implements OpportunityRepository {
   final ImpactNewsFeed news;
 
   @override
-  Future<List<Opportunity>> pool() async => items;
+  Future<List<Opportunity>> pool({String? kreis}) async => items;
 
   @override
-  Future<List<MdbOption>> lookupMdb(String plz) async => const [];
+  Future<PlzLookup?> locate(String plz) async => null;
 
   @override
   Stream<String> streamLetter(String opportunityId, {String? notes}) =>

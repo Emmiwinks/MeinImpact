@@ -30,6 +30,23 @@ enum OpportunityKind {
       );
 }
 
+/// The area an opportunity concerns: [km] around a centre.
+class Umkreis {
+  const Umkreis({required this.lat, required this.lon, required this.km});
+
+  factory Umkreis.fromJson(Map<String, Object?> json) {
+    return Umkreis(
+      lat: (json['lat'] as num).toDouble(),
+      lon: (json['lon'] as num).toDouble(),
+      km: (json['km'] as num).toDouble(),
+    );
+  }
+
+  final double lat;
+  final double lon;
+  final double km;
+}
+
 /// One open way to participate, read from the registry that publishes it
 /// (openPetition, Beteiligungsportal Sachsen, EU "Ihre Meinung zählt",
 /// WeAct). Registry facts (kind, dates, support, source) are exact; title,
@@ -54,6 +71,9 @@ class Opportunity {
     required this.firstSeenAt,
     this.districts = const [],
     this.lebenslagen = const [],
+    this.gebiet = '',
+    this.reichweite,
+    this.umkreis,
     this.locality,
     this.organizer,
     this.opensOn,
@@ -94,6 +114,11 @@ class Opportunity {
       accessibility: json['accessibility'] as int?,
       districts: _strings(json['districts']),
       lebenslagen: _strings(json['lebenslagen']),
+      gebiet: json['gebiet'] as String? ?? '',
+      reichweite: json['reichweite'] as String?,
+      umkreis: json['umkreis'] is Map<String, Object?>
+          ? Umkreis.fromJson(json['umkreis'] as Map<String, Object?>)
+          : null,
       firstSeenAt: DateTime.parse(json['first_seen_at'] as String),
     );
   }
@@ -113,6 +138,13 @@ class Opportunity {
   // City districts concerned (Dresden today), from the official district
   // list; empty means the whole city or region.
   final List<String> districts;
+  // Whom it concerns as a place: the area key (AGS) prefix of everyone
+  // concerned ("" for Bund and EU) and, for a city's matters, the area
+  // around a centre, city-wide ("stadt") or one neighbourhood's
+  // ("nachbarschaft"). Unlike [region], which says who decides.
+  final String gebiet;
+  final String? reichweite;
+  final Umkreis? umkreis;
   final String? organizer;
   final String title;
   final String summary;

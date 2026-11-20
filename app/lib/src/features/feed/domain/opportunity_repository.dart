@@ -1,18 +1,21 @@
 import '../../tracking/domain/impact_news.dart';
+import 'home_location.dart';
 import 'letter_recipients.dart';
-import 'mdb.dart';
 import 'opportunity.dart';
 
 /// The feed's data boundary. "What this means for you" is precomputed
 /// server-side (`personalImpactSnippets`), so one pool request is all the
 /// feed needs.
 abstract interface class OpportunityRepository {
-  /// Returns every open opportunity, unordered. The caller ranks on-device
-  /// (see `OpportunityRelevanceRanker`), since the server never sees either
+  /// Returns every open opportunity, unordered; with the user's [kreis],
+  /// those of their Land, Bund and EU. The caller ranks on-device (see
+  /// `OpportunityRelevanceRanker`), since the server never sees either
   /// profile.
-  Future<List<Opportunity>> pool();
+  Future<List<Opportunity>> pool({String? kreis});
 
-  Future<List<MdbOption>> lookupMdb(String plz);
+  /// Where [plz] lies and its members of the Bundestag; null for a PLZ
+  /// the server does not know. The only request that carries the PLZ.
+  Future<PlzLookup?> locate(String plz);
 
   /// Streams an AI-drafted letter about a council decision, chunk by chunk.
   /// [notes] is what the user typed for the AI; nothing from the profile is

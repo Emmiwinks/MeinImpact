@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meinimpact/src/app/theme/mi_theme.dart';
 import 'package:meinimpact/src/features/feed/domain/letter_recipients.dart';
-import 'package:meinimpact/src/features/feed/domain/mdb.dart';
+import 'package:meinimpact/src/features/feed/domain/home_location.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity_repository.dart';
 import 'package:meinimpact/src/features/tracking/data/starred_actions_store.dart';
@@ -220,10 +220,10 @@ class _NewsRepository implements OpportunityRepository {
       feed ?? (throw StateError('offline'));
 
   @override
-  Future<List<Opportunity>> pool() async => const [];
+  Future<List<Opportunity>> pool({String? kreis}) async => const [];
 
   @override
-  Future<List<MdbOption>> lookupMdb(String plz) async => const [];
+  Future<PlzLookup?> locate(String plz) async => null;
 
   @override
   Stream<String> streamLetter(String opportunityId, {String? notes}) =>
