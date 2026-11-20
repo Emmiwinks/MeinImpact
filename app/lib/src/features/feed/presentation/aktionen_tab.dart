@@ -6,6 +6,7 @@ import '../../../core/usage/usage.dart';
 import '../../tracking/domain/action_log.dart';
 import '../../tracking/domain/progress.dart';
 import '../../tracking/streak_flame.dart';
+import '../data/bundled_cards.dart';
 import '../data/opportunity_relevance_ranker.dart';
 import '../domain/interest_config.dart';
 import '../domain/interest_weights.dart';
@@ -191,10 +192,7 @@ class _AktionenTabState extends State<AktionenTab> with WidgetsBindingObserver {
           );
         }
         final pool = snapshot.data ?? const <RankedOpportunity>[];
-        final opportunities = [
-          for (final ranked in pool)
-            if (!widget.doneIds.contains(ranked.opportunity.id)) ranked,
-        ];
+        final opportunities = bundleCards(pool, doneIds: widget.doneIds);
         if (opportunities.isEmpty) {
           return pool.isEmpty
               ? const HandMessage(
@@ -210,6 +208,7 @@ class _AktionenTabState extends State<AktionenTab> with WidgetsBindingObserver {
         }
         return HandView(
           opportunities: opportunities,
+          doneIds: widget.doneIds,
           actionLabel: (opportunity) => widget.isWeb
               ? 'In der App mitmachen'
               : opportunity.kind.callToAction,

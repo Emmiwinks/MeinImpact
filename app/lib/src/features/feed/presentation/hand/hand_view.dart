@@ -27,11 +27,15 @@ class HandView extends StatefulWidget {
     required this.onPlayed,
     this.onOpened,
     this.onVote,
+    this.doneIds = const {},
     super.key,
   });
 
-  // Ranked, best first, without the ones already done.
+  // Ranked, best first, without the ones already done (a bundle stays
+  // while any of its options is open).
   final List<RankedOpportunity> opportunities;
+  // Done opportunity ids: a bundle's done options show as done.
+  final Set<String> doneIds;
   final String Function(Opportunity opportunity) actionLabel;
   // Opens the action; resolves to true when the user marked it done.
   final Future<bool> Function(RankedOpportunity ranked) onPlay;
@@ -89,6 +93,20 @@ class _HandViewState extends State<HandView>
     SemanticsService.sendAnnouncement(
       View.of(context),
       'Erledigt. Die Karte liegt jetzt bei deiner Wirkung.',
+      TextDirection.ltr,
+    );
+  }
+
+  // One option of a bundle. The card does not fly: it stays in the hand
+  // with the option ticked while others are open, and simply leaves with
+  // the last one (bundleCards).
+  Future<void> _playOption(RankedOpportunity option) async {
+    final done = await widget.onPlay(option);
+    if (!done || !mounted) return;
+    widget.onPlayed(option);
+    SemanticsService.sendAnnouncement(
+      View.of(context),
+      'Erledigt. Die Option liegt jetzt bei deiner Wirkung.',
       TextDirection.ltr,
     );
   }
@@ -199,6 +217,8 @@ class _HandViewState extends State<HandView>
               contentOpacity: contentOpacity,
               drift: drift,
               onAction: isFront ? () => _play(ranked) : null,
+              onOption: isFront ? _playOption : null,
+              doneIds: widget.doneIds,
               onOpened: () => widget.onOpened?.call(ranked),
               onVote: widget.onVote,
             ),

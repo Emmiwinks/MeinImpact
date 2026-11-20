@@ -47,6 +47,39 @@ class Umkreis {
   final double km;
 }
 
+/// The card an opportunity shares with others on the same matter (two plans
+/// for one site, two petitions against one law): the shared texts, and this
+/// option's label and the sentence saying how it differs from the others.
+class OpportunityBundle {
+  const OpportunityBundle({
+    required this.id,
+    required this.header,
+    required this.title,
+    required this.summary,
+    required this.label,
+    required this.difference,
+  });
+
+  factory OpportunityBundle.fromJson(Map<String, Object?> json) {
+    return OpportunityBundle(
+      id: json['id'] as String,
+      header: json['header'] as String,
+      title: json['title'] as String,
+      summary: json['summary'] as String,
+      label: json['label'] as String,
+      difference: json['difference'] as String,
+    );
+  }
+
+  final String id;
+  // What is bundled, e.g. "2 Petitionen · ähnliches Anliegen".
+  final String header;
+  final String title;
+  final String summary;
+  final String label;
+  final String difference;
+}
+
 /// One open way to participate, read from the registry that publishes it
 /// (openPetition, Beteiligungsportal Sachsen, EU "Ihre Meinung zählt",
 /// WeAct). Registry facts (kind, dates, support, source) are exact; title,
@@ -74,6 +107,7 @@ class Opportunity {
     this.gebiet = '',
     this.reichweite,
     this.umkreis,
+    this.bundle,
     this.locality,
     this.organizer,
     this.opensOn,
@@ -119,6 +153,9 @@ class Opportunity {
       umkreis: json['umkreis'] is Map<String, Object?>
           ? Umkreis.fromJson(json['umkreis'] as Map<String, Object?>)
           : null,
+      bundle: json['bundle'] is Map<String, Object?>
+          ? OpportunityBundle.fromJson(json['bundle'] as Map<String, Object?>)
+          : null,
       firstSeenAt: DateTime.parse(json['first_seen_at'] as String),
     );
   }
@@ -145,6 +182,8 @@ class Opportunity {
   final String gebiet;
   final String? reichweite;
   final Umkreis? umkreis;
+  // Set when this is one of several options on one card.
+  final OpportunityBundle? bundle;
   final String? organizer;
   final String title;
   final String summary;

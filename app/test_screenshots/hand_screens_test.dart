@@ -77,6 +77,7 @@ void main() {
             opportunityRepository: _Pool(pool ?? _opportunities(), news),
             profile: profile,
             doneActions: doneActions,
+            doneIds: ActionLog(doneActions).doneIds,
             onActionDone: (_, __) {},
           ),
         ),
@@ -126,6 +127,87 @@ void main() {
       },
     ),
   );
+  // A bundled card, with real texts from the pool: two petitions against
+  // one law.
+  OpportunityBundle ifg(String label, String difference) => OpportunityBundle(
+        id: 'ifg',
+        header: '2 Petitionen · ähnliches Anliegen',
+        title: 'Bleibt das Informationsfreiheitsgesetz?',
+        summary: 'Die Koalition will das Informationsfreiheitsgesetz '
+            'einschränken. Damit kann heute jede:r ohne Begründung Auskunft '
+            'von Bundesbehörden verlangen.',
+        label: label,
+        difference: difference,
+      );
+  final bundlePool = [
+    _o(
+      'ifg-op',
+      kind: OpportunityKind.petition,
+      source: 'openPetition',
+      title: 'Darf der Staat Geheimnisse vor uns haben?',
+      summary: '',
+      tags: ['Demokratie/Mitbestimmung'],
+      closes: 44,
+      support: 75896,
+      bundle: ifg(
+        'Bei openPetition, an den Bundestag',
+        'Fordert, dass das Gesetz bleibt, wie es ist: kein „berechtigtes '
+            'Interesse“ als Hürde.',
+      ),
+    ),
+    _o(
+      'ifg-we',
+      kind: OpportunityKind.petition,
+      source: 'WeAct',
+      title: 'Darf der Staat Geheimnisse vor uns haben?',
+      summary: '',
+      tags: ['Demokratie/Mitbestimmung'],
+      support: 692334,
+      bundle: ifg(
+        'Bei WeAct, an die SPD-Fraktion',
+        'Fordert, dass die SPD den Plan der Koalition stoppt, das Gesetz '
+            'abzuschaffen.',
+      ),
+    ),
+  ];
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      'bundle, front, ${brightness.name}',
+      (t) => shoot(
+        t,
+        'phone-bundle-front-${brightness.name}',
+        brightness: brightness,
+        pool: bundlePool,
+      ),
+    );
+    testWidgets(
+      'bundle, back, ${brightness.name}',
+      (t) => shoot(
+        t,
+        'phone-bundle-back-${brightness.name}',
+        brightness: brightness,
+        pool: bundlePool,
+        act: (t) => t.tap(find.text('Optionen ansehen')),
+      ),
+    );
+    testWidgets(
+      'bundle, one option done, ${brightness.name}',
+      (t) => shoot(
+        t,
+        'phone-bundle-one-done-${brightness.name}',
+        brightness: brightness,
+        pool: bundlePool,
+        doneActions: [
+          ActionLogEntry.fromOpportunity(
+            bundlePool.first,
+            doneAt: _in(-1),
+            via: ActionVia.inAppBrowser,
+          ),
+        ],
+        act: (t) => t.tap(find.text('Optionen ansehen')),
+      ),
+    );
+  }
   testWidgets(
     'all actions, dark',
     (t) => shoot(
@@ -1129,8 +1211,10 @@ Opportunity _o(
   int? support,
   int? goal,
   bool announced = false,
+  OpportunityBundle? bundle,
 }) =>
     Opportunity(
+      bundle: bundle,
       id: id,
       sourceOrg: source,
       sourceUrl: 'https://example.org/$id',

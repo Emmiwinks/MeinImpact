@@ -17,6 +17,8 @@ class ActionCard extends StatefulWidget {
     required this.ranked,
     required this.actionLabel,
     this.onAction,
+    this.onOption,
+    this.doneIds = const {},
     this.onOpened,
     this.onVote,
     this.isFront = true,
@@ -31,6 +33,10 @@ class ActionCard extends StatefulWidget {
   final double contentOpacity;
   // Null while the card is not playable (behind the front card, in flight).
   final VoidCallback? onAction;
+  // A bundle's option was picked; null while the card is not playable.
+  final ValueChanged<RankedOpportunity>? onOption;
+  // Done opportunity ids, to tick a bundle's done options.
+  final Set<String> doneIds;
   // The card was turned over to its back.
   final VoidCallback? onOpened;
   // "öfter" / "seltener" on the back, for [voteTopic].
@@ -105,19 +111,25 @@ class _ActionCardState extends State<ActionCard>
       builder: (context, _) {
         final angle = MiMotion.ease.transform(_turn.value) * pi;
         final back = angle > pi / 2;
+        final bundle = widget.ranked.isBundle;
         final face = back
             ? _CardBack(
                 ranked: widget.ranked,
                 actionLabel: widget.actionLabel,
                 onAction: widget.onAction,
+                onOption: widget.onOption,
+                doneIds: widget.doneIds,
                 onTurn: _toggle,
                 vote: _vote,
                 onVote: widget.onVote == null ? null : _castVote,
               )
             : _CardFront(
                 ranked: widget.ranked,
-                actionLabel: widget.actionLabel,
-                onAction: widget.onAction,
+                // A bundle's options are on its back.
+                actionLabel: bundle ? 'Optionen ansehen' : widget.actionLabel,
+                onAction: bundle
+                    ? (widget.isFront ? _toggle : null)
+                    : widget.onAction,
                 onTurn: widget.isFront ? _toggle : null,
                 contentOpacity: widget.contentOpacity,
                 drift: still ? 0 : widget.drift.clamp(-1.0, 1.0),
@@ -245,10 +257,10 @@ class _CardFront extends StatelessWidget {
                       children: [
                         Flexible(
                           child: Text(
-                            opportunity.title,
+                            cardTitle(ranked),
                             style: fittingTitle(
                               context,
-                              opportunity.title,
+                              cardTitle(ranked),
                               text.titleLarge!.copyWith(color: colors.onCard),
                               inner,
                             ),
@@ -268,7 +280,7 @@ class _CardFront extends StatelessWidget {
                         ],
                         const SizedBox(height: MiSpace.base),
                         Text(
-                          metaLine(opportunity, DateTime.now()),
+                          cardMetaLine(ranked, DateTime.now()),
                           style: text.labelMedium?.copyWith(
                             color: colors.onCardMuted,
                           ),
@@ -298,6 +310,8 @@ class _CardBack extends StatelessWidget {
     required this.ranked,
     required this.actionLabel,
     required this.onAction,
+    required this.onOption,
+    required this.doneIds,
     required this.onTurn,
     required this.vote,
     required this.onVote,
@@ -306,6 +320,8 @@ class _CardBack extends StatelessWidget {
   final RankedOpportunity ranked;
   final String actionLabel;
   final VoidCallback? onAction;
+  final ValueChanged<RankedOpportunity>? onOption;
+  final Set<String> doneIds;
   final VoidCallback onTurn;
   final InterestSignal? vote;
   final void Function(String tag, InterestSignal signal)? onVote;
@@ -315,6 +331,7 @@ class _CardBack extends StatelessWidget {
     final colors = context.mi;
     final text = Theme.of(context).textTheme;
     final opportunity = ranked.opportunity;
+    final bundle = ranked.isBundle ? opportunity.bundle : null;
     final look = TopicLook.of(opportunity);
     final facts = factChips(opportunity, DateTime.now());
     final topic = voteTopic(ranked);
@@ -333,7 +350,8 @@ class _CardBack extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    '${opportunity.kind.label} · ${opportunity.sourceOrg}',
+                    bundle?.header ??
+                        '${opportunity.kind.label} · ${opportunity.sourceOrg}',
                     style: text.labelMedium?.copyWith(color: colors.onCard),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -359,23 +377,35 @@ class _CardBack extends StatelessWidget {
                 colors: [Colors.black, Colors.black, Colors.transparent],
                 stops: [0, 0.86, 1],
               ).createShader(bounds),
-              child: _BackContent(
-                opportunity: opportunity,
-                facts: facts,
-                text: text,
-                colors: colors,
+              child: bundle != null
+                  ? _BundleContent(
+                      summary: bundle.summary,
+                      options: ranked.options,
+                      doneIds: doneIds,
+                      onOption: onOption,
+                    )
+                  : _BackContent(
+                      opportunity: opportunity,
+                      facts: facts,
+                      text: text,
+                      colors: colors,
+                    ),
+            ),
+          ),
+          // A bundle's options carry their own way in.
+          if (bundle == null)
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                MiSpace.lg - 4,
+                MiSpace.sm,
+                MiSpace.lg - 4,
+                voting ? 0 : MiSpace.lg - 4,
               ),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              MiSpace.lg - 4,
-              MiSpace.sm,
-              MiSpace.lg - 4,
-              voting ? 0 : MiSpace.lg - 4,
-            ),
-            child: FilledButton(onPressed: onAction, child: Text(actionLabel)),
-          ),
+              child:
+                  FilledButton(onPressed: onAction, child: Text(actionLabel)),
+            )
+          else if (!voting)
+            const SizedBox(height: MiSpace.base),
           if (voting)
             Padding(
               padding: const EdgeInsets.fromLTRB(
@@ -567,6 +597,140 @@ class _BackContent extends StatelessWidget {
   }
 }
 
+/// A bundle's back: what it is about, then one block per option with its
+/// label, how it differs and its facts. A block opens its option; a done
+/// one is ticked and stays, so the others remain one tap away.
+class _BundleContent extends StatelessWidget {
+  const _BundleContent({
+    required this.summary,
+    required this.options,
+    required this.doneIds,
+    required this.onOption,
+  });
+
+  final String summary;
+  final List<RankedOpportunity> options;
+  final Set<String> doneIds;
+  final ValueChanged<RankedOpportunity>? onOption;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.mi;
+    final text = Theme.of(context).textTheme;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        MiSpace.lg - 4,
+        MiSpace.base,
+        MiSpace.lg - 4,
+        MiSpace.xl,
+      ),
+      children: [
+        Text(summary, style: text.bodyMedium?.copyWith(color: colors.onCard)),
+        for (final option in options) ...[
+          const SizedBox(height: MiSpace.md),
+          _OptionBlock(
+            option: option,
+            done: doneIds.contains(option.opportunity.id),
+            onOpen: onOption == null ? null : () => onOption!(option),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _OptionBlock extends StatelessWidget {
+  const _OptionBlock({
+    required this.option,
+    required this.done,
+    required this.onOpen,
+  });
+
+  final RankedOpportunity option;
+  final bool done;
+  final VoidCallback? onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.mi;
+    final text = Theme.of(context).textTheme;
+    final opportunity = option.opportunity;
+    final bundle = opportunity.bundle!;
+    final facts = optionFacts(opportunity, DateTime.now());
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(MiRadius.card - 8),
+      side: BorderSide(color: colors.onCard.withValues(alpha: 0.18)),
+    );
+    return Semantics(
+      button: !done,
+      label: done ? '${bundle.label}, erledigt' : null,
+      child: Material(
+        color: Colors.transparent,
+        shape: shape,
+        child: InkWell(
+          customBorder: shape,
+          onTap: done ? null : onOpen,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              MiSpace.base,
+              MiSpace.md,
+              MiSpace.sm,
+              MiSpace.md,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        bundle.label,
+                        style: text.titleSmall?.copyWith(
+                          color: colors.onCard,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        bundle.difference,
+                        style: text.bodyMedium?.copyWith(color: colors.onCard),
+                      ),
+                      if (facts.isNotEmpty) ...[
+                        const SizedBox(height: MiSpace.xs),
+                        Text(
+                          facts.join(' · '),
+                          style: text.labelMedium
+                              ?.copyWith(color: colors.onCardMuted),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: MiSpace.sm),
+                ExcludeSemantics(
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: done ? colors.topics[2] : colors.onCard,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      done ? Icons.check_rounded : Icons.arrow_outward_rounded,
+                      size: 20,
+                      color: done ? colors.onCard : colors.cardStock,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _FactChip extends StatelessWidget {
   const _FactChip(this.label);
 
@@ -647,9 +811,10 @@ class _Arguments extends StatelessWidget {
 
 const _titleLines = 5;
 
-/// The card title at the largest step (21, 18, 16) that fits the whole
-/// question into [_titleLines] lines, so a long question is set smaller
-/// rather than cut off.
+/// The card title at the largest step (21, 18, 16, 14) that fits the whole
+/// question into [_titleLines] lines and its longest word into one line,
+/// so a long question is set smaller rather than cut off, and a long
+/// compound ("Informationsfreiheitsgesetz") is not broken mid-word.
 TextStyle fittingTitle(
   BuildContext context,
   String title,
@@ -657,7 +822,10 @@ TextStyle fittingTitle(
   double width,
 ) {
   final scaler = MediaQuery.textScalerOf(context);
-  for (final size in const [21.0, 18.0, 16.0]) {
+  final longest = title
+      .split(RegExp(r'\s+'))
+      .fold('', (a, b) => b.length > a.length ? b : a);
+  for (final size in const [21.0, 18.0, 16.0, 14.0]) {
     final style = base.copyWith(
       fontSize: size,
       letterSpacing: -0.02 * size,
@@ -668,8 +836,15 @@ TextStyle fittingTitle(
       textScaler: scaler,
       maxLines: _titleLines,
     )..layout(maxWidth: width);
-    final fits = !painter.didExceedMaxLines;
+    final word = TextPainter(
+      text: TextSpan(text: longest, style: style),
+      textDirection: TextDirection.ltr,
+      textScaler: scaler,
+      maxLines: 1,
+    )..layout();
+    final fits = !painter.didExceedMaxLines && word.width <= width;
     painter.dispose();
+    word.dispose();
     if (fits) return style;
   }
   return base.copyWith(fontSize: 16, letterSpacing: -0.32);
@@ -692,11 +867,48 @@ String? whyLine(RankedOpportunity ranked) {
   return tag != null ? 'Weil du dich für $tag interessierst' : null;
 }
 
+/// The card's question: a bundle's shared one, else its own.
+String cardTitle(RankedOpportunity ranked) => ranked.isBundle
+    ? ranked.opportunity.bundle!.title
+    : ranked.opportunity.title;
+
+/// [metaLine], and for a bundle its number of options and the soonest
+/// deadline among them, e.g. "2 Optionen · noch 3 Tage".
+String cardMetaLine(RankedOpportunity ranked, DateTime now) {
+  if (!ranked.isBundle) return metaLine(ranked.opportunity, now);
+  final options = [for (final o in ranked.options) o.opportunity];
+  int order(Opportunity o) => o.daysLeft(now) ?? 1 << 30;
+  final soonest = options.reduce((a, b) => order(b) < order(a) ? b : a);
+  final when = _when(soonest, now);
+  final count = '${options.length} Optionen';
+  return when == null ? count : '$count · $when';
+}
+
+/// One option's own facts on a bundle's back: its deadline and support.
+List<String> optionFacts(Opportunity opportunity, DateTime now) {
+  final closesOn = opportunity.closesOn;
+  final support = opportunity.supportCount;
+  return [
+    if (closesOn != null && opportunity.daysLeft(now) != null)
+      opportunity.kind == OpportunityKind.decision
+          ? 'Sitzung am ${_date(closesOn)}'
+          : 'bis ${_date(closesOn)}',
+    if (support != null) '${thousands(support)} Unterstützer:innen',
+  ];
+}
+
 /// Kind and timing in one line, e.g. "Petition · noch 12 Tage".
 String metaLine(Opportunity opportunity, DateTime now) {
+  final when = _when(opportunity, now);
+  return when == null
+      ? opportunity.kind.label
+      : '${opportunity.kind.label} · $when';
+}
+
+String? _when(Opportunity opportunity, DateTime now) {
   final opensOn = opportunity.opensOn;
   final daysLeft = opportunity.daysLeft(now);
-  final when = opportunity.isAnnounced && opensOn != null
+  return opportunity.isAnnounced && opensOn != null
       ? 'ab ${_date(opensOn)}'
       : daysLeft == null
           ? null
@@ -712,9 +924,6 @@ String metaLine(Opportunity opportunity, DateTime now) {
                   1 => 'noch 1 Tag',
                   _ => 'noch $daysLeft Tage',
                 };
-  return when == null
-      ? opportunity.kind.label
-      : '${opportunity.kind.label} · $when';
 }
 
 /// Registry facts for the card's back. Support is informational only, never
@@ -733,11 +942,22 @@ List<String> factChips(Opportunity opportunity, DateTime now) {
           : 'Bis ${_date(closesOn)}',
     if (support != null)
       goal != null
-          ? '$support von $goal Unterstützer:innen'
-          : '$support Unterstützer:innen',
+          ? '${thousands(support)} von ${thousands(goal)} Unterstützer:innen'
+          : '${thousands(support)} Unterstützer:innen',
     if (place != null) place,
     ...opportunity.districts,
   ];
 }
 
 String _date(DateTime date) => '${date.day}.${date.month}.${date.year}';
+
+/// A count the German way, with points between thousands: 692.334.
+String thousands(int count) {
+  final digits = count.abs().toString();
+  final grouped = StringBuffer();
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) grouped.write('.');
+    grouped.write(digits[i]);
+  }
+  return count < 0 ? '-$grouped' : grouped.toString();
+}

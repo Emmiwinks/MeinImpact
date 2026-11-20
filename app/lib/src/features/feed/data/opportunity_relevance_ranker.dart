@@ -16,9 +16,27 @@ class RankedOpportunity {
     this.interestTag,
     this.matchedLebenslage,
     this.matchStrength = 0,
+    this.options = const [],
   });
 
+  /// This card as the face of a bundle: [options] are all its members,
+  /// itself included, best ranked first (see bundleCards).
+  RankedOpportunity withOptions(List<RankedOpportunity> options) {
+    return RankedOpportunity(
+      opportunity: opportunity,
+      matchedSnippet: matchedSnippet,
+      werteAlignment: werteAlignment,
+      interestTag: interestTag,
+      matchedLebenslage: matchedLebenslage,
+      matchStrength: matchStrength,
+      options: options,
+    );
+  }
+
   final Opportunity opportunity;
+  // The bundle's members when this card bundles several; empty otherwise.
+  final List<RankedOpportunity> options;
+  bool get isBundle => options.length >= 2;
   // The learned favourite topic that ranked this card up, if one is strong
   // enough to name ("Weil du dich für Mobilität interessierst").
   final String? interestTag;

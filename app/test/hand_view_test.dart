@@ -133,6 +133,13 @@ void main() {
         ['Sitzung am 20.11.2026', '7 Unterstützer:innen'],
       );
       expect(
+        factChips(_o('d', support: 692334, goal: 1000000), now),
+        ['692.334 von 1.000.000 Unterstützer:innen'],
+      );
+      expect(thousands(0), '0');
+      expect(thousands(999), '999');
+      expect(thousands(75896), '75.896');
+      expect(
         factChips(_o('c', announced: true, opens: DateTime(2026, 12, 1)), now),
         ['Ab 1.12.2026'],
       );
@@ -392,6 +399,61 @@ void main() {
       expect(find.text('Teuer'), findsOneWidget);
     });
 
+    testWidgets('a bundle is one card; its options are ticked, not flown', (
+      tester,
+    ) async {
+      OpportunityBundle option(String label, String difference) =>
+          OpportunityBundle(
+            id: 'ifg',
+            header: '2 Petitionen · ähnliches Anliegen',
+            title: 'Bleibt das Informationsfreiheitsgesetz?',
+            summary: 'Die Koalition will es einschränken.',
+            label: label,
+            difference: difference,
+          );
+      final tab = _Tab(
+        done: true,
+        pool: [
+          _o(
+            'op',
+            bundle: option('Bei openPetition', 'An den Bundestag.'),
+            everyday: 5,
+          ),
+          _o('plain', title: 'Andere Frage?'),
+          _o('we', bundle: option('Bei WeAct', 'An die SPD-Fraktion.')),
+        ],
+      );
+      await tester.pumpWidget(tab);
+      await tester.pumpAndSettle();
+
+      expect(_fanAt('Karte 1 von 2'), findsOneWidget);
+      expect(
+        find.text('Bleibt das Informationsfreiheitsgesetz?'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('2 Optionen'), findsOneWidget);
+
+      await tester.tap(find.text('Optionen ansehen'));
+      await tester.pumpAndSettle();
+      expect(find.text('2 Petitionen · ähnliches Anliegen'), findsOneWidget);
+      expect(find.text('An den Bundestag.'), findsOneWidget);
+      expect(find.text('An die SPD-Fraktion.'), findsOneWidget);
+
+      await tester.tap(find.text('Bei openPetition'));
+      await tester.pumpAndSettle();
+      // Done, but the card stays with the other option one tap away.
+      expect(tab.played, ['op']);
+      expect(find.byIcon(Icons.check_rounded), findsOneWidget);
+      expect(find.text('An die SPD-Fraktion.'), findsOneWidget);
+      expect(_fanAt('Karte 1 von 2'), findsOneWidget);
+
+      await tester.tap(find.text('Bei WeAct'));
+      await tester.pumpAndSettle();
+      expect(tab.played, ['op', 'we']);
+      expect(find.text('An die SPD-Fraktion.'), findsNothing);
+      expect(_fanAt('Karte 1 von 1'), findsOneWidget);
+    });
+
     testWidgets('a hand of two counts its cards', (tester) async {
       await tester.pumpWidget(_Tab(pool: _pool(2)));
       await tester.pumpAndSettle();
@@ -483,8 +545,10 @@ Opportunity _o(
   String? place,
   List<String> districts = const [],
   int everyday = 3,
+  OpportunityBundle? bundle,
 }) =>
     Opportunity(
+      bundle: bundle,
       id: id,
       sourceOrg: 'WeAct',
       sourceUrl: 'https://example.org/$id',

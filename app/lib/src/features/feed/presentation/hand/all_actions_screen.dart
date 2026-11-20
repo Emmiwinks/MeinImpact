@@ -81,7 +81,7 @@ class _Row extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(opportunity.title, style: text.titleMedium),
+                  Text(cardTitle(ranked), style: text.titleMedium),
                   if (why != null) ...[
                     const SizedBox(height: MiSpace.xs),
                     Text(
@@ -95,7 +95,7 @@ class _Row extends StatelessWidget {
                   ],
                   const SizedBox(height: MiSpace.sm),
                   Text(
-                    metaLine(opportunity, DateTime.now()),
+                    cardMetaLine(ranked, DateTime.now()),
                     style: text.labelMedium?.copyWith(
                       color: colors.onTableMuted,
                     ),
