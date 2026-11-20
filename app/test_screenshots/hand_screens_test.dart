@@ -483,11 +483,11 @@ void main() {
           await t.tap(find.text('Mein Profil'));
           await t.pumpAndSettle();
           await t.scrollUntilVisible(
-            find.text('Alle ansehen'),
+            find.text('Album öffnen'),
             300,
             scrollable: find.byType(Scrollable).first,
           );
-          await t.tap(find.text('Alle ansehen'));
+          await t.tap(find.text('Album öffnen'));
         },
       ),
     );

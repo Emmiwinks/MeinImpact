@@ -718,7 +718,9 @@ class _RucksackSection extends StatelessWidget {
   }
 }
 
-/// A packed Lebenslage as a small tag: notched end, eyelet, soft shadow.
+/// A packed Lebenslage as a small tag: notched end, eyelet, soft shadow. Card
+/// stock with the area's colour only in the eyelet, so the profile keeps its
+/// loud colour for the picture and the stickers.
 class _MiniTag extends StatelessWidget {
   const _MiniTag({required this.label, required this.color, this.tilt = 0});
 
@@ -739,8 +741,12 @@ class _MiniTag extends StatelessWidget {
           Container(
             padding: const EdgeInsets.fromLTRB(20, 7, 11, 7),
             decoration: ShapeDecoration(
-              color: color,
-              shape: const TagBorder(notch: 9, radius: 7),
+              color: colors.cardStock,
+              shape: TagBorder(
+                notch: 9,
+                radius: 7,
+                side: BorderSide(color: colors.keyline),
+              ),
               shadows: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.25),
@@ -763,15 +769,12 @@ class _MiniTag extends StatelessWidget {
           Positioned(
             left: 7,
             child: Container(
-              width: 6,
-              height: 6,
+              width: 8,
+              height: 8,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: colors.table,
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.55),
-                  width: 1.5,
-                ),
+                color: color,
+                border: Border.all(color: colors.onCard, width: 1.5),
               ),
             ),
           ),

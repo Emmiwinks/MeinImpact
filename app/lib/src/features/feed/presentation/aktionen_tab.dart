@@ -77,8 +77,7 @@ class AktionenTab extends StatefulWidget {
   State<AktionenTab> createState() => _AktionenTabState();
 }
 
-class _AktionenTabState extends State<AktionenTab>
-    with WidgetsBindingObserver {
+class _AktionenTabState extends State<AktionenTab> with WidgetsBindingObserver {
   late Future<List<RankedOpportunity>> _future;
   bool _loadFailed = false;
 

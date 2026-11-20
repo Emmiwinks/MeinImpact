@@ -14,16 +14,17 @@ const kStreakPauseWeeks = 1;
 const kFlameStrongDays = 2;
 const kFlameMediumDays = 6;
 
-/// The track over all topics: total counts of done actions. Never tied to
-/// the hand: playing all five cards is not a goal.
+/// The track over all topics: total counts of done actions, as instruments
+/// from a squeak to a roar, since every action makes the user's voice
+/// louder. Never tied to the hand: playing all five cards is not a goal.
 const kMilestones = <Milestone>[
-  Milestone(1, 'Die erste Karte'),
-  Milestone(3, 'Dreierpack'),
-  Milestone(5, 'Kartenfächer'),
-  Milestone(10, 'Kartenstapel'),
-  Milestone(25, 'Ein ganzes Deck'),
-  Milestone(50, 'Kartenhaus'),
-  Milestone(100, 'Goldenes Deck'),
+  Milestone(1, 'Kazoo'),
+  Milestone(3, 'Trillerpfeife'),
+  Milestone(5, 'Tröte'),
+  Milestone(10, 'Trompete'),
+  Milestone(25, 'Posaune'),
+  Milestone(50, 'Pauke'),
+  Milestone(100, 'Kirchenorgel'),
 ];
 
 /// The track per topic: actions in one topic for each badge tier.
@@ -60,6 +61,31 @@ class Milestone {
 
   final int count;
   final String title;
+
+  /// The sticker, from tool/badges/build.mjs.
+  String get asset => 'assets/badges/alle-${kMilestones.indexOf(this) + 1}.svg';
+}
+
+/// The sticker file name part for a topic tag: its first part, lower case,
+/// ASCII (the same rule as tool/badges/build.mjs).
+String topicSlug(String tag) => tag
+    .split('/')
+    .first
+    .toLowerCase()
+    .replaceAll('ä', 'ae')
+    .replaceAll('ö', 'oe')
+    .replaceAll('ü', 'ue')
+    .replaceAll('ß', 'ss');
+
+/// One sticker in the album, in the order the user earned them.
+class EarnedSticker {
+  const EarnedSticker({required this.asset, required this.title, this.tier});
+
+  final String asset;
+  final String title;
+
+  /// The tier for a topic sticker; null on the track over all topics.
+  final int? tier;
 }
 
 enum StreakState {
@@ -133,6 +159,11 @@ class TopicBadge {
 
   /// What the tier reached took, e.g. "3 Aktionen zum Thema Familie".
   String get earnedFor => '${kBadgeTiers[tier - 1]} Aktionen zum Thema $topic';
+
+  /// The sticker of the tier reached; before the first, the first one (shown
+  /// greyed).
+  String get asset =>
+      'assets/badges/${topicSlug(tag)}-${tier == 0 ? 1 : tier}.svg';
 }
 
 class Progress {
@@ -140,14 +171,33 @@ class Progress {
     required this.actions,
     required this.streak,
     required this.badges,
+    this.earned = const [],
   });
 
   factory Progress.of(ActionLog log, DateTime now) {
     final perTag = <String, int>{};
-    for (final entry in log.entries) {
+    final earned = <EarnedSticker>[];
+    // Oldest first, so the stickers come out in the order they were earned.
+    for (final (i, entry) in log.entries.indexed) {
+      for (final m in kMilestones) {
+        if (m.count == i + 1) {
+          earned.add(EarnedSticker(asset: m.asset, title: m.title));
+        }
+      }
       // An action about several topics counts for each.
       for (final tag in entry.affectedTags.toSet()) {
-        perTag[tag] = (perTag[tag] ?? 0) + 1;
+        final count = perTag[tag] = (perTag[tag] ?? 0) + 1;
+        if (!kBadgeNames.containsKey(tag) || !kBadgeTiers.contains(count)) {
+          continue;
+        }
+        final badge = TopicBadge(tag: tag, actions: count);
+        earned.add(
+          EarnedSticker(
+            asset: badge.asset,
+            title: badge.name!,
+            tier: badge.tier,
+          ),
+        );
       }
     }
     return Progress(
@@ -157,6 +207,7 @@ class Progress {
         for (final tag in kTopicTags)
           TopicBadge(tag: tag, actions: perTag[tag] ?? 0),
       ],
+      earned: earned,
     );
   }
 
@@ -165,6 +216,9 @@ class Progress {
 
   /// Every topic in the taxonomy's order, with or without a badge.
   final List<TopicBadge> badges;
+
+  /// Every sticker earned so far, oldest first.
+  final List<EarnedSticker> earned;
 
   /// The last milestone reached; null before the first action.
   Milestone? get milestone {

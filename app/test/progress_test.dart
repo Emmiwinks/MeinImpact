@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity.dart';
+import 'package:meinimpact/src/features/feed/domain/topic_tags.g.dart';
 import 'package:meinimpact/src/features/tracking/domain/action_log.dart';
 import 'package:meinimpact/src/features/tracking/domain/progress.dart';
 
@@ -126,12 +129,40 @@ void main() {
       }
     });
 
+    test('stickers come in the order they were earned', () {
+      final log = ActionLog([
+        _done(_now, ['Familie/Kinder']),
+        _done(_now, ['Familie/Kinder']),
+        _done(_now, ['Familie/Kinder']),
+      ]);
+      final earned = Progress.of(log, _now).earned;
+      expect(
+        [for (final s in earned) s.title],
+        ['Kazoo', 'Trillerpfeife', 'Schnuller'],
+      );
+      expect(earned.last.asset, 'assets/badges/familie-1.svg');
+      expect(earned.last.tier, 1);
+      expect(earned.first.asset, 'assets/badges/alle-1.svg');
+    });
+
+    test('every sticker file the app asks for exists', () {
+      final assets = {
+        for (final m in kMilestones) m.asset,
+        for (final tag in kTopicTags)
+          for (var tier = 1; tier <= kBadgeTiers.length; tier++)
+            'assets/badges/${topicSlug(tag)}-$tier.svg',
+      };
+      for (final asset in assets) {
+        expect(File(asset).existsSync(), isTrue, reason: asset);
+      }
+    });
+
     test('the track over all topics', () {
       final progress = Progress.of(
         ActionLog([for (var i = 0; i < 4; i++) _done(_now)]),
         _now,
       );
-      expect(progress.milestone!.title, 'Dreierpack');
+      expect(progress.milestone!.title, 'Trillerpfeife');
       expect(progress.nextMilestone!.count, 5);
       expect(Progress.of(const ActionLog(), _now).milestone, isNull);
     });
@@ -145,7 +176,7 @@ void main() {
         );
 
     test('the first action earns the first badge', () {
-      expect(after([], _done(_now))!.milestone!.title, 'Die erste Karte');
+      expect(after([], _done(_now))!.milestone!.title, 'Kazoo');
     });
 
     test('nothing between badges', () {
@@ -161,7 +192,7 @@ void main() {
         _done(_now),
       ];
       final moment = after(before, _done(_now, ['Familie/Kinder']))!;
-      expect(moment.milestone!.title, 'Kartenfächer');
+      expect(moment.milestone!.title, 'Tröte');
       expect(moment.badges.single.name, 'Schnuller');
     });
 

@@ -1,170 +1,153 @@
 import 'dart:math';
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../app/theme/mi_theme.dart';
 import '../feed/domain/opportunity.dart';
 import '../feed/presentation/hand/topic_art.dart';
 import 'domain/progress.dart';
 
-/// A topic's badge: the topic's art in a round frame of card stock, its
-/// tier as pips below. Before the first tier the frame is empty and the art
-/// only faintly there.
-class BadgeMedal extends StatelessWidget {
-  const BadgeMedal({required this.badge, this.size = 56, super.key});
+/// A badge as a sticker (art from tool/badges/build.mjs): a little askew,
+/// each its own way, with a soft shadow, as if stuck into an album. A topic
+/// sticker carries its tier as a seal, bronze, silver or gold. Not earned
+/// yet, it is a faded grey ghost without shadow or seal.
+class BadgeSticker extends StatelessWidget {
+  const BadgeSticker({
+    required this.asset,
+    this.size = 56,
+    this.earned = true,
+    this.tier,
+    this.tilt,
+    super.key,
+  });
 
-  final TopicBadge badge;
+  final String asset;
   final double size;
+  final bool earned;
+
+  /// Shows the seal; null on the track over all topics.
+  final int? tier;
+
+  /// Radians; by default the sticker's own, from its file name.
+  final double? tilt;
+
+  static const _greyscale = ColorFilter.matrix([
+    0.33, 0.33, 0.33, 0, 0, //
+    0.33, 0.33, 0.33, 0, 0, //
+    0.33, 0.33, 0.33, 0, 0, //
+    0, 0, 0, 1, 0,
+  ]);
+
+  // Between -7 and 7 degrees, always the same for the same sticker.
+  static double _ownTilt(String asset) {
+    final sum = asset.codeUnits.fold<int>(0, (a, b) => a * 31 + b & 0xFFFF);
+    return ((sum % 15) - 7) * pi / 180;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.mi;
-    final earned = badge.tier > 0;
-    final top = badge.tier == kBadgeTiers.length;
-    final art = ClipOval(
-      child: TopicArt(
-        look: TopicLook.forTags([badge.tag], OpportunityKind.other),
-      ),
-    );
-    final pip = size * 0.1;
+    final picture = SvgPicture.asset(asset, width: size, height: size);
+    if (!earned) {
+      return ExcludeSemantics(
+        child: Opacity(
+          opacity: 0.3,
+          child: ColorFiltered(colorFilter: _greyscale, child: picture),
+        ),
+      );
+    }
     return ExcludeSemantics(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _Frame(
-            size: size,
-            earned: earned,
-            // The last tier gets the interface's one "selected" accent.
-            rim: top ? colors.topics[2] : null,
-            child: earned ? art : Opacity(opacity: 0.22, child: art),
-          ),
-          SizedBox(height: size * 0.1),
-          Row(
-            mainAxisSize: MainAxisSize.min,
+      child: Transform.rotate(
+        angle: tilt ?? _ownTilt(asset),
+        child: SizedBox.square(
+          dimension: size,
+          child: Stack(
+            clipBehavior: Clip.none,
             children: [
-              for (var i = 0; i < kBadgeTiers.length; i++)
-                Container(
-                  width: pip,
-                  height: pip,
-                  margin: EdgeInsets.symmetric(horizontal: pip * 0.3),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: i < badge.tier ? colors.onTable : null,
-                    border: i < badge.tier
-                        ? null
-                        : Border.all(color: colors.onTableMuted, width: 1),
+              Transform.translate(
+                offset: Offset(0, size * 0.04),
+                child: ImageFiltered(
+                  imageFilter: ImageFilter.blur(
+                    sigmaX: size * 0.03,
+                    sigmaY: size * 0.03,
+                  ),
+                  child: SvgPicture.asset(
+                    asset,
+                    width: size,
+                    height: size,
+                    colorFilter: ColorFilter.mode(
+                      Colors.black.withValues(alpha: 0.35),
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                ),
+              ),
+              picture,
+              if (tier case final tier?)
+                Positioned(
+                  right: size * 0.02,
+                  bottom: size * 0.02,
+                  child: CustomPaint(
+                    size: Size.square(size * 0.24),
+                    painter: _SealPainter(tier),
                   ),
                 ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-}
-
-/// A badge of the track over all topics: the count in the same round frame,
-/// on coral once reached. A row of pips' height below, so it lines up with
-/// [BadgeMedal]s.
-class MilestoneMedal extends StatelessWidget {
-  const MilestoneMedal({
-    required this.milestone,
-    required this.reached,
-    this.size = 56,
-    super.key,
-  });
-
-  final Milestone milestone;
-  final bool reached;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.mi;
-    final disc = Container(
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: colors.topics[0],
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(size * 0.16),
-        child: FittedBox(
-          child: Text(
-            '${milestone.count}',
-            style: TextStyle(
-              fontFamily: MiFonts.display,
-              fontWeight: FontWeight.w800,
-              fontSize: size * 0.4,
-              color: colors.onCard,
-              height: 1,
-            ),
-          ),
         ),
       ),
     );
-    return ExcludeSemantics(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _Frame(
-            size: size,
-            earned: reached,
-            child: reached ? disc : Opacity(opacity: 0.22, child: disc),
-          ),
-          SizedBox(height: size * 0.2),
-        ],
-      ),
-    );
   }
 }
 
-class _Frame extends StatelessWidget {
-  const _Frame({
-    required this.size,
-    required this.earned,
-    required this.child,
-    this.rim,
-  });
+/// The tier seal: bronze, silver or gold with an ink star.
+class _SealPainter extends CustomPainter {
+  _SealPainter(this.tier);
 
-  final double size;
-  final bool earned;
-  final Color? rim;
-  final Widget child;
+  final int tier;
+
+  static const _metal = {
+    1: Color(0xFFD9935B),
+    2: Color(0xFFC9CED6),
+    3: Color(0xFFFFBF3C),
+  };
+  static const _ink = Color(0xFF101820);
 
   @override
-  Widget build(BuildContext context) {
-    final colors = context.mi;
-    return Container(
-      width: size,
-      height: size,
-      padding: EdgeInsets.all(size * 0.06),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: earned ? colors.cardStock : null,
-        border: rim != null
-            ? Border.all(color: rim!, width: size * 0.05)
-            : earned
-                ? null
-                : Border.all(color: colors.keyline, width: 1.5),
-        boxShadow: earned
-            ? [
-                BoxShadow(
-                  color: colors.shadow,
-                  blurRadius: size * 0.2,
-                  offset: Offset(0, size * 0.08),
-                ),
-              ]
-            : null,
-      ),
-      child: child,
-    );
+  void paint(Canvas canvas, Size size) {
+    final c = size.center(Offset.zero);
+    final r = size.width / 2;
+    canvas
+      ..drawCircle(c, r + r * 0.18, Paint()..color = const Color(0xFFFFFCF8))
+      ..drawCircle(c, r, Paint()..color = _metal[tier] ?? _metal[1]!)
+      ..drawCircle(
+        c,
+        r,
+        Paint()
+          ..color = _ink
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = r * 0.22,
+      );
+    final star = Path();
+    for (var i = 0; i < 10; i++) {
+      final angle = -pi / 2 + i * pi / 5;
+      final radius = i.isEven ? r * 0.58 : r * 0.25;
+      final point = c + Offset(cos(angle), sin(angle)) * radius;
+      i == 0
+          ? star.moveTo(point.dx, point.dy)
+          : star.lineTo(point.dx, point.dy);
+    }
+    canvas.drawPath(star..close(), Paint()..color = _ink);
   }
+
+  @override
+  bool shouldRepaint(_SealPainter old) => old.tier != tier;
 }
 
-/// The Abzeichen section of the profile: the furthest badge of the track
-/// over all topics, then each topic's furthest one. Topics without a badge
-/// only show in "Alle ansehen".
+/// The Abzeichen section of the profile: the album, closed. The last three
+/// stickers earned lie stuck over each other beside the count; the album
+/// itself, with every sticker, opens from here.
 class ProfileBadges extends StatelessWidget {
   const ProfileBadges({required this.progress, super.key});
 
@@ -174,13 +157,8 @@ class ProfileBadges extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.mi;
     final text = Theme.of(context).textTheme;
-    final milestone = progress.milestone;
-    final next = progress.nextMilestone;
-    final earned = progress.badges.where((b) => b.tier > 0).toList()
-      ..sort((a, b) {
-        final tier = b.tier.compareTo(a.tier);
-        return tier != 0 ? tier : b.actions.compareTo(a.actions);
-      });
+    final earned = progress.earned;
+    void open() => _showAllBadges(context, progress);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -189,14 +167,11 @@ class ProfileBadges extends StatelessWidget {
           child: Row(
             children: [
               Expanded(child: Text('Abzeichen', style: text.titleLarge)),
-              TextButton(
-                onPressed: () => _showAllBadges(context, progress),
-                child: const Text('Alle ansehen'),
-              ),
+              TextButton(onPressed: open, child: const Text('Album öffnen')),
             ],
           ),
         ),
-        if (milestone == null)
+        if (earned.isEmpty)
           Padding(
             padding: const EdgeInsets.fromLTRB(
               MiSpace.lg,
@@ -211,25 +186,79 @@ class ProfileBadges extends StatelessWidget {
             ),
           )
         else
-          SizedBox(
-            height: 116 * _textGrowth(context),
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: MiSpace.lg),
-              children: [
-                _Tile(
-                  medal: MilestoneMedal(milestone: milestone, reached: true),
-                  name: milestone.title,
-                  detail: next == null
-                      ? 'Alle erreicht'
-                      : 'Nächstes: ${next.count}',
-                  semantics: '${milestone.title}, ${milestone.count} Aktionen',
-                ),
-                for (final badge in earned) _BadgeTile(badge: badge),
-              ],
+          InkWell(
+            onTap: open,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                MiSpace.lg,
+                MiSpace.sm,
+                MiSpace.lg,
+                MiSpace.sm,
+              ),
+              child: Row(
+                children: [
+                  _StickerStack(stickers: earned.reversed.take(3).toList()),
+                  const SizedBox(width: MiSpace.base),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          earned.length == 1
+                              ? '1 Abzeichen'
+                              : '${earned.length} Abzeichen',
+                          style: text.titleMedium,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Zuletzt: ${earned.last.title}',
+                          style: text.bodyMedium?.copyWith(
+                            color: colors.onTableMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
       ],
+    );
+  }
+}
+
+/// Up to three stickers stuck half over each other, the newest on top at the
+/// left.
+class _StickerStack extends StatelessWidget {
+  const _StickerStack({required this.stickers});
+
+  // Newest first.
+  final List<EarnedSticker> stickers;
+
+  static const _size = 68.0;
+  static const _step = 30.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: _size + _step * 2,
+      height: _size + 8,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          for (var i = stickers.length - 1; i >= 0; i--)
+            Positioned(
+              left: i * _step,
+              top: i.isEven ? 0 : 8,
+              child: BadgeSticker(
+                asset: stickers[i].asset,
+                size: _size,
+                tier: stickers[i].tier,
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -248,7 +277,12 @@ class _BadgeTile extends StatelessWidget {
     final next = badge.nextAt;
     final progress = next == null ? 'Alle erreicht' : '${badge.actions}/$next';
     return _Tile(
-      medal: BadgeMedal(badge: badge),
+      medal: BadgeSticker(
+        asset: badge.asset,
+        size: 64,
+        earned: badge.tier > 0,
+        tier: badge.tier > 0 ? badge.tier : null,
+      ),
       name: badge.name ?? badge.topic,
       muted: badge.name == null,
       detail: progress,
@@ -371,9 +405,10 @@ Future<void> _showAllBadges(BuildContext context, Progress progress) {
             grid(context, [
               for (final m in kMilestones)
                 _Tile(
-                  medal: MilestoneMedal(
-                    milestone: m,
-                    reached: progress.actions >= m.count,
+                  medal: BadgeSticker(
+                    asset: m.asset,
+                    size: 64,
+                    earned: progress.actions >= m.count,
                   ),
                   name: m.title,
                   muted: progress.actions < m.count,
@@ -471,15 +506,15 @@ class _RevealScreenState extends State<_RevealScreen>
           _Prize(
             label: '${m.count}. Aktion',
             title: m.title,
-            medal: (size) =>
-                MilestoneMedal(milestone: m, reached: true, size: size),
+            medal: (size) => BadgeSticker(asset: m.asset, size: size),
             burst: colors.topics,
           ),
         for (final badge in widget.moment.badges)
           _Prize(
             label: badge.earnedFor,
             title: badge.name!,
-            medal: (size) => BadgeMedal(badge: badge, size: size),
+            medal: (size) =>
+                BadgeSticker(asset: badge.asset, size: size, tier: badge.tier),
             burst: [
               TopicLook.forTags([badge.tag], OpportunityKind.other)
                   .face(colors),
@@ -776,7 +811,7 @@ class _PrizeFace extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            prize.medal(width * 0.52),
+            prize.medal(width * 0.7),
             SizedBox(height: width * 0.04),
             FittedBox(
               fit: BoxFit.scaleDown,

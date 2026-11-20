@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<g transform="translate(6 6) scale(.88)">
+<g stroke="#FFFCF8" stroke-width="12" stroke-linejoin="round" stroke-linecap="round" fill="#FFFCF8"><circle cx="50" cy="54" r="34" />
+    <rect x="62" y="40" width="28" height="34" rx="6"    stroke-linejoin="round" stroke-linecap="round"/>
+    <rect x="68" y="46" width="16" height="12" rx="3"    stroke-linejoin="round" stroke-linecap="round"/>
+    <rect x="10" y="64" width="80" height="12" rx="3" />
+    <g transform="rotate(-14 36 48)">
+      <ellipse cx="36" cy="48" rx="26" ry="18"    stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="M18 36 L30 64 M30 31 L44 66 M44 31 L54 60"  />
+      <ellipse cx="36" cy="48" rx="26" ry="18" fill="none"   stroke-linejoin="round" stroke-linecap="round"/>
+      <ellipse cx="10" cy="48" rx="4" ry="9" />
+    </g>
+    <circle cx="26" cy="80" r="8" /><circle cx="74" cy="80" r="8" />
+    <circle cx="26" cy="80" r="3" /><circle cx="74" cy="80" r="3" /></g>
+<circle cx="50" cy="54" r="34" fill="#8C84FF"/>
+    <rect x="62" y="40" width="28" height="34" rx="6" fill="#FF5A5F" stroke="#101820" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    <rect x="68" y="46" width="16" height="12" rx="3" fill="#F4F1EA" stroke="#101820" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+    <rect x="10" y="64" width="80" height="12" rx="3" fill="#101820"/>
+    <g transform="rotate(-14 36 48)">
+      <ellipse cx="36" cy="48" rx="26" ry="18" fill="#F4F1EA" stroke="#101820" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="M18 36 L30 64 M30 31 L44 66 M44 31 L54 60" stroke="#FFBF3C" stroke-width="6"/>
+      <ellipse cx="36" cy="48" rx="26" ry="18" fill="none" stroke="#101820" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+      <ellipse cx="10" cy="48" rx="4" ry="9" fill="#101820"/>
+    </g>
+    <circle cx="26" cy="80" r="8" fill="#101820"/><circle cx="74" cy="80" r="8" fill="#101820"/>
+    <circle cx="26" cy="80" r="3" fill="#F4F1EA"/><circle cx="74" cy="80" r="3" fill="#F4F1EA"/>
+</g>
+</svg>

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<g transform="translate(6 6) scale(.88)">
+<g stroke="#FFFCF8" stroke-width="12" stroke-linejoin="round" stroke-linecap="round" fill="#FFFCF8"><circle cx="50" cy="54" r="34" />
+    <path d="M44 46 Q20 30 8 44 Q14 54 24 54 Q14 62 22 70 Q34 70 44 58 Z"    stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M56 46 Q80 30 92 44 Q86 54 76 54 Q86 62 78 70 Q66 70 56 58 Z"    stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M38 88 L50 44 L62 88 Z"    stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="50" cy="36" r="12"    stroke-linejoin="round" stroke-linecap="round"/>
+    <ellipse cx="46" cy="36" rx="1.8" ry="1" /><ellipse cx="54" cy="36" rx="1.8" ry="1" />
+    <path d="M46 41 q4 3 8 0" fill="none"   stroke-linejoin="round" stroke-linecap="round"/>
+    <ellipse cx="50" cy="16" rx="13" ry="4.5" fill="none"  />
+    <ellipse cx="50" cy="16" rx="13" ry="4.5" fill="none"  /></g>
+<circle cx="50" cy="54" r="34" fill="#8C84FF"/>
+    <path d="M44 46 Q20 30 8 44 Q14 54 24 54 Q14 62 22 70 Q34 70 44 58 Z" fill="#F4F1EA" stroke="#101820" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M56 46 Q80 30 92 44 Q86 54 76 54 Q86 62 78 70 Q66 70 56 58 Z" fill="#F4F1EA" stroke="#101820" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M38 88 L50 44 L62 88 Z" fill="#FF5A5F" stroke="#101820" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="50" cy="36" r="12" fill="#F4F1EA" stroke="#101820" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    <ellipse cx="46" cy="36" rx="1.8" ry="1" fill="#101820"/><ellipse cx="54" cy="36" rx="1.8" ry="1" fill="#101820"/>
+    <path d="M46 41 q4 3 8 0" fill="none" stroke="#101820" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <ellipse cx="50" cy="16" rx="13" ry="4.5" fill="none" stroke="#101820" stroke-width="7"/>
+    <ellipse cx="50" cy="16" rx="13" ry="4.5" fill="none" stroke="#FFBF3C" stroke-width="3"/>
+</g>
+</svg>

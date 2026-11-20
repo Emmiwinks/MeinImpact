@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<g transform="translate(6 6) scale(.88)">
+<g stroke="#FFFCF8" stroke-width="12" stroke-linejoin="round" stroke-linecap="round" fill="#FFFCF8"><circle cx="50" cy="54" r="34" />
+    <path d="M26 20 Q26 10 36 10 H64 Q74 10 74 20 V60 H26 Z"    stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M16 32 Q14 22 26 24 V64 H16 Z M84 32 Q86 22 74 24 V64 H84 Z"    stroke-linejoin="round" stroke-linecap="round"/>
+    <rect x="12" y="50" width="76" height="24" rx="10"    stroke-linejoin="round" stroke-linecap="round"/>
+    <rect x="24" y="52" width="52" height="12" rx="5"    stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M38 14 h24 l-4 10 h-16 Z"    stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M20 74 L18 86 M80 74 L82 86" fill="none"   stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M36 30 l2 2 M50 28 l2 2 M64 30 l2 2 M43 40 l2 2 M57 40 l2 2"   stroke-linecap="round" /></g>
+<circle cx="50" cy="54" r="34" fill="#2EC4B6"/>
+    <path d="M26 20 Q26 10 36 10 H64 Q74 10 74 20 V60 H26 Z" fill="#FFBF3C" stroke="#101820" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M16 32 Q14 22 26 24 V64 H16 Z M84 32 Q86 22 74 24 V64 H84 Z" fill="#FFBF3C" stroke="#101820" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    <rect x="12" y="50" width="76" height="24" rx="10" fill="#FFBF3C" stroke="#101820" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    <rect x="24" y="52" width="52" height="12" rx="5" fill="#F4F1EA" stroke="#101820" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M38 14 h24 l-4 10 h-16 Z" fill="#F4F1EA" stroke="#101820" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M20 74 L18 86 M80 74 L82 86" fill="none" stroke="#101820" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M36 30 l2 2 M50 28 l2 2 M64 30 l2 2 M43 40 l2 2 M57 40 l2 2" stroke="#101820" stroke-width="2.4" stroke-linecap="round" opacity=".5"/>
+</g>
+</svg>
