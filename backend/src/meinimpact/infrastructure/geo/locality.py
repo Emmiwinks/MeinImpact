@@ -68,6 +68,25 @@ class Neighbourhoods:
         return [d.point for d in self.districts if d.name in names and d.point]
 
 
+class Coverage(StrEnum):
+    """What the app has topics from for someone living in a Kreis."""
+
+    LOCAL = "local"  # their city or Kreis, and up
+    LAND = "land"  # their Land, Bund and EU
+    NONE = "none"  # Bund and EU only
+
+
+def coverage_of(kreis: str) -> Coverage:
+    """From the regions the sources cover, so a new city's source changes
+    it with no data of its own."""
+    gebiete = [ags for ags in REGION_AGS.values() if ags]
+    if any(len(g) >= 5 and kreis.startswith(g) for g in gebiete):
+        return Coverage.LOCAL
+    if kreis[:2] in gebiete:
+        return Coverage.LAND
+    return Coverage.NONE
+
+
 class LocalityResolver:
     def __init__(
         self,

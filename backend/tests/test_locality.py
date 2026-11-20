@@ -7,10 +7,12 @@ import pytest
 from meinimpact.infrastructure.geo.districts import District, DistrictMatcher
 from meinimpact.infrastructure.geo.locality import (
     NEIGHBOURHOOD_KM,
+    Coverage,
     Locality,
     LocalityResolver,
     Neighbourhoods,
     Reach,
+    coverage_of,
 )
 from meinimpact.infrastructure.geo.plz import Area, PlzIndex, PlzLocation, Point
 from meinimpact.infrastructure.listings.catalog import default_locality_resolver
@@ -87,6 +89,12 @@ def test_an_unlocatable_neighbourhood_falls_back_to_the_city(
 
 def test_an_unknown_region_concerns_everyone(resolver: LocalityResolver) -> None:
     assert resolver.of("mars", None) == Locality(gebiet="")
+
+
+def test_coverage_follows_the_covered_regions() -> None:
+    assert coverage_of("14612") is Coverage.LOCAL  # Dresden
+    assert coverage_of("14627") is Coverage.LAND  # Landkreis Meißen
+    assert coverage_of("09162") is Coverage.NONE  # München
 
 
 def test_the_configured_resolver_locates_dresdens_ortschaften() -> None:

@@ -66,6 +66,8 @@ def test_location_returns_kreis_point_and_wahlkreise() -> None:
                 "mdb_link": None,
             }
         ],
+        # Landkreis Meißen: Saxony's topics, none of its own yet.
+        "coverage": "land",
     }
 
 

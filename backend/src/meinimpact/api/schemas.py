@@ -68,12 +68,16 @@ class LocationResponse(BaseModel):
     `kreis` is the only part it sends again (to narrow the pool); the
     point stays for ranking by distance. `wahlkreise` lists the PLZ's
     members of the Bundestag, several where it straddles Wahlkreise, and
-    is empty while the Bundestag data is unavailable."""
+    is empty while the Bundestag data is unavailable. `coverage` says
+    whether there are topics from the city or Kreis ("local"), only from
+    the Land ("land") or only Bund and EU ("none"), so the app can say so
+    when the PLZ is entered."""
 
     kreis: str
     lat: float
     lon: float
     wahlkreise: list[MdbOption]
+    coverage: str
 
 
 # ── Admin ─────────────────────────────────────────────────────────────────────

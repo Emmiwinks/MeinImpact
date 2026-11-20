@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from meinimpact.api import schemas
 from meinimpact.api.dependencies import get_plz_index, require_principal
 from meinimpact.api.routes.mdb import get_wks, mdb_options
+from meinimpact.infrastructure.geo.locality import coverage_of
 from meinimpact.infrastructure.geo.plz import PlzIndex
 from meinimpact.infrastructure.mdb.wks_service import WksService
 
@@ -26,7 +27,8 @@ async def locate_plz(
     plz_index: PlzIndex = Depends(get_plz_index),
     wks: WksService = Depends(get_wks),
 ) -> schemas.LocationResponse:
-    """Returns the PLZ's Kreis, point and members of the Bundestag.
+    """Returns the PLZ's Kreis, point, members of the Bundestag and what
+    the app has topics from there.
 
     404 when the PLZ is unknown. Without the Bundestag data the location
     still comes back, with no Wahlkreise.
@@ -42,4 +44,5 @@ async def locate_plz(
         lat=location.point.lat,
         lon=location.point.lon,
         wahlkreise=mdb_options(wahlkreise),
+        coverage=coverage_of(location.kreis).value,
     )
