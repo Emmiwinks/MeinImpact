@@ -24,7 +24,11 @@ from meinimpact.infrastructure.listings.model import (
     Region,
     Support,
 )
-from meinimpact.infrastructure.listings.parsing import attr_of, clean_text
+from meinimpact.infrastructure.listings.parsing import (
+    attr_of,
+    clean_text,
+    content_text,
+)
 
 SOURCE_ID = "weact"
 BASE_URL = "https://weact.campact.de"
@@ -80,6 +84,13 @@ def parse_petition(html: str, *, url: str, observed_at: datetime) -> Listing | N
     )
 
 
+def parse_petition_text(html: str) -> str | None:
+    """Whom the petition addresses and its full text. The page's summary
+    often only repeats the title, a slogan that can read either way
+    ("sichere Zuflucht aus Sachsen-Anhalt"); the text says what it asks."""
+    return content_text(html, ".petition-content")
+
+
 def _recent_activity(actions: list[Mapping[str, Any]]) -> tuple[datetime, ...]:
     """Signature timestamps only; the names next to them are dropped here."""
     stamps: list[datetime] = []
@@ -113,3 +124,11 @@ class WeActSource:
             if listing is not None:
                 listings.append(listing)
         return listings
+
+
+class WeActDetailReader:
+    def __init__(self, http: PoliteHttpClient) -> None:
+        self._http = http
+
+    async def read(self, listing: Listing) -> str | None:
+        return parse_petition_text((await self._http.get(listing.url)).text)

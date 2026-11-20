@@ -235,5 +235,31 @@ def test_weact_closed_petition() -> None:
     assert listing.status is ListingStatus.CLOSED
 
 
+def test_weact_petition_text_names_addressees_and_demands() -> None:
+    # Trimmed from the live page: the summary there only repeats the title.
+    html = """
+    <div class="main-column"><div class="petition-content">
+      <h2 class="who mt-3">An: An die Bundesregierung sowie die
+        Ministerpräsident*innen aller deutschen Bundesländer</h2>
+      <div class="campaign-text embedly">
+        <h1>Jetzt Menschen aus Sachsen-Anhalt aufnehmen!</h1>
+        <div class="intro-copy what"><div class="trix-content">
+          Wir fordern die Aufnahme von Menschen, die Sachsen-Anhalt jetzt
+          verlassen möchten!
+        </div></div>
+      </div>
+      <form><button>Unterschreiben</button></form>
+    </div></div>
+    """
+
+    text = weact.parse_petition_text(html)
+
+    assert text is not None
+    assert "Ministerpräsident*innen aller deutschen Bundesländer" in text
+    assert "Sachsen-Anhalt jetzt verlassen" in text
+    assert "Unterschreiben" not in text
+    assert weact.parse_petition_text("<html></html>") is None
+
+
 def test_weact_page_without_store_is_skipped() -> None:
     assert weact.parse_petition("<html></html>", url="u", observed_at=NOW) is None

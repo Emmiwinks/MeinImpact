@@ -41,7 +41,10 @@ from meinimpact.infrastructure.listings.sources.openpetition import (
 from meinimpact.infrastructure.listings.sources.sachsen_beteiligung import (
     SachsenBeteiligungSource,
 )
-from meinimpact.infrastructure.listings.sources.weact import WeActSource
+from meinimpact.infrastructure.listings.sources.weact import (
+    WeActDetailReader,
+    WeActSource,
+)
 
 OPARL_BODIES = (oparl.DRESDEN,)
 
@@ -91,11 +94,12 @@ def default_locality_resolver(plz: PlzIndex) -> LocalityResolver:
 def default_detail_readers(http: PoliteHttpClient) -> dict[str, DetailReader]:
     """Readers for registries whose list view is too thin to enrich from.
 
-    The Sachsen portal's teaser and WeAct's page summary already carry the
-    text; their detail pages add nothing usable.
+    The Sachsen portal's teaser already carries the text; its detail pages
+    add nothing usable. WeAct's page summary often only repeats the title.
     """
     return {
         openpetition.SOURCE_ID: OpenPetitionDetailReader(http),
         eu_have_your_say.SOURCE_ID: EuHaveYourSayDetailReader(http),
+        weact.SOURCE_ID: WeActDetailReader(http),
         oparl.DRESDEN.source_id: OParlDetailReader(http, oparl.DRESDEN),
     }
