@@ -13,12 +13,14 @@ class ApiClient {
     http.Client? httpClient,
     int maxAttempts = 3,
     Duration retryDelay = const Duration(milliseconds: 200),
+    Duration requestTimeout = const Duration(seconds: 15),
     Future<void> Function(Duration duration)? sleep,
   })  : _baseUrl = baseUrl,
         _tokenStore = tokenStore,
         _httpClient = httpClient ?? http.Client(),
         _maxAttempts = maxAttempts,
         _retryDelay = retryDelay,
+        _requestTimeout = requestTimeout,
         _sleep = sleep ?? ((duration) => Future<void>.delayed(duration)) {
     if (maxAttempts < 1) {
       throw ArgumentError.value(
@@ -34,12 +36,38 @@ class ApiClient {
   final http.Client _httpClient;
   final int _maxAttempts;
   final Duration _retryDelay;
+  final Duration _requestTimeout;
   final Future<void> Function(Duration duration) _sleep;
+
+  // Remembered from [createAnonymousSession], so a session that failed at
+  // startup or expired (access tokens last 15 minutes) can be renewed on
+  // the next request instead of only on the next app start.
+  String? _installationId;
+  String? _appVersion;
+  Future<void>? _sessionInFlight;
 
   Future<void> createAnonymousSession({
     required String installationId,
     required String appVersion,
-  }) async {
+  }) {
+    _installationId = installationId;
+    _appVersion = appVersion;
+    return _renewSession();
+  }
+
+  // One request at a time: concurrent callers share it.
+  Future<void> _renewSession() {
+    return _sessionInFlight ??= _requestSession().whenComplete(
+      () => _sessionInFlight = null,
+    );
+  }
+
+  Future<void> _requestSession() async {
+    final installationId = _installationId;
+    final appVersion = _appVersion;
+    if (installationId == null || appVersion == null) {
+      throw const ApiException('Missing access token.');
+    }
     final response = await _postWithRetry(
       '/v1/auth/anonymous-session',
       headers: const {'Content-Type': 'application/json'},
@@ -56,9 +84,11 @@ class ApiClient {
   }
 
   Future<Map<String, Object?>> getJson(String path) async {
-    final headers = await _authorizedJsonHeaders();
-    final response = await _sendWithRetry(
-      () => _httpClient.get(_resolve(path), headers: headers),
+    final response = await _sendAuthorized(
+      (headers) => _sendWithRetry(
+        () => _httpClient.get(_resolve(path), headers: headers),
+        statusCode: (r) => r.statusCode,
+      ),
       statusCode: (r) => r.statusCode,
     );
     return _decodeJson(response);
@@ -68,10 +98,9 @@ class ApiClient {
     String path,
     Map<String, Object?> body,
   ) async {
-    final response = await _postWithRetry(
-      path,
-      headers: await _authorizedJsonHeaders(),
-      body: body,
+    final response = await _sendAuthorized(
+      (headers) => _postWithRetry(path, headers: headers, body: body),
+      statusCode: (r) => r.statusCode,
     );
     return _decodeJson(response);
   }
@@ -80,12 +109,16 @@ class ApiClient {
     String path,
     Map<String, Object?> body,
   ) async* {
-    final request = http.Request('POST', _resolve(path));
-    request.headers.addAll(await _authorizedJsonHeaders());
-    request.headers['Accept'] = 'text/event-stream';
-    request.body = jsonEncode(body);
-
-    final response = await _sendStreamingRequest(request);
+    final response = await _sendAuthorized(
+      (headers) {
+        final request = http.Request('POST', _resolve(path));
+        request.headers.addAll(headers);
+        request.headers['Accept'] = 'text/event-stream';
+        request.body = jsonEncode(body);
+        return _sendStreamingRequest(request);
+      },
+      statusCode: (r) => r.statusCode,
+    );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw ApiException('Streaming request failed: ${response.statusCode}.');
     }
@@ -112,8 +145,32 @@ class ApiClient {
     }
   }
 
-  Future<Map<String, String>> _authorizedJsonHeaders() async {
-    final accessToken = await _tokenStore.readAccessToken();
+  // Sends with the stored token. Without one, or when the backend rejects
+  // it, gets a new session first and sends once more.
+  Future<T> _sendAuthorized<T>(
+    Future<T> Function(Map<String, String> headers) send, {
+    required int Function(T response) statusCode,
+  }) async {
+    final inFlight = _sessionInFlight;
+    if (inFlight != null) {
+      await inFlight.catchError((Object _) {});
+    }
+    var renewed = false;
+    var accessToken = await _tokenStore.readAccessToken();
+    if (accessToken == null) {
+      await _renewSession();
+      renewed = true;
+      accessToken = await _tokenStore.readAccessToken();
+    }
+    final response = await send(_authorizedJsonHeaders(accessToken));
+    if (statusCode(response) != 401 || renewed || _installationId == null) {
+      return response;
+    }
+    await _renewSession();
+    return send(_authorizedJsonHeaders(await _tokenStore.readAccessToken()));
+  }
+
+  Map<String, String> _authorizedJsonHeaders(String? accessToken) {
     if (accessToken == null) {
       throw const ApiException('Missing access token.');
     }
@@ -144,7 +201,7 @@ class ApiClient {
   }) async {
     for (var attempt = 1; attempt <= _maxAttempts; attempt += 1) {
       try {
-        final response = await send();
+        final response = await send().timeout(_requestTimeout);
         if (!_isRetryableStatus(statusCode(response)) ||
             attempt == _maxAttempts) {
           return response;
@@ -167,7 +224,8 @@ class ApiClient {
     http.Request request,
   ) async {
     try {
-      return await _httpClient.send(request);
+      // Bounds the wait for the response to start, not the stream itself.
+      return await _httpClient.send(request).timeout(_requestTimeout);
     } on TimeoutException {
       throw const ApiException('Network request timed out.');
     } on http.ClientException {

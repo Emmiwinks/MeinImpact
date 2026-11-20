@@ -77,13 +77,29 @@ class AktionenTab extends StatefulWidget {
   State<AktionenTab> createState() => _AktionenTabState();
 }
 
-class _AktionenTabState extends State<AktionenTab> {
+class _AktionenTabState extends State<AktionenTab>
+    with WidgetsBindingObserver {
   late Future<List<RankedOpportunity>> _future;
+  bool _loadFailed = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _future = _load();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // Back from the background (often with the network back too), a failed
+  // hand tries again by itself.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _loadFailed) _reload();
   }
 
   void _reload() {
@@ -95,11 +111,17 @@ class _AktionenTabState extends State<AktionenTab> {
   }
 
   Future<List<RankedOpportunity>> _load() async {
-    final pool = await widget.opportunityRepository.pool();
-    final ranker = OpportunityRelevanceRanker(
-      interestConfig: widget.interestConfig,
-    );
-    return ranker.rank(pool, widget.profile);
+    _loadFailed = false;
+    try {
+      final pool = await widget.opportunityRepository.pool();
+      final ranker = OpportunityRelevanceRanker(
+        interestConfig: widget.interestConfig,
+      );
+      return ranker.rank(pool, widget.profile);
+    } catch (_) {
+      _loadFailed = true;
+      rethrow;
+    }
   }
 
   // Opens the action; true once the user marked it done. Logging it waits

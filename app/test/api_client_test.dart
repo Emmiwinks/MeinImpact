@@ -158,6 +158,100 @@ void main() {
     expect(await tokenStore.readRefreshToken(), 'refresh');
   });
 
+  test('gets a new session when the access token expired', () async {
+    final paths = <String>[];
+    final tokenStore = InMemoryTokenStore();
+    await tokenStore.saveTokens(accessToken: 'expired', refreshToken: 'r');
+    final client = ApiClient(
+      baseUrl: Uri.parse('https://api.example.test/'),
+      tokenStore: tokenStore,
+      httpClient: MockClient((request) async {
+        paths.add(request.url.path);
+        if (request.url.path == '/v1/auth/anonymous-session') {
+          return http.Response(
+            '{"access_token":"fresh","refresh_token":"r2"}',
+            201,
+          );
+        }
+        if (request.headers['Authorization'] != 'Bearer fresh') {
+          return http.Response('expired', 401);
+        }
+        return http.Response('{"ok":true}', 200);
+      }),
+      retryDelay: Duration.zero,
+    );
+    // A session from startup, remembered for renewing.
+    await client.createAnonymousSession(
+      installationId: 'installation-id',
+      appVersion: '0.1.2',
+    );
+    await tokenStore.saveTokens(accessToken: 'expired', refreshToken: 'r');
+    paths.clear();
+
+    final body = await client.getJson('/v1/test');
+
+    expect(body['ok'], isTrue);
+    expect(paths, ['/v1/test', '/v1/auth/anonymous-session', '/v1/test']);
+  });
+
+  test('gets a session first when startup could not get one', () async {
+    var sessionCalls = 0;
+    final tokenStore = InMemoryTokenStore();
+    final client = ApiClient(
+      baseUrl: Uri.parse('https://api.example.test/'),
+      tokenStore: tokenStore,
+      httpClient: MockClient((request) async {
+        if (request.url.path == '/v1/auth/anonymous-session') {
+          sessionCalls += 1;
+          // Offline at startup, back online for the retry.
+          if (sessionCalls == 1) throw http.ClientException('offline');
+          return http.Response(
+            '{"access_token":"fresh","refresh_token":"r"}',
+            201,
+          );
+        }
+        return http.Response('{"ok":true}', 200);
+      }),
+      maxAttempts: 1,
+      retryDelay: Duration.zero,
+    );
+    await expectLater(
+      client.createAnonymousSession(
+        installationId: 'installation-id',
+        appVersion: '0.1.2',
+      ),
+      throwsA(isA<ApiException>()),
+    );
+
+    final body = await client.getJson('/v1/test');
+
+    expect(body['ok'], isTrue);
+    expect(sessionCalls, 2);
+  });
+
+  test('times out requests that never answer', () async {
+    final tokenStore = InMemoryTokenStore();
+    await tokenStore.saveTokens(accessToken: 'a', refreshToken: 'r');
+    final client = ApiClient(
+      baseUrl: Uri.parse('https://api.example.test/'),
+      tokenStore: tokenStore,
+      httpClient: MockClient((request) => Completer<http.Response>().future),
+      maxAttempts: 1,
+      requestTimeout: const Duration(milliseconds: 10),
+    );
+
+    await expectLater(
+      client.getJson('/v1/test'),
+      throwsA(
+        isA<ApiException>().having(
+          (error) => error.toString(),
+          'message',
+          contains('Network request timed out.'),
+        ),
+      ),
+    );
+  });
+
   test('rejects non-object JSON responses', () async {
     final tokenStore = InMemoryTokenStore();
     await tokenStore.saveTokens(

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -32,18 +34,16 @@ void main() async {
     tokenStore: tokenStore,
   );
 
-  // Bounded: with a dead network (or one that cannot resolve names) the app
-  // must still start instead of waiting on the splash screen.
-  try {
-    await apiClient
+  // Not awaited: the app starts at once and shows its own loading state.
+  // Requests wait for this session, and get a new one if it failed.
+  unawaited(
+    apiClient
         .createAnonymousSession(
           installationId: await const InstallationIdStore().load(),
           appVersion: '0.1.2',
         )
-        .timeout(const Duration(seconds: 8));
-  } catch (e) {
-    debugPrint('Session creation failed: $e');
-  }
+        .catchError((Object e) => debugPrint('Session creation failed: $e')),
+  );
 
   Usage.current = Usage(
     send: (event) => apiClient.postJson('/v1/usage', {'event': event}),
