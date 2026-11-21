@@ -1,5 +1,6 @@
 """run_ingestion orchestration, against in-memory fakes of every port."""
 
+import asyncio
 import uuid
 from collections.abc import Collection, Sequence
 from dataclasses import replace
@@ -114,6 +115,38 @@ async def test_run_syncs_kept_listings_and_enriches_pending_ones() -> None:
     assert enricher.details == {"a": "detail of a", "noise": "detail of noise"}
     assert store.commits == 3  # after sync, then once per saved enrichment
     assert summary.errors == []
+
+
+class HangingEnricher(FakeEnricher):
+    """Never finishes one listing, like a run whose machine is replaced."""
+
+    async def enrich(self, listing: Listing, detail: str | None) -> Enrichment:
+        if listing.external_id == "slow":
+            await asyncio.Event().wait()
+        return await super().enrich(listing, detail)
+
+
+async def test_finished_enrichments_are_saved_while_others_still_run() -> None:
+    store = FakeStore()
+    source = StaticSource("src", [make_listing("slow"), make_listing("a")])
+
+    run = asyncio.create_task(
+        run_ingestion(
+            sources=[source],
+            detail_readers={},
+            enricher=HangingEnricher(),
+            store=store,
+            observed_at=NOW,
+        )
+    )
+    for _ in range(50):
+        if store.saved:
+            break
+        await asyncio.sleep(0)
+    run.cancel()
+
+    assert [e.title for e in store.saved.values()] == ["Frage?"]
+    assert store.commits == 2  # after sync, then the one finished enrichment
 
 
 def _bundle_item(n: int, **changes: object) -> BundleItem:

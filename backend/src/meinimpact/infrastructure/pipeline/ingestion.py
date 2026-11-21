@@ -39,6 +39,9 @@ from meinimpact.infrastructure.opportunities.postgres_opportunity_repository imp
 
 logger = logging.getLogger(__name__)
 
+# A log line every this many saved enrichments, so a long run shows progress
+_PROGRESS_EVERY = 25
+
 
 class Enricher(Protocol):
     async def enrich(self, listing: Listing, detail: str | None) -> Enrichment: ...
@@ -136,29 +139,36 @@ async def run_ingestion(
     summary.deactivated = synced.deactivated
 
     semaphore = asyncio.Semaphore(max_concurrency)
+    # The store holds one session: saves take turns while enrichment runs on
+    save_lock = asyncio.Lock()
+    total = len(synced.pending)
 
-    async def enrich(item: PendingEnrichment) -> Enrichment | None:
+    async def enrich_and_save(item: PendingEnrichment) -> None:
         async with semaphore:
             detail = await _read_detail(item.listing, detail_readers, summary.errors)
             try:
-                return await enricher.enrich(item.listing, detail)
+                enrichment = await enricher.enrich(item.listing, detail)
             except Exception as exc:  # isolation boundary: one listing
                 summary.errors.append(f"enrich {item.listing.url}: {exc}")
-                return None
-
-    results = await asyncio.gather(*(enrich(item) for item in synced.pending))
-    for item, enrichment in zip(synced.pending, results, strict=True):
-        if enrichment is None:
-            continue  # stays pending, retried next run
-        await store.save_enrichment(
-            item.opportunity_id,
-            enrichment,
-            input_hash=item.input_hash,
-            enriched_at=datetime.now(UTC),
-        )
-        await store.commit()
+                return  # stays pending, retried next run
+        # Saved as soon as it is done, so a restart mid-run (a deploy, a full
+        # re-enrichment after a version bump) only loses what was in flight
+        async with save_lock:
+            await store.save_enrichment(
+                item.opportunity_id,
+                enrichment,
+                input_hash=item.input_hash,
+                enriched_at=datetime.now(UTC),
+            )
+            await store.commit()
         summary.enriched += 1
         summary.relevant += enrichment.is_relevant
+        if summary.enriched % _PROGRESS_EVERY == 0:
+            logger.info("Enriched %d of %d", summary.enriched, total)
+
+    if total:
+        logger.info("Enriching %d listings", total)
+    await asyncio.gather(*(enrich_and_save(item) for item in synced.pending))
 
     if bundler is not None and isinstance(store, BundleStore):
         listings = {listing.key: listing for listing in kept}
