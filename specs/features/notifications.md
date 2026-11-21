@@ -8,8 +8,7 @@ The server never learns whom a notification concerns. The app loads the same
 public data as everyone (`/v1/opportunities/pool`, `/v1/opportunities/news`),
 matches it against what is on the device (action log, stars, cards looked at,
 profile) and shows local notifications itself. No push tokens, no per-action
-subscriptions. The legacy `/v1/push/*` routes and `push_subscriptions` table
-store device-to-action links and are to be removed.
+subscriptions (the old `/v1/push/*` routes were removed in 9821450).
 
 ## Kinds (in priority order)
 
