@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme/mi_theme.dart';
+import '../../../notifications/notifications.dart';
 import '../../../onboarding/rucksack/hanging_tag.dart';
 import '../../../onboarding/rucksack/rucksack_bag.dart';
 import '../../../tracking/domain/progress.dart';
@@ -67,6 +68,8 @@ class ProfileColumn extends StatelessWidget {
               onChanged: onInterestsChanged,
             ),
           ),
+          if (Notifications.current.available)
+            const _Section(child: _NotificationsSection()),
         ],
       ],
     );
@@ -154,6 +157,27 @@ class _OutlinedPill extends StatelessWidget {
         ),
       ),
       child: Text(label),
+    );
+  }
+}
+
+/// Notifications are switched in Android's settings, one switch per kind;
+/// the app only leads there.
+class _NotificationsSection extends StatelessWidget {
+  const _NotificationsSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _Heading('Benachrichtigungen'),
+        const SizedBox(height: MiSpace.md),
+        _OutlinedPill(
+          label: 'In den Android-Einstellungen ändern',
+          onPressed: Notifications.current.openSettings,
+        ),
+      ],
     );
   }
 }

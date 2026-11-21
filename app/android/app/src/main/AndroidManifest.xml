@@ -2,6 +2,9 @@
     <!-- Flutter adds this only to debug and profile builds; release builds
          need it for the API and the in-app browser. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Scheduled notifications survive a restart. No exact alarms: a few
+         minutes late is fine. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <!-- allowBackup off: the profile and the action log (political
          participation) stay on this device only, never in a cloud backup;
          Keystore-encrypted values could not be read after a restore
@@ -34,6 +37,24 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- Notifications (flutter_local_notifications): scheduled ones,
+             rescheduling after a restart or update, and the buttons. -->
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

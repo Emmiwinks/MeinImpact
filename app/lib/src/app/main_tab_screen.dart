@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:meinimpact/l10n/app_localizations.dart';
@@ -23,6 +25,7 @@ class MainTabScreen extends StatefulWidget {
     required this.opportunityRepository,
     this.profile,
     this.initialTab = 1,
+    this.openTab,
     this.onEditProfile,
     this.onEditLebenslagen,
     this.onLebenslagenChanged,
@@ -40,6 +43,8 @@ class MainTabScreen extends StatefulWidget {
 
   /// 0 Mein Profil, 1 Meine Aktionen (the default), 2 Mein Impact.
   final int initialTab;
+  // Tabs to switch to from outside, e.g. a tapped notification.
+  final Stream<int>? openTab;
   final VoidCallback? onEditProfile;
   // Opens the Rucksack to re-pack PLZ and Lebenslagen; without it the
   // profile edits the Lebenslagen in a sheet.
@@ -66,6 +71,19 @@ class _MainTabScreenState extends State<MainTabScreen> {
   // Done actions the user has not looked at in Wirkung yet; the Wirkung tab
   // shows their count where played cards land.
   late int _seenDone = widget.doneActions.length;
+  StreamSubscription<int>? _openTab;
+
+  @override
+  void initState() {
+    super.initState();
+    _openTab = widget.openTab?.listen(_select);
+  }
+
+  @override
+  void dispose() {
+    unawaited(_openTab?.cancel());
+    super.dispose();
+  }
 
   void _select(int index) => setState(() {
         if (index == 2 && _tabIndex != 2) {

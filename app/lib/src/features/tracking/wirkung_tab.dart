@@ -6,6 +6,7 @@ import '../../app/theme/mi_theme.dart';
 import '../feed/domain/opportunity_repository.dart';
 import '../feed/presentation/hand/hand_view.dart';
 import '../feed/presentation/hand/topic_art.dart';
+import '../notifications/notification_widgets.dart';
 import 'data/starred_actions_store.dart';
 import 'domain/action_log.dart';
 import 'domain/impact_news.dart';
@@ -78,13 +79,15 @@ class _WirkungTabState extends State<WirkungTab> {
     setState(() => _starred = starred);
   }
 
-  void _toggleStar(String opportunityId) {
+  Future<void> _toggleStar(String opportunityId) async {
     HapticFeedback.selectionClick();
     setState(() {
       _starred = {..._starred};
       if (!_starred.remove(opportunityId)) _starred.add(opportunityId);
     });
-    widget.starredStore.save(_starred);
+    await widget.starredStore.save(_starred);
+    if (!mounted) return;
+    await showStarHint(context, starred: _starred.contains(opportunityId));
   }
 
   @override

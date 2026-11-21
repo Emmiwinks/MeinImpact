@@ -4,8 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// The done actions the user starred in Wirkung, by opportunity id: the
-/// ones they want to hear about when something new turns up (push comes
-/// later). Kept on the device and encrypted like the action log.
+/// ones they get a notification about when new reports turn up. Kept on
+/// the device and encrypted like the action log.
 class StarredActionsStore {
   const StarredActionsStore({FlutterSecureStorage? storage})
       : _storage = storage ?? const FlutterSecureStorage();

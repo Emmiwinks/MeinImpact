@@ -31,6 +31,9 @@ class ActionLogEntry {
     required this.sourceUrl,
     this.closesOn,
     this.affectedTags = const [],
+    this.lebenslagen,
+    this.supportCount,
+    this.supportGoal,
   });
 
   factory ActionLogEntry.fromOpportunity(
@@ -48,6 +51,9 @@ class ActionLogEntry {
       sourceUrl: opportunity.sourceUrl,
       closesOn: opportunity.closesOn,
       affectedTags: opportunity.affectedTags,
+      lebenslagen: opportunity.lebenslagen,
+      supportCount: opportunity.supportCount,
+      supportGoal: opportunity.supportGoal,
     );
   }
 
@@ -66,6 +72,9 @@ class ActionLogEntry {
       affectedTags:
           (snapshot['affected_tags'] as List<Object?>?)?.cast<String>() ??
               const [],
+      lebenslagen: (snapshot['lebenslagen'] as List<Object?>?)?.cast<String>(),
+      supportCount: snapshot['support_count'] as int?,
+      supportGoal: snapshot['support_goal'] as int?,
     );
   }
 
@@ -78,6 +87,29 @@ class ActionLogEntry {
   final String sourceUrl;
   final DateTime? closesOn;
   final List<String> affectedTags;
+  // Null in entries saved before they were kept: unknown, so notifications
+  // look in the pool and otherwise treat the action as private.
+  final List<String>? lebenslagen;
+  // Signatures and goal when it was done, so a goal reached later is news.
+  final int? supportCount;
+  final int? supportGoal;
+
+  /// The same action, done at [at] (a card looked at earlier, then reported
+  /// done from a notification).
+  ActionLogEntry withDoneAt(DateTime at) => ActionLogEntry(
+        opportunityId: opportunityId,
+        doneAt: at.toUtc(),
+        via: via,
+        title: title,
+        kind: kind,
+        sourceOrg: sourceOrg,
+        sourceUrl: sourceUrl,
+        closesOn: closesOn,
+        affectedTags: affectedTags,
+        lebenslagen: lebenslagen,
+        supportCount: supportCount,
+        supportGoal: supportGoal,
+      );
 
   Map<String, Object?> toJson() {
     final closes = closesOn;
@@ -96,6 +128,9 @@ class ActionLogEntry {
                 '${closes.day.toString().padLeft(2, '0')}'
             : null,
         'affected_tags': affectedTags,
+        'lebenslagen': lebenslagen,
+        'support_count': supportCount,
+        'support_goal': supportGoal,
       },
     };
   }

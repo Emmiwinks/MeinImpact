@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../app/theme/mi_theme.dart';
 import '../../../core/usage/usage.dart';
+import '../../notifications/notifications.dart';
 import '../../tracking/domain/action_log.dart';
 import '../../tracking/domain/progress.dart';
 import '../../tracking/streak_flame.dart';
@@ -143,7 +144,10 @@ class _AktionenTabState extends State<AktionenTab> with WidgetsBindingObserver {
         onViewPaper: () => widget.openAction(context, opportunity),
       );
     }
-    return widget.openAction(context, opportunity);
+    final done = await widget.openAction(context, opportunity);
+    // Left without "Fertig": maybe they took part anyway, so ask tomorrow.
+    if (!done) Notifications.current.lookedAt(opportunity, openedSite: true);
+    return done;
   }
 
   void _complete(Opportunity opportunity) {
@@ -216,6 +220,7 @@ class _AktionenTabState extends State<AktionenTab> with WidgetsBindingObserver {
           onPlayed: (ranked) => _complete(ranked.opportunity),
           onOpened: (ranked) {
             Usage.current.count(UsageEvent.cardTurned);
+            Notifications.current.lookedAt(ranked.opportunity);
             widget.onInterestSignal?.call(
               ranked.opportunity.affectedTags,
               InterestSignal.opened,

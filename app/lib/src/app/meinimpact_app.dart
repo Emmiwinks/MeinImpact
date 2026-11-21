@@ -12,6 +12,8 @@ import '../features/feed/domain/interest_weights.dart';
 import '../features/feed/domain/opportunity.dart';
 import '../features/feed/domain/opportunity_repository.dart';
 import '../features/feed/domain/user_profile.dart';
+import '../features/notifications/domain/notification_state.dart';
+import '../features/notifications/notifications.dart';
 import '../features/onboarding/rucksack/rucksack_screen.dart';
 import '../features/onboarding/value_profile_screen.dart';
 import '../features/tracking/data/action_log_store.dart';
@@ -86,6 +88,8 @@ class _MeinImpactAppState extends State<MeinImpactApp>
   int _homeTab = 1;
   late ActionLog _actionLog;
   final _navigatorKey = GlobalKey<NavigatorState>();
+  // Tabs a notification asks to open.
+  final _openTab = StreamController<int>.broadcast();
 
   @override
   void initState() {
@@ -95,6 +99,27 @@ class _MeinImpactAppState extends State<MeinImpactApp>
     WidgetsBinding.instance.addObserver(this);
     unawaited(Usage.current.markActive());
     unawaited(_locateHomeIfMissing());
+    Notifications.current.taps.addListener(_onNotificationTap);
+    // A tap that started the app, once the tabs are there to open.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onNotificationTap());
+  }
+
+  Future<void> _onNotificationTap() async {
+    final tap = Notifications.current.taps.value;
+    if (tap == null || _profile == null) return;
+    Notifications.current.taps.value = null;
+    final id = tap.opportunityId;
+    final tookPart = tap.action == kTookPartAction;
+    if (tookPart && id != null) {
+      final card = await Notifications.current.lookedAtCard(id);
+      if (card != null) await _logDone(card.withDoneAt(DateTime.now()));
+    }
+    // What became of actions is in Mein Impact, the rest in Meine Aktionen.
+    final aboutImpact = tookPart ||
+        tap.kind == NotificationKind.result ||
+        tap.kind == NotificationKind.decision ||
+        tap.kind == NotificationKind.news;
+    _openTab.add(aboutImpact ? 2 : 1);
   }
 
   // A PLZ entered offline, or saved before the app kept where it lies, is
@@ -134,6 +159,8 @@ class _MeinImpactAppState extends State<MeinImpactApp>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    Notifications.current.taps.removeListener(_onNotificationTap);
+    unawaited(_openTab.close());
     super.dispose();
   }
 
@@ -142,16 +169,24 @@ class _MeinImpactAppState extends State<MeinImpactApp>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(Usage.current.markActive());
+      unawaited(Notifications.current.opened());
     }
   }
 
-  Future<void> _onActionDone(Opportunity opportunity, ActionVia via) async {
-    if (_actionLog.isDone(opportunity.id)) return;
+  Future<void> _onActionDone(Opportunity opportunity, ActionVia via) =>
+      _logDone(
+        ActionLogEntry.fromOpportunity(
+          opportunity,
+          doneAt: DateTime.now(),
+          via: via,
+        ),
+      );
+
+  Future<void> _logDone(ActionLogEntry entry) async {
+    if (_actionLog.isDone(entry.opportunityId)) return;
     Usage.current.count(UsageEvent.actionDone);
     final now = DateTime.now();
-    final updated = _actionLog.withDone(
-      ActionLogEntry.fromOpportunity(opportunity, doneAt: now, via: via),
-    );
+    final updated = _actionLog.withDone(entry);
     final moment = ProgressMoment.between(
       Progress.of(_actionLog, now),
       Progress.of(updated, now),
@@ -166,10 +201,12 @@ class _MeinImpactAppState extends State<MeinImpactApp>
     // follow this one. Never blocks or fails the user's "Fertig".
     unawaited(
       widget._opportunityRepository
-          .markTracked(opportunity.id)
+          .markTracked(entry.opportunityId)
           .catchError((Object _) {}),
     );
     await widget._actionLogStore?.save(updated);
+    // The flame may be safe now, and reminders about it are done.
+    Notifications.current.refresh();
   }
 
   Future<void> _onWerteComplete(Map<String, double> werte) async {
@@ -332,6 +369,7 @@ class _MeinImpactAppState extends State<MeinImpactApp>
         opportunityRepository: widget._opportunityRepository,
         profile: _profile,
         initialTab: _homeTab,
+        openTab: _openTab.stream,
         onEditProfile: () => setState(() => _requizWerte = true),
         onEditLebenslagen: () => setState(() => _repack = true),
         onLebenslagenChanged: _onLebenslagenChanged,
