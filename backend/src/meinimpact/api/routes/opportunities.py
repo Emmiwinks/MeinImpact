@@ -24,7 +24,7 @@ from meinimpact.api.dependencies import (
 )
 from meinimpact.domain import repositories
 from meinimpact.domain.entities import Opportunity
-from meinimpact.infrastructure.ai.taxonomy import TAG_AXES
+from meinimpact.infrastructure.ai.taxonomy import TAGS
 from meinimpact.infrastructure.council.offices import FRAKTION_OFFICES
 from meinimpact.infrastructure.council.postgres_council_repository import (
     PostgresCouncilRepository,
@@ -48,7 +48,7 @@ public_router = APIRouter(prefix="/v1/opportunities", tags=["opportunities"])
 PREVIEW_SIZE = 12
 # Dresden first: the page is for people who live there.
 _PREVIEW_REGIONS = ("dresden", "sachsen", "bund", "eu")
-_TOPICS = list(TAG_AXES)
+_TOPICS = list(TAGS)
 
 
 def _easy(opportunity: Opportunity) -> bool:

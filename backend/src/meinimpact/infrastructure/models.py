@@ -231,6 +231,11 @@ class OpportunityRecord(Base):
     werte_relevanz: Mapped[dict[str, float]] = mapped_column(
         JSONB, nullable=False, server_default="{}"
     )
+    # [{"bereich": <GELD_BEREICHE id>, "richtung": 1 | -1}]
+    geld: Mapped[list[dict[str, str | int]]] = mapped_column(
+        JSONB, nullable=False, server_default="[]"
+    )
+    anlass: Mapped[str | None] = mapped_column(Text, nullable=True)
     pro_argumente: Mapped[list[str]] = mapped_column(
         ARRAY(Text()), nullable=False, server_default="{}"
     )

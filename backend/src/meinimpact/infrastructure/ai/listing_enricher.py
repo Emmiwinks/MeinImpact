@@ -9,8 +9,13 @@ One LLM call per listing covers the first four points:
    it? Two 1-5 scores. They are stored, not applied here: the feed query
    withholds only expert-only items and the app ranks by the scores, so
    tuning either needs no new LLM calls.
-3. Engaging, neutral plain-language framing, topic tags, werte axes,
-   pro/contra and personal-impact snippets.
+3. Engaging, neutral plain-language framing, topic tags, pro/contra and
+   personal-impact snippets. Which questionnaire statements directly
+   predict support (werte_relevanz), which budget areas get more or less
+   money (geld), and why it is on the table now (anlass). The model first
+   says in one sentence what supporters want; the statements and the money
+   are judged against that sentence, which keeps "stop X" cards from
+   flipping sides.
 4. A free-text topic label next to the fixed tags, so gaps in the taxonomy
    become visible (`scripts/topic_report.py`) instead of being force-fit.
 5. The city districts concerned, for cities with district data: only names
@@ -25,8 +30,8 @@ One LLM call per listing covers the first four points:
 
 Registry facts (dates, counts, URL) never come from the model; they stay
 with the listing. The model's structured output is normalized in code:
-tags outside the taxonomy, axes not belonging to the tags and snippet keys
-outside the Betroffenheitsprofil are dropped, never trusted.
+tags outside the taxonomy, unknown statements or budget areas and snippet
+keys outside the Betroffenheitsprofil are dropped, never trusted.
 
 `ENRICHMENT_VERSION` is part of the enrichment input hash: bump it whenever
 the prompt or parsing changes, and the next run re-enriches every listing.
@@ -40,23 +45,30 @@ from typing import Any
 from meinimpact.infrastructure.ai.lebenslagen import LEBENSLAGEN, LEBENSLAGEN_BY_ID
 from meinimpact.infrastructure.ai.mistral_json import JsonCompleter
 from meinimpact.infrastructure.ai.taxonomy import (
-    AXIS_LANGUAGE,
     CANDIDATE_TOPICS,
-    TAG_AXES,
+    GELD_BEREICHE,
     TAG_BETROFFENHEIT_KEYS,
     TAG_HINTS,
+    TAGS,
+    WERTE_AUSSAGEN,
 )
 from meinimpact.infrastructure.geo.districts import DistrictMatcher
 from meinimpact.infrastructure.geo.locality import Reach
 from meinimpact.infrastructure.listings.model import Listing, Region
 
-ENRICHMENT_VERSION = "12"
+ENRICHMENT_VERSION = "13"
 
 
 _MAX_DETAIL_CHARS = 4000
 _MAX_ARGUMENTS = 3
 _MAX_PLACES = 3
+_MAX_AUSSAGEN = 2
+_MAX_GELD = 2
+_MAX_ANLASS_CHARS = 140
 _SCORE_RANGE = range(1, 6)
+_AUSSAGE_KEYS = tuple(WERTE_AUSSAGEN)
+_SIDES = {"links": -1.0, "rechts": 1.0}
+_DIRECTIONS = {"mehr": 1, "weniger": -1}
 
 _SCOPES: Mapping[str, Region | None] = {
     "eu": Region.EU,
@@ -91,7 +103,13 @@ class Enrichment:
     # The model's reason per Lebenslage (why it matters more for them); for
     # review in scripts/compare_models.py, not stored
     lebenslagen_gruende: Mapping[str, str] = field(default_factory=dict)
+    # Questionnaire key -> -1 (supporters agree with its left statement) or
+    # +1 (with its right one); only statements that directly predict support
     werte_relevanz: Mapping[str, float] = field(default_factory=dict)
+    # (budget area, +1 more / -1 less money) if what supporters want happens
+    geld: tuple[tuple[str, int], ...] = ()
+    # Why it is on the table now, from the source text; "" if it doesn't say
+    anlass: str = ""
     pro_argumente: tuple[str, ...] = ()
     contra_argumente: tuple[str, ...] = ()
     personal_impact_snippets: Mapping[str, str] = field(default_factory=dict)
@@ -118,12 +136,14 @@ def enrichment_input_hash(listing: Listing) -> str:
 
 def build_prompt(listing: Listing, detail: str | None) -> str:
     tag_list = "\n".join(
-        f"- {tag}"
-        + (f" ({TAG_HINTS[tag]})" if tag in TAG_HINTS else "")
-        + (f" (Achse: {', '.join(axes)})" if axes else "")
-        for tag, axes in TAG_AXES.items()
+        f"- {tag}" + (f" ({TAG_HINTS[tag]})" if tag in TAG_HINTS else "")
+        for tag in TAGS
     )
-    axis_list = "\n".join(f"- {axis}: {text}" for axis, text in AXIS_LANGUAGE.items())
+    aussagen_list = "\n".join(
+        f"{number}. LINKS: {left}\n   RECHTS: {right}"
+        for number, (left, right) in enumerate(WERTE_AUSSAGEN.values(), start=1)
+    )
+    geld_list = "\n".join(f"- {area}: {label}" for area, label in GELD_BEREICHE.items())
     lebenslagen_list = "\n".join(
         f"- {item.id}: {item.label} ({item.area})" for item in LEBENSLAGEN
     )
@@ -169,7 +189,13 @@ Eintrag unten und antworte NUR mit JSON in genau dieser Struktur:
   "affected_tags": ["<tag>", ...],
   "lebenslagen": [{{"id": "<id>", "grund": "<was sich für sie ändert>"}}, ...],
   "lebenslage_frei": "<Gruppe oder leer>",
-  "werte_relevanz": {{"<achse>": <-1.0 bis 1.0>}},
+  "dafuer": "<ein Satz>",
+  "streit": "streit" | "einig",
+  "aussagen": [
+    {{"nr": <1-8>, "warum": "<halber Satz>", "dafuer_ist": "links" | "rechts"}}
+  ],
+  "geld": [{{"bereich": "<id>", "richtung": "mehr" | "weniger"}}],
+  "anlass": "<ein Satz oder leer>",
   "pro_argumente": ["<arg>", "<arg>"],
   "contra_argumente": ["<arg>", "<arg>"],
   "personal_impact_snippets": {{"<feld:wert>": "<ein ganzer Satz>"}}
@@ -294,9 +320,38 @@ Beispiele:
 lebenslage_frei: nur wenn eine Gruppe klar betroffen ist, die in der Liste
 fehlt: ihr kurzer Name, sonst leer.
 
-werte_relevanz: NUR die Achsen der erkannten Tags, jede in ihrer eigenen
-bipolaren Sprache (NIEMALS ein generisches "progressiv vs. konservativ"):
-{axis_list}
+dafuer: Wofür ist, wer hier mitmacht und dafür ist? Ein Satz. Bei Petitionen
+das Anliegen, bei Ratsvorlagen und Konsultationen der Vorschlag selbst. Bei
+"Stoppt X" ist man dafür, dass X nicht passiert.
+
+streit: "streit", wenn Menschen mit unterschiedlichen politischen
+Grundüberzeugungen hier typischerweise verschieden entscheiden würden.
+"einig", wenn sich fast alle Betroffenen unabhängig von ihrer Weltanschauung
+einig wären (z.B. die eigene Kita, Bahnlinie oder das Bad erhalten) oder es
+vor allem um eigene Interessen geht.
+
+aussagen: Welche Aussagenpaare unten sagen direkt voraus, ob jemand für den
+Satz aus "dafuer" ist? Nur wenn die Aussage den Kern trifft, nicht wenn sie
+nur thematisch verwandt ist. Meistens passt keins, höchstens 2. Für jedes
+Paar: erst "warum" (wer würde den Satz aus "dafuer" unterstützen, und
+warum), dann "dafuer_ist": "links", wenn eher Menschen, die der linken
+Aussage zustimmen, den Satz aus "dafuer" unterstützen, sonst "rechts".
+Bei "einig" fast immer [].
+{aussagen_list}
+
+geld: Wenn passiert, wofür man laut "dafuer" ist: Bekommt ein Bereich
+öffentlicher Ausgaben dadurch klar mehr oder weniger Geld? Höchstens 2,
+[] wenn es nicht ums Geld geht oder es unklar ist.
+{geld_list}
+Beispiele: "Bleibt die Kita X?" -> kinder_bildung mehr. "Dürfen elf Kitas
+geschlossen werden?" (dafür = schließen) -> kinder_bildung weniger.
+"Steigen die Kita-Gebühren?" (dafür = Eltern zahlen mehr, die Stadt
+weniger) -> kinder_bildung weniger.
+
+anlass: Warum steht das gerade an? Ein Satz, höchstens 140 Zeichen, nur
+wenn der Text einen Grund nennt (z.B. Sparzwang, weniger Kinder, ein
+Gerichtsurteil, eine auslaufende Förderung). Keine Zahlen, die nicht im
+Text stehen. Nicht die Zusammenfassung wiederholen. Sonst leer.
 
 pro_argumente / contra_argumente: je 1-{_MAX_ARGUMENTS} sachliche Argumente,
 jedes ein kurzer Satz.
@@ -338,8 +393,7 @@ def parse_enrichment(raw: Mapping[str, Any]) -> Enrichment:
     if everyday_relevance is None or accessibility is None:
         raise EnrichmentError("relevant listing without valid 1-5 scores")
 
-    tags = tuple(t for t in _strings(raw.get("affected_tags")) if t in TAG_AXES)
-    axes = {axis for tag in tags for axis in TAG_AXES[tag]}
+    tags = tuple(t for t in _strings(raw.get("affected_tags")) if t in TAGS)
     snippet_keys = {key for tag in tags for key in TAG_BETROFFENHEIT_KEYS.get(tag, [])}
     candidate = _text(raw.get("kandidat"))
     lebenslagen = _lebenslagen(raw.get("lebenslagen"))
@@ -356,11 +410,9 @@ def parse_enrichment(raw: Mapping[str, Any]) -> Enrichment:
         lebenslagen=tuple(lebenslagen),
         lebenslagen_gruende=lebenslagen,
         lebenslage_frei=_text(raw.get("lebenslage_frei")),
-        werte_relevanz={
-            axis: max(-1.0, min(1.0, float(value)))
-            for axis, value in _mapping(raw.get("werte_relevanz")).items()
-            if axis in axes and isinstance(value, int | float)
-        },
+        werte_relevanz=_werte(raw.get("aussagen")),
+        geld=_geld(raw.get("geld")),
+        anlass=_text(raw.get("anlass"))[:_MAX_ANLASS_CHARS],
         pro_argumente=_strings(raw.get("pro_argumente"))[:_MAX_ARGUMENTS],
         contra_argumente=_strings(raw.get("contra_argumente"))[:_MAX_ARGUMENTS],
         personal_impact_snippets={
@@ -389,6 +441,35 @@ def _lebenslagen(value: object) -> dict[str, str]:
         if lebenslage_id in LEBENSLAGEN_BY_ID and reason:
             reasons.setdefault(lebenslage_id, reason)
     return reasons
+
+
+def _werte(value: object) -> dict[str, float]:
+    """Statement number (1-8) and side -> questionnaire key and its sign, at
+    most `_MAX_AUSSAGEN`, the first answer per statement winning."""
+    werte: dict[str, float] = {}
+    for item in value if isinstance(value, list) else ():
+        if not isinstance(item, dict) or len(werte) == _MAX_AUSSAGEN:
+            continue
+        number, side = item.get("nr"), _SIDES.get(_text(item.get("dafuer_ist")))
+        if isinstance(number, bool) or not isinstance(number, int) or side is None:
+            continue
+        if 1 <= number <= len(_AUSSAGE_KEYS):
+            werte.setdefault(_AUSSAGE_KEYS[number - 1], side)
+    return werte
+
+
+def _geld(value: object) -> tuple[tuple[str, int], ...]:
+    """Known budget areas with a direction, at most `_MAX_GELD`, one entry
+    per area."""
+    geld: dict[str, int] = {}
+    for item in value if isinstance(value, list) else ():
+        if not isinstance(item, dict) or len(geld) == _MAX_GELD:
+            continue
+        area = _text(item.get("bereich"))
+        direction = _DIRECTIONS.get(_text(item.get("richtung")))
+        if area in GELD_BEREICHE and direction is not None:
+            geld.setdefault(area, direction)
+    return tuple(geld.items())
 
 
 def _score(value: object) -> int | None:

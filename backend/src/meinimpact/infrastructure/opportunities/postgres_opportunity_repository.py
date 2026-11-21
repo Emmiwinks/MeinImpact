@@ -145,6 +145,11 @@ class PostgresOpportunityRepository:
         record.lebenslagen = list(enrichment.lebenslagen)
         record.lebenslage_frei = enrichment.lebenslage_frei or None
         record.werte_relevanz = dict(enrichment.werte_relevanz)
+        record.geld = [
+            {"bereich": area, "richtung": direction}
+            for area, direction in enrichment.geld
+        ]
+        record.anlass = enrichment.anlass or None
         record.pro_argumente = list(enrichment.pro_argumente)
         record.contra_argumente = list(enrichment.contra_argumente)
         record.personal_impact_snippets = dict(enrichment.personal_impact_snippets)
@@ -244,6 +249,7 @@ def _new_record(listing: Listing, observed_at: datetime) -> OpportunityRecord:
         districts=[],
         places=[],
         werte_relevanz={},
+        geld=[],
         pro_argumente=[],
         contra_argumente=[],
         personal_impact_snippets={},
@@ -288,6 +294,10 @@ def _to_domain(record: OpportunityRecord) -> Opportunity:
         affected_tags=tuple(record.affected_tags),
         lebenslagen=tuple(record.lebenslagen),
         werte_relevanz=dict(record.werte_relevanz),
+        geld=tuple(
+            (str(item["bereich"]), int(item["richtung"])) for item in record.geld
+        ),
+        anlass=record.anlass,
         pro_argumente=tuple(record.pro_argumente),
         contra_argumente=tuple(record.contra_argumente),
         personal_impact_snippets=dict(record.personal_impact_snippets),

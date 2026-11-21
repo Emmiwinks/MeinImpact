@@ -15,11 +15,12 @@ from meinimpact.infrastructure.ai.listing_enricher import (
     parse_enrichment,
 )
 from meinimpact.infrastructure.ai.taxonomy import (
-    AXIS_LANGUAGE,
     CANDIDATE_TOPICS,
-    TAG_AXES,
+    GELD_BEREICHE,
     TAG_BETROFFENHEIT_KEYS,
     TAG_HINTS,
+    TAGS,
+    WERTE_AUSSAGEN,
 )
 from meinimpact.infrastructure.geo.districts import District, DistrictMatcher
 from meinimpact.infrastructure.geo.locality import Reach
@@ -37,7 +38,13 @@ def _relevant(**overrides: Any) -> dict[str, Any]:
         "title": "Soll am Alten Leipziger Bahnhof ein neues Quartier entstehen?",
         "summary": "Die Stadt legt den Plan aus. Bürger können Stellung nehmen.",
         "affected_tags": ["Wohnen/Miete"],
-        "werte_relevanz": {"equality_markets": -0.4},
+        "dafuer": "Am Alten Leipziger Bahnhof entsteht ein neues Quartier.",
+        "streit": "streit",
+        "aussagen": [
+            {"nr": 7, "warum": "wer Wandel will", "dafuer_ist": "rechts"},
+        ],
+        "geld": [{"bereich": "strassen", "richtung": "mehr"}],
+        "anlass": "Der alte Bahnhof liegt seit Jahren brach.",
         "pro_argumente": ["Mehr Wohnraum"],
         "contra_argumente": ["Weniger Grünfläche"],
         "personal_impact_snippets": {
@@ -67,17 +74,27 @@ def test_prompt_contains_registry_facts_and_truncated_detail() -> None:
 def test_prompt_lists_every_tag_and_candidate_topic() -> None:
     prompt = build_prompt(make_listing(), None)
 
-    for tag in TAG_AXES:
+    for tag in TAGS:
         assert f"- {tag}" in prompt
     for topic in CANDIDATE_TOPICS:
         assert f"- {topic}" in prompt
 
 
+def test_prompt_lists_every_statement_pair_and_budget_area() -> None:
+    prompt = build_prompt(make_listing(), None)
+
+    for number, (left, right) in enumerate(WERTE_AUSSAGEN.values(), start=1):
+        assert f"{number}. LINKS: {left}\n   RECHTS: {right}" in prompt
+    for area, label in GELD_BEREICHE.items():
+        assert f"- {area}: {label}" in prompt
+
+
 def test_taxonomy_tables_agree_with_each_other() -> None:
-    assert set(TAG_BETROFFENHEIT_KEYS) <= set(TAG_AXES)
-    assert {axis for axes in TAG_AXES.values() for axis in axes} <= set(AXIS_LANGUAGE)
-    assert not set(CANDIDATE_TOPICS) & set(TAG_AXES)
-    assert set(TAG_HINTS) <= set(TAG_AXES)
+    assert set(TAG_BETROFFENHEIT_KEYS) <= set(TAGS)
+    assert not set(CANDIDATE_TOPICS) & set(TAGS)
+    assert set(TAG_HINTS) <= set(TAGS)
+    # The app's questionnaire has exactly these eight questions
+    assert len(WERTE_AUSSAGEN) == 8
 
 
 def test_prompt_without_detail_says_so() -> None:
@@ -92,7 +109,9 @@ def test_relevant_listing_is_parsed() -> None:
     assert (enrichment.everyday_relevance, enrichment.accessibility) == (4, 5)
     assert enrichment.title.startswith("Soll am Alten")
     assert enrichment.affected_tags == ("Wohnen/Miete",)
-    assert enrichment.werte_relevanz == {"equality_markets": -0.4}
+    assert enrichment.werte_relevanz == {"wandel_tradition": 1.0}
+    assert enrichment.geld == (("strassen", 1),)
+    assert enrichment.anlass == "Der alte Bahnhof liegt seit Jahren brach."
     assert enrichment.personal_impact_snippets == {
         "wohnsituation:mieter": "Neue Wohnungen können den Markt entlasten."
     }
@@ -125,11 +144,6 @@ def test_normalization_drops_what_the_taxonomy_does_not_allow() -> None:
     enrichment = parse_enrichment(
         _relevant(
             affected_tags=["Wohnen/Miete", "Erfundenes Thema", 42],
-            werte_relevanz={
-                "equality_markets": -3,
-                "nation_globe": 0.5,  # not an axis of Wohnen/Miete
-                "liberty_authority": "viel",
-            },
             personal_impact_snippets={
                 "wohnsituation:mieter": "  Ganzer Satz.  ",
                 "hat_kinder:true": "Passt nicht zum Tag.",
@@ -141,18 +155,67 @@ def test_normalization_drops_what_the_taxonomy_does_not_allow() -> None:
     )
 
     assert enrichment.affected_tags == ("Wohnen/Miete",)
-    assert enrichment.werte_relevanz == {"equality_markets": -1.0}
     assert enrichment.personal_impact_snippets == {
         "wohnsituation:mieter": "Ganzer Satz."
     }
     assert enrichment.pro_argumente == ("a", "b", "c")
 
 
-def test_untagged_listing_has_no_axes_or_snippets() -> None:
+def test_tag_without_snippet_keys_gets_no_snippets() -> None:
     enrichment = parse_enrichment(_relevant(affected_tags=["Umwelt/Natur"]))
 
-    assert enrichment.werte_relevanz == {}
     assert enrichment.personal_impact_snippets == {}
+
+
+def test_statements_become_questionnaire_keys_with_the_supporters_side() -> None:
+    enrichment = parse_enrichment(
+        _relevant(
+            aussagen=[
+                {"nr": 1, "warum": "Umverteilung", "dafuer_ist": "links"},
+                {"nr": 1, "warum": "doppelt", "dafuer_ist": "rechts"},
+                {"nr": 9, "dafuer_ist": "links"},
+                {"nr": True, "dafuer_ist": "links"},
+                {"nr": "2", "dafuer_ist": "links"},
+                {"nr": 3, "dafuer_ist": "dafuer"},
+                "6",
+                {"nr": 6, "warum": "Bürgerrechte", "dafuer_ist": "rechts"},
+                {"nr": 8, "warum": "zu viele", "dafuer_ist": "links"},
+            ]
+        )
+    )
+
+    assert enrichment.werte_relevanz == {
+        "wirtschaft_gleichheit": -1.0,
+        "freiheit_sicherheit": 1.0,
+    }
+
+
+@pytest.mark.parametrize("aussagen", [[], None, "1 links", {"nr": 1}])
+def test_no_usable_statement_means_no_werte(aussagen: object) -> None:
+    assert parse_enrichment(_relevant(aussagen=aussagen)).werte_relevanz == {}
+
+
+def test_money_keeps_known_areas_with_a_direction() -> None:
+    enrichment = parse_enrichment(
+        _relevant(
+            geld=[
+                {"bereich": "kinder_bildung", "richtung": "weniger"},
+                {"bereich": "kinder_bildung", "richtung": "mehr"},
+                {"bereich": "wohnen", "richtung": "mehr"},
+                {"bereich": "kultur", "richtung": "viel"},
+                {"bereich": "kultur", "richtung": "mehr"},
+                {"bereich": "soziales", "richtung": "mehr"},
+            ]
+        )
+    )
+
+    assert enrichment.geld == (("kinder_bildung", -1), ("kultur", 1))
+    assert parse_enrichment(_relevant(geld=None)).geld == ()
+
+
+def test_reason_is_cut_to_one_short_line() -> None:
+    assert len(parse_enrichment(_relevant(anlass="x" * 400)).anlass) == 140
+    assert parse_enrichment(_relevant(anlass=None)).anlass == ""
 
 
 @pytest.mark.parametrize(

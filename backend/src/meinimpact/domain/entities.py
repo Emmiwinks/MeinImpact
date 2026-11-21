@@ -42,6 +42,8 @@ class Opportunity:
     # Lebenslagen catalog ids this concerns (ai/lebenslagen.py); the app
     # matches them against the groups the user picked on their device
     lebenslagen: tuple[str, ...]
+    # Questionnaire key -> -1 / +1: supporters agree with its left / right
+    # statement (taxonomy.WERTE_AUSSAGEN)
     werte_relevanz: dict[str, float]
     pro_argumente: tuple[str, ...]
     contra_argumente: tuple[str, ...]
@@ -63,6 +65,10 @@ class Opportunity:
     # ("nachbarschaft", "ort", "stadt", "umland") and the places it names
     reach: str | None = None
     places: tuple[str, ...] = ()
+    # (budget area, +1 more / -1 less money) if supporters get their way
+    geld: tuple[tuple[str, int], ...] = ()
+    # Why it is on the table now, from the source text
+    anlass: str | None = None
     bundle: OpportunityBundle | None = None
 
 

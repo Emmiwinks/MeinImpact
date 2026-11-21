@@ -28,7 +28,7 @@ _OPPORTUNITY = Opportunity(
     summary="Die Stadt plant die Schließung.",
     affected_tags=("Familie/Kinder",),
     lebenslagen=("eltern", "kita_kinder"),
-    werte_relevanz={},
+    werte_relevanz={"wandel_tradition": -1.0},
     pro_argumente=("Betreuungsplätze",),
     contra_argumente=("Kosten",),
     personal_impact_snippets={"hat_kinder:true": "Betrifft deine Kita-Wahl."},
@@ -41,6 +41,8 @@ _OPPORTUNITY = Opportunity(
     support_goal=None,
     support_count_as_of=datetime(2026, 11, 1, tzinfo=UTC),
     first_seen_at=datetime(2026, 11, 1, tzinfo=UTC),
+    geld=(("kinder_bildung", 1),),
+    anlass="Die Stadt muss sparen.",
 )
 
 
@@ -102,6 +104,9 @@ def test_pool_serves_open_opportunities_for_today() -> None:
     assert item["personal_impact_snippets"] == {
         "hat_kinder:true": "Betrifft deine Kita-Wahl."
     }
+    assert item["werte_relevanz"] == {"wandel_tradition": -1.0}
+    assert item["geld"] == [{"bereich": "kinder_bildung", "richtung": 1}]
+    assert item["anlass"] == "Die Stadt muss sparen."
 
 
 def test_pool_says_where_each_opportunity_lies() -> None:

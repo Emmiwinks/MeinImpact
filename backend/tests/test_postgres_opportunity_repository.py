@@ -49,6 +49,9 @@ def _relevant(
         reach=Reach.NEIGHBOURHOOD,
         places=("Hellerau",),
         free_topic="Kita-Schließung",
+        werte_relevanz={"wandel_tradition": -1.0},
+        geld=(("kinder_bildung", 1),),
+        anlass="Es werden weniger Kinder geboren.",
         pro_argumente=("Plätze",),
         personal_impact_snippets={"hat_kinder:true": "Betrifft dich."},
     )
@@ -200,6 +203,9 @@ async def test_list_open_serves_relevant_active_unexpired_except_expert_only(
     assert opportunity.districts == ("Hellerau",)
     assert (opportunity.reach, opportunity.places) == ("nachbarschaft", ("Hellerau",))
     assert opportunity.lebenslagen == ("eltern",)
+    assert opportunity.werte_relevanz == {"wandel_tradition": -1.0}
+    assert opportunity.geld == (("kinder_bildung", 1),)
+    assert opportunity.anlass == "Es werden weniger Kinder geboren."
     assert opportunity.source_org == "src"  # unknown registry: id as name
     assert opportunity.personal_impact_snippets == {"hat_kinder:true": "Betrifft dich."}
 

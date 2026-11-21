@@ -96,6 +96,14 @@ class AreaResponse(BaseModel):
     km: float
 
 
+class GeldResponse(BaseModel):
+    """A budget area (taxonomy.GELD_BEREICHE) and whether it gets more (+1)
+    or less (-1) money if supporters get their way."""
+
+    bereich: str
+    richtung: int
+
+
 class BundleResponse(BaseModel):
     """The card this opportunity shares with others on the same matter:
     shared header, title and summary, and this option's label and the
@@ -130,7 +138,13 @@ class OpportunityResponse(BaseModel):
     summary: str
     affected_tags: list[str]
     lebenslagen: list[str]
+    # Questionnaire key -> -1 / +1: supporters agree with its left / right
+    # statement; only statements that directly predict support
     werte_relevanz: dict[str, float]
+    geld: list[GeldResponse]
+    # Why it is on the table now, one sentence from the source; null if
+    # the source doesn't say
+    anlass: str | None
     pro_argumente: list[str]
     contra_argumente: list[str]
     personal_impact_snippets: dict[str, str]
@@ -189,6 +203,11 @@ class OpportunityResponse(BaseModel):
             affected_tags=list(opportunity.affected_tags),
             lebenslagen=list(opportunity.lebenslagen),
             werte_relevanz=dict(opportunity.werte_relevanz),
+            geld=[
+                GeldResponse(bereich=area, richtung=direction)
+                for area, direction in opportunity.geld
+            ],
+            anlass=opportunity.anlass,
             pro_argumente=list(opportunity.pro_argumente),
             contra_argumente=list(opportunity.contra_argumente),
             personal_impact_snippets=dict(opportunity.personal_impact_snippets),

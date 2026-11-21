@@ -8,30 +8,33 @@ widened after the free-topic review showed transparency and direct-democracy
 items filed under it. Stadtentwicklung/Bauen and Gleichstellung/Inklusion
 came from the same review (2026-11-02).
 
-`TAG_BETROFFENHEIT_KEYS` must stay in lockstep with the app's
-`Betroffenheitsprofil.matchingKeys()`: renamed keys silently stop matching.
+Three tables must stay in lockstep with the app, or matches silently stop:
+`TAG_BETROFFENHEIT_KEYS` with `Betroffenheitsprofil.matchingKeys()`,
+`WERTE_AUSSAGEN` with the questionnaire (`werteQuestionKeys` and the
+statements in `value_profile_screen.dart`), and `GELD_BEREICHE` with the
+budget areas of the Stadthaushalt step.
 """
 
-# tag -> werte axes it is value-differentiated on ([] = not differentiated)
-TAG_AXES: dict[str, list[str]] = {
-    "Wohnen/Miete": ["equality_markets"],
-    "Mobilität/Verkehr": ["tradition_progress"],
-    "Arbeit/Einkommen": ["equality_markets"],
-    "Energie/Heizkosten": ["tradition_progress", "equality_markets"],
-    "Bildung/Ausbildung": ["tradition_progress"],
-    "Rente/Alter": ["equality_markets"],
-    "Digitales/Datenschutz": ["liberty_authority"],
-    "Sicherheit": ["liberty_authority"],
-    "Migration/Integration": ["nation_globe"],
-    "Außenpolitik/Verteidigung": ["liberty_authority"],
-    "Demokratie/Mitbestimmung": ["liberty_authority"],
-    "Stadtentwicklung/Bauen": ["tradition_progress"],
-    "Gesundheit/Pflege": [],
-    "Familie/Kinder": [],
-    "Umwelt/Natur": [],
-    "Selbstständigkeit/Unternehmertum": [],
-    "Gleichstellung/Inklusion": [],
-}
+# The fixed topic tags, in the order the app and the landing page use
+TAGS: tuple[str, ...] = (
+    "Wohnen/Miete",
+    "Mobilität/Verkehr",
+    "Arbeit/Einkommen",
+    "Energie/Heizkosten",
+    "Bildung/Ausbildung",
+    "Rente/Alter",
+    "Digitales/Datenschutz",
+    "Sicherheit",
+    "Migration/Integration",
+    "Außenpolitik/Verteidigung",
+    "Demokratie/Mitbestimmung",
+    "Stadtentwicklung/Bauen",
+    "Gesundheit/Pflege",
+    "Familie/Kinder",
+    "Umwelt/Natur",
+    "Selbstständigkeit/Unternehmertum",
+    "Gleichstellung/Inklusion",
+)
 
 # One-line scope for tags the model over-applies without it (the first
 # review run filed energy grid and mining items under Stadtentwicklung/Bauen).
@@ -61,19 +64,66 @@ CANDIDATE_TOPICS: dict[str, str] = {
     "Kultur/Freizeit/Ehrenamt": "Sport, Kultur, Freizeitangebote, Ehrenamt",
 }
 
-# Each axis in its own bipolar language, never a generic left/right label.
-# The signs must match the app's questionnaire (value_profile_screen.dart:
-# left statement = -2, right = +2), or alignment silently inverts.
-AXIS_LANGUAGE: dict[str, str] = {
-    "tradition_progress": "-1 = Bewahrung/Tradition ... +1 = Reform/Wandel",
-    "equality_markets": (
-        "-1 = Umverteilung/Sozialstaat ... +1 = freier Markt/Privatisierung"
+# The questionnaire's statement pairs, keyed and ordered like the app's
+# `werteQuestionKeys`, word for word: (left, right). In the app the left
+# statement is -2 and the right one +2, so an opportunity's werte_relevanz
+# value is -1 where people agreeing with the left statement support it and
+# +1 where those agreeing with the right one do.
+WERTE_AUSSAGEN: dict[str, tuple[str, str]] = {
+    "wirtschaft_gleichheit": (
+        "Der Staat sollte große Vermögen und Einkommen stärker ausgleichen.",
+        "Wer Leistung bringt, sollte davon profitieren, mit möglichst wenig "
+        "staatlichem Eingriff.",
     ),
-    "liberty_authority": (
-        "-1 = individuelle Freiheit/Bürgerrechte ... "
-        "+1 = staatliche Kontrolle/Sicherheit"
+    "wirtschaft_staat": (
+        "Der Staat muss Märkte regulieren und wichtige Bereiche selbst kontrollieren.",
+        "Privatwirtschaft und Wettbewerb lösen Probleme besser als der Staat.",
     ),
-    "nation_globe": "-1 = nationaler Fokus ... +1 = international/multilateral",
+    "diplomatie_nation": (
+        "Deutschland sollte seine eigenen Interessen klar vertreten, auch wenn "
+        "das Partner vor den Kopf stößt.",
+        "Globale Probleme lassen sich nur gemeinsam lösen. Nationale "
+        "Alleingänge bringen nichts.",
+    ),
+    "diplomatie_welt": (
+        "Deutschland sollte außenpolitisch unabhängiger werden und weniger "
+        "Verpflichtungen eingehen.",
+        "Deutschland muss mehr globale Verantwortung übernehmen, auch wenn das kostet.",
+    ),
+    "freiheit_staat": (
+        "Der Staat soll so wenig wie möglich in das Leben der Menschen eingreifen.",
+        "Mehr staatliche Regeln und Kontrolle sind nötig, um Sicherheit und "
+        "Zusammenhalt zu gewährleisten.",
+    ),
+    "freiheit_sicherheit": (
+        "Im Zweifel sind Bürgerrechte wichtiger als staatliche Sicherheitsinteressen.",
+        "Im Zweifel ist Sicherheit wichtiger als individuelle Freiheiten.",
+    ),
+    "wandel_tradition": (
+        "Gesellschaftliche Strukturen, die sich bewährt haben, sollten erhalten "
+        "bleiben.",
+        "Die Gesellschaft muss sich mutig weiterentwickeln, auch wenn das "
+        "unbequem ist.",
+    ),
+    "wandel_zukunft": (
+        "Wir fordern zu viel von der heutigen Generation für Probleme, die erst "
+        "in der Zukunft spürbar werden.",
+        "Ich bin bereit, heute auf Komfort zu verzichten, damit zukünftige "
+        "Generationen es besser haben.",
+    ),
+}
+
+# Budget areas of the Stadthaushalt step: id -> label. They map onto the
+# Produktbereiche every German municipal budget uses, so they fit any city.
+GELD_BEREICHE: dict[str, str] = {
+    "kinder_bildung": "Kitas & Schulen",
+    "soziales": "Soziales, Pflege & Gesundheit",
+    "oepnv_rad": "Bus, Bahn & Rad",
+    "strassen": "Straßen & Brücken",
+    "kultur": "Kultur",
+    "sport_freizeit": "Sport, Bäder & Freizeit",
+    "sicherheit": "Sicherheit & Ordnung",
+    "gruen_klima": "Grün, Umwelt & Klima",
 }
 
 # tag -> Betroffenheitsprofil "field:value" keys that get a personal snippet

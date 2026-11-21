@@ -17,7 +17,7 @@ _REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_REPO / "backend" / "src"))
 
 from meinimpact.infrastructure.ai.lebenslagen import AREAS, LEBENSLAGEN  # noqa: E402
-from meinimpact.infrastructure.ai.taxonomy import TAG_AXES  # noqa: E402
+from meinimpact.infrastructure.ai.taxonomy import TAGS  # noqa: E402
 
 _TARGET = (
     _REPO
@@ -73,7 +73,7 @@ def render_tags() -> str:
         "",
         "/// The fixed topic tags enrichment files opportunities under.",
         "const kTopicTags = <String>[",
-        *(f"  {_dart(tag)}," for tag in TAG_AXES),
+        *(f"  {_dart(tag)}," for tag in TAGS),
         "];",
         "",
     ]
@@ -84,4 +84,4 @@ if __name__ == "__main__":
     _TARGET.write_text(render(), encoding="utf-8")
     print(f"{len(LEBENSLAGEN)} Lebenslagen -> {_TARGET}")
     _TAGS_TARGET.write_text(render_tags(), encoding="utf-8")
-    print(f"{len(TAG_AXES)} topic tags -> {_TAGS_TARGET}")
+    print(f"{len(TAGS)} topic tags -> {_TAGS_TARGET}")

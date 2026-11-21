@@ -67,20 +67,21 @@ Value `-1` = whoever agrees with the LEFT statement is FOR the card,
 `+1` = whoever agrees with the RIGHT statement is FOR it (left = -2 in the
 app, so the signs line up). Empty when no statement directly decides it.
 
-Prompt part (German, as tested in the probe, plus the direction fix):
+Built as enrichment 13 (`listing_enricher.py`). The model first writes
+"dafuer" (what supporters want, one sentence) and "streit"/"einig" (both
+thinking steps, not stored), then per statement pair a short "warum" (who
+would support the dafuer sentence) and "dafuer_ist": "links" | "rechts".
 
-```
-1. "dafuer": Wofür ist, wer hier mitmacht und DAFÜR ist? Ein Satz.
-2. "streit": "streit" oder "einig" (nur Denkschritt, wird nicht gespeichert).
-3. "aussagen": Welche Aussagenpaare sagen DIREKT voraus, ob jemand dafür
-   oder dagegen ist? Nur wenn die Aussage den Kern trifft. Für jedes Paar:
-   "Wer der LINKEN Aussage zustimmt, ist bei dem Satz aus 1. eher dafür
-   oder dagegen?" Höchstens 2, meistens keins.
-```
-
-The "dafuer" sentence is asked first so the model judges the side against
-it; that targets the three "stop X" errors. Re-run the probe before deploy
-and compare.
+Probe 2026-11-21 on the 133 live cards:
+- Capitalised emphasis made no measurable difference (122/133 identical
+  statements, the same spread as two identical runs), so the prompt is
+  written in normal case.
+- Asking "is whoever agrees with the left statement for or against?" gave
+  wrong sides on ~10 of 38 cards (double negation). Asking who supports
+  the dafuer sentence ("links"/"rechts", reason first) left 3 of 36, all
+  energy-vs-nature or similar edge cases.
+- Statements on Bund 20/37, EU 7/23, Sachsen 5/14, Dresden 4/59; `geld`
+  on Dresden 38/59.
 
 ### 1b. `geld` (new, JSONB)
 
