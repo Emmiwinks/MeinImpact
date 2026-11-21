@@ -146,7 +146,7 @@ public launch.
 | Service | Purpose | User data | Region |
 |---|---|---|---|
 | Fly.io | Backend hosting, logs | IP, requests in transit | EU (fra) |
-| Supabase | PostgreSQL | anonymous tables only | region to verify in the dashboard (host name does not show it) |
+| Supabase | PostgreSQL | anonymous tables only | EU (Frankfurt) |
 | Mistral AI | Enrichment (public texts); letter drafts | letter notes; kept 30 days for abuse monitoring unless zero data retention is on | EU |
 | Tavily | Impact news search | none (queries from public opportunity titles) | USA (AlphaAI Technologies Inc.) |
 | Registries, OParl, Wikidata, Bundestag data | Reading public data | none (outbound only) | — |
@@ -177,9 +177,9 @@ For every new feature:
   requested from Mistral support and covers stateless calls. Request it.
   Until then the consent text says "we do not store it", not "nobody
   stores it", and the policy names the 30 days.
-- Supabase region: check in the dashboard (earlier plan said Frankfurt).
 - Tavily sits in the USA. It only gets queries built from public
-  opportunity titles, never user data; keep it that way.
+  opportunity titles, never user data, so it is not a processor of user
+  data and needs no mention in the privacy policy. Keep it that way.
 - "Alle Daten löschen" in the profile.
 - Legacy tables from removed endpoints (`civic_actions`, `action_stats`,
   `tracking_events`, `mdb_statements`, `push_subscriptions`, `feedback`,
