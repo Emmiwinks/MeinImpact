@@ -1,264 +1,195 @@
 # GDPR Architecture
 
 ## Purpose
-Defines how MeinImpact achieves and maintains GDPR compliance. All features
-that handle any form of user data must reference this document before
-implementation.
+Defines how MeinImpact handles user data and stays GDPR compliant. Every
+feature that touches user data checks this document first. Rewritten
+2026-11-21 against the actual app and backend; the earlier version
+described a planned architecture (Hive, push, Sentry, accounts) that was
+never built this way.
+
+---
+
+## Principle
+
+**As little as possible leaves the phone.** The app ranks, learns and
+remembers on the device. The server only serves public opportunities and
+does the few things the device cannot: locating a PLZ, drafting a letter,
+and anonymous counts.
 
 ---
 
 ## Decisions
 
-- **Political profile data is GDPR Art. 9 special category data.** Value
-  scores, topic selections, whitelist, blacklist, and any derived political
-  inference are subject to the highest protection level. They are never
-  transmitted to the backend under any circumstances in MVP.
-
-- **The backend never processes Art. 9 data.** If a future feature requires
-  the backend to receive profile data, it must implement E2E encryption (V2
-  architecture) so the backend stores only an opaque blob it cannot read.
-  This requires a written architecture decision record before implementation.
-
-- **Data minimisation is enforced at design time.** Every API endpoint and
-  database table is designed with the minimum viable data set. No field is
-  added without a documented purpose and retention rule.
-
-- **All server-side data is anonymous or pseudonymous.** No data point stored
-  on the backend can be linked to a real person without the device it
-  originated from. Beta tokens and push tokens are random UUIDs with no
-  identity attached.
-
-- **Fly.io EU region is mandatory.** All backend infrastructure runs in the
-  EU. Data never transits to non-EU regions. This applies to the database
-  (Supabase Frankfurt), the backend (Fly.io Frankfurt), and any managed services used.
-
-- **Third-party AI providers receive no personal data.** Mistral API calls
-  contain only action text and anonymous context. Personal identity values
-  are replaced with placeholders before any text leaves the device.
-
-- **Users have full control over local data.** The app provides a visible
-  option to delete all local data (profile, gamification, settings, cache)
-  at any time without requiring an account or internet connection.
-
-- **AI-generated content is disclosed without undermining trust.** Letters
-  are framed as "pre-drafted based on your profile" rather than labelled
-  "AI-generated". Legal compliance with the EU AI Act is met via AGB
-  disclosure and a one-time onboarding acknowledgement.
+- **Political data is Art. 9 data.** Values, Lebenslagen, learned topic
+  weights, budget priorities, stance choices and the action log can reveal
+  political opinions. They stay on the device and are never sent.
+- **One exception, by the user's own act: the letter.** What the user types
+  under "Was ist dir wichtig?" goes with the opportunity id to the backend
+  and on to Mistral to draft the letter. It often contains a political
+  opinion, so it is covered by explicit consent (Art. 9(2)(a)). It is not
+  stored by us.
+- **Stance chips (dafür/dagegen) stay on the device** and only feed the
+  user's own ranking. Server-side feedback for improvement is planned and
+  needs its own design here first.
+- **Anything stored on the server is anonymous:** no account, no
+  identifier, no link to a person or device.
+- **Personal data never goes into URLs.** PLZ, opportunity ids of tracked
+  actions and letter notes travel in request bodies, so access logs never
+  show them. Only the 5-digit Kreis key appears in a query string. The
+  access log also skips `/v1/opportunities/tracked` and the removed
+  `/v1/mdb`, which old app versions still call with the PLZ in the URL.
+- **Endpoints the app does not use are removed**, not left running
+  (2026-11-21: actions, push, feedback, beta, news, mdb).
+- **EU only.** Backend on Fly.io Frankfurt, LLM at Mistral (EU).
 
 ---
 
-## Data Classification
+## What happens to which data
 
-### Category A: Art. 9 Special Category (Device only, never transmitted)
+### On the device only (FlutterSecureStorage)
 
-Political beliefs and any data that could reconstruct them.
+| Data | Store |
+|---|---|
+| Werte answers (8 values, -2..2) | `user_profile_store` |
+| PLZ, Kreis, Wahlkreis, chosen MdB | `user_profile_store` |
+| Lebenslagen, Betroffenheit fields | `user_profile_store` |
+| Learned topic weights | `user_profile_store` |
+| Budget priorities (planned) | `user_profile_store` |
+| Stance chips (planned) | device |
+| Actions done / starred, streak, badges | `action_log_store`, `starred_actions_store` |
+| Notification state | `notification_store` |
+| Usage activity markers | `usage` |
+| Installation id (random UUID), session tokens | `installation_id_store`, `token_store` |
 
-| Data | Storage | Retention |
-|---|---|---|
-| Value scores (8 integers) | Hive `profile` | Until user deletes locally |
-| Topic selections | Hive `profile` | Until user deletes locally |
-| Whitelist / blacklist | Hive `profile` | Until user deletes locally |
-| Completed action history | Hive `gamification` | Until user deletes locally |
+### Sent, not stored (transient)
 
-### Category B: Anonymous Operational Data (Backend, no identity link)
-
-| Data | Storage | Retention | Purpose |
+| Data | Endpoint | When | Who sees it |
 |---|---|---|---|
-| Beta token (UUID) | PostgreSQL `beta_tokens` | Duration of beta | Access control |
-| Push token (device-issued) | PostgreSQL `push_subscriptions` | Until unsubscribed | Notifications |
-| Action completion count | PostgreSQL `action_stats` | Indefinite | Impact display |
-| Feedback rating + comment | PostgreSQL `feedback` | 12 months | Quality assurance |
-| API spend per day | PostgreSQL `api_spend` | 24 months | Cost monitoring |
-| Tracking events | PostgreSQL `tracking_events` | Indefinite | Civic impact data |
+| Installation id + app version | `POST /v1/auth/anonymous-session` | session start/renewal | backend; carried inside the signed token, no table |
+| PLZ | `POST /v1/location` (body) | once when entered | backend; answers Kreis, point, Wahlkreise |
+| Kreis key | `GET /v1/opportunities/pool?kreis=` | feed load | backend, access log |
+| Opportunity id + letter notes | `POST /v1/letters/stream` (body) | user drafts a letter | backend, Mistral |
+| Opportunity id | `POST /v1/opportunities/tracked` (body) | first "Fertig" on a card | backend; only a date is kept (below) |
 
-### Category C: Personal Identity (Device only, never transmitted)
+### Stored on the server, anonymous
 
-| Data | Storage | Retention |
-|---|---|---|
-| Full name | Hive `profile` (optional) | Until user deletes |
-| Address | Hive `profile` (optional) | Until user deletes |
-| City | Hive `profile` (optional) | Until user deletes |
-
-Category C values are inserted as placeholders `{{USER_FULL_NAME}}`,
-`{{USER_ADDRESS}}`, `{{USER_CITY}}` when generating letters. Replacement
-with real values happens on-device immediately before the user sends.
-The backend and Mistral never see the real values.
-
-### Category D: Demographic Context (Transient, device-originated, not stored)
-
-Life situation fields that are sent to the backend in context and letter
-generation requests. They are NOT Art. 9 data (no political belief content).
-They are processed transiently: passed to Mistral for generation and
-immediately discarded. Never written to the database. Never written to logs.
-
-| Data | Storage on Device | Transmitted to Backend | Stored on Backend |
+| Data | Table | Retention | Purpose |
 |---|---|---|---|
-| PLZ (full) | Hive `profile` | MdB lookup only | ❌ Not stored |
-| PLZ prefix (2 digits) | Derived locally | Context + letter flows | ❌ Not stored |
-| Lebenssituation | Hive `profile` | Context + letter flows | ❌ Not stored |
-| Beruflicher Sektor | Hive `profile` | Context + letter flows | ❌ Not stored |
-| Wohnsituation | Hive `profile` | Context + letter flows | ❌ Not stored |
+| Usage counts per event and Berlin day (name only) | `usage_counts` | indefinite | /admin dashboard |
+| Day an opportunity was first marked done (no count, no device) | `opportunities.tracked_since` | while the row exists | decides what Mein Impact follows |
 
-Backend log configuration must exclude request bodies for the
-`/actions/{id}/context` and `/letters/stream` endpoints. This must be
-verified before production launch. See `technical/monitoring.md`.
+### Logs
 
----
+Fly.io keeps platform logs including access lines (client IP, method,
+path incl. the Kreis query, status). Request bodies are not logged; no
+handler logs request content. Fly's log search currently keeps logs for
+7 days (Fly docs, checked 2026-11-21). IP addresses are personal data:
+retention and purpose (operation, abuse) belong in the privacy policy.
 
-## Legal Basis for Processing
+### Leaving the app
 
-| Data | Legal Basis | GDPR Article |
-|---|---|---|
-| Category A (profile) | Explicit consent at onboarding | Art. 9(2)(a) |
-| Category B (operational) | Legitimate interest (service operation) | Art. 6(1)(f) |
-| Category C (identity) | Explicit consent at point of use | Art. 6(1)(a) |
-| Category D (demographic, transient) | Explicit consent at onboarding | Art. 6(1)(a) |
-| Push token | Explicit opt-in within app | Art. 6(1)(a) |
+The in-app browser opens registries and petition platforms; their own
+privacy policies apply there. Letters are sent from the user's own mail
+app; the app only hands over the text and recipients.
 
 ---
 
-## Consent Architecture
+## Legal basis
 
-### Onboarding consent (mandatory, blocking)
-Before the profile wizard begins, the user must confirm:
-
-1. Age confirmation: "I confirm I am at least 18 years old."
-2. Profile consent: "My political profile stays on my device. I consent to
-   MeinImpact storing an anonymous access token on a server in the EU.
-   If I provide life situation details (profession, family situation),
-   these are sent to the AI for personalisation and immediately discarded."
-3. AI disclosure: "Action recommendations and letter drafts are pre-drafted
-   by AI based on my profile. I review and send them myself."
-
-All three must be confirmed. The app does not proceed until all are accepted.
-Consent is recorded locally in `meta.consents_confirmed = true`.
-
-### Push notification consent (optional, separate)
-Requested only after the user completes their first action. A separate
-system permission dialog follows app-level confirmation. Stored locally
-in `settings.notifications_enabled`.
-
-### Identity placeholder consent (optional, at point of use)
-When the user first adds their name or address for letter pre-filling,
-a one-sentence notice: "This stays on your device and is never sent to us."
+| Processing | Basis |
+|---|---|
+| Letter notes to backend and Mistral | Explicit consent, Art. 9(2)(a) |
+| PLZ lookup, Kreis for the feed, anonymous session | Use of the requested service, Art. 6(1)(b) |
+| Anonymous usage counts, tracked date | No personal data stored |
+| Access logs (IP) | Legitimate interest in operation and security, Art. 6(1)(f) |
+| Device storage | Strictly necessary for the requested service (§ 25(2) TDDDG) |
 
 ---
 
-## User Rights Implementation
+## Consent (onboarding)
 
-### Right to access (Art. 15)
-- **Local data**: Settings → Profile → "Show my data" exports all Hive
-  boxes as a human-readable JSON file. No network request required.
-- **Server data**: The backend holds no data linked to the user. The
-  privacy policy states this explicitly. No server-side export endpoint
-  is required.
+One screen after the intro, before the Werte questions. Blocking; the
+"Beispielprofil" path passes through it too.
 
-### Right to erasure (Art. 17)
-- **Local data**: Settings → "Delete all my data" wipes all Hive boxes
-  and unregisters the push token. Confirmed with a single tap.
-- **Server data**: Unregistering push token deletes the push_subscription
-  row. Beta token row is not deleted (it is anonymous; deletion would
-  allow reuse of the invite slot — acceptable trade-off documented here).
+1. Short plain-language summary on the screen itself (explicit consent
+   needs the key facts visible, not only behind a link):
+   - Werte, Lebenslage and priorities stay on the phone.
+   - For a letter, the user's text goes briefly to an AI in the EU that
+     drafts it; we do not store it.
+2. Link to the full policy, as a joke: "Und hier das rechtssichere
+   Bla-bla zum Gegenlesen."
+3. Age confirmation checkbox: at least 16 (GDPR consent age in
+   Germany, decided 2026-11-21).
+4. Button "Einverstanden".
 
-### Right to data portability (Art. 20)
-- Covered by the same JSON export as Right to Access. File is
-  machine-readable and can be imported into a new device.
+Recorded on the device only. The full policy is also reachable from the
+profile at any time (Google Play expects an in-app link).
 
-### Right to withdraw consent (Art. 7(3))
-- Profile consent: deleting local data constitutes withdrawal.
-- Push consent: Settings → Notifications → Off unregisters the token
-  and deletes the push_subscription row immediately.
+Wording is drafted with the onboarding sketches; legal review before the
+public launch.
 
 ---
 
-## Third-Party Data Processors
+## User rights
 
-All processors are GDPR-compliant and operate under a Data Processing
-Agreement (DPA).
+- **Access / portability:** all personal data is on the device. The
+  server holds nothing linked to a person, so there is nothing to export
+  there.
+- **Erasure:** uninstalling the app deletes everything. An in-app
+  "Alle Daten löschen" does not exist yet (open).
+- **Withdraw consent:** stop drafting letters; uninstall or delete data.
 
-| Processor | Purpose | Data shared | Region |
+---
+
+## Processors and outbound services
+
+| Service | Purpose | User data | Region |
 |---|---|---|---|
-| Fly.io | Backend hosting | Anonymous operational data | EU (Frankfurt) |
-| Supabase | PostgreSQL hosting | Anonymous operational data | EU (Frankfurt) |
-| Mistral AI | Letter + classification | Action text, no personal data | EU |
-| Tavily | Web search | Action title/query, no personal data | EU |
-| NewsData.io | News feed | No user data (outbound query only) | EU |
-| FCM (Google) | Push notifications | Anonymous push token | EU servers configurable |
-| APNS (Apple) | Push notifications | Anonymous push token | Apple EU servers |
-| Sentry | Error tracking | Stack traces, no user data | EU |
+| Fly.io | Backend hosting, logs | IP, requests in transit | EU (fra) |
+| Supabase | PostgreSQL | anonymous tables only | region to verify in the dashboard (host name does not show it) |
+| Mistral AI | Enrichment (public texts); letter drafts | letter notes; kept 30 days for abuse monitoring unless zero data retention is on | EU |
+| Tavily | Impact news search | none (queries from public opportunity titles) | USA (AlphaAI Technologies Inc.) |
+| Registries, OParl, Wikidata, Bundestag data | Reading public data | none (outbound only) | — |
+| Google Play | Distribution | per Google | — |
 
-DPAs must be signed with each processor before production launch.
+DPAs (AVV) with Fly.io, Supabase and Mistral before the public launch.
 
 ---
 
-## AI Act Compliance (EU AI Act, effective August 2026)
+## Privacy by design checklist
 
-MeinImpact uses AI for:
-1. **Action classification** (backend, not user-facing) — no disclosure required
-2. **"What this means for you" context** (user-facing) — disclosed in onboarding
-3. **Letter pre-drafting** (user-facing) — disclosed in onboarding + framed as
-   "pre-drafted based on your profile" in UI
+For every new feature:
 
-The onboarding consent (point 3 above) covers both user-facing AI uses.
-No per-generation label is required after onboarding consent is given,
-provided the framing "pre-drafted" is consistently used in the UI.
-
-MeinImpact does not use AI for consequential decisions about individuals
-(no credit scoring, no profiling for third parties) and therefore falls
-outside the high-risk AI system category.
+- [ ] Does it send anything from the on-device profile? Then it needs a
+      section here and, for political data, explicit consent.
+- [ ] Does it put user data in a URL? Move it to the body.
+- [ ] Does it store something on the server? It must be anonymous; add it
+      to the table above with purpose and retention.
+- [ ] Does it call an outside service with user content? Add it to the
+      processors table.
 
 ---
 
-## Privacy by Design Checklist
+## Open questions
 
-Applied to every new feature before implementation:
-
-- [ ] Does this feature transmit any Category A data? If yes: blocked until
-      E2E encryption (V2) is implemented.
-- [ ] Does this feature add a new data point to the backend? If yes: document
-      purpose, legal basis, and retention rule here before writing code.
-- [ ] Does this feature call a third-party API with user context? If yes:
-      verify no personal data is included; use placeholders if needed.
-- [ ] Does this feature show user-facing AI output? If yes: use "pre-drafted"
-      framing, not "AI-generated".
-- [ ] Does this feature require a new consent? If yes: add it to the onboarding
-      consent flow or obtain it at point of use.
-
----
-
-## Impressum and Legal Entity
-
-- Current: Sole trader / GbR — virtual office address (e.g. Clevver),
-  not private home address.
-- Target before first public launch: gGmbH with registered office address.
-- Datenschutzbeauftragter: not required below 20 employees processing
-  personal data regularly. Reassess at scale.
-
----
-
-## Data Breach Response
-
-In the event of a backend data breach:
-- Exposed data is anonymous (beta tokens, push tokens, action counters).
-- No personal data or political profiles are exposed because none are stored.
-- Notification to supervisory authority (BfDI) within 72 hours if the breach
-  poses a risk to rights and freedoms — low likelihood given data anonymity.
-- User notification: not required unless risk to individuals is established.
-
----
+- Mistral keeps API inputs and outputs for 30 rolling days for abuse
+  monitoring unless zero data retention (ZDR) is activated; ZDR is
+  requested from Mistral support and covers stateless calls. Request it.
+  Until then the consent text says "we do not store it", not "nobody
+  stores it", and the policy names the 30 days.
+- Supabase region: check in the dashboard (earlier plan said Frankfurt).
+- Tavily sits in the USA. It only gets queries built from public
+  opportunity titles, never user data; keep it that way.
+- "Alle Daten löschen" in the profile.
+- Legacy tables from removed endpoints (`civic_actions`, `action_stats`,
+  `tracking_events`, `mdb_statements`, `push_subscriptions`, `feedback`,
+  `beta_tokens`) still exist in the database; drop them in a migration.
+  `news_items` stays on purpose (shelved media pipeline).
+- Server-side feedback on stance/ranking: design before building.
+- Impressum and legal entity: unchanged from the earlier plan (sole
+  trader/GbR now, gGmbH before public launch); confirm.
 
 ## Dependencies
 
-- Reads: `architecture/overview.md`
-- Referenced by: `user/authentication.md`, `user/value-profile.md`,
-  `user/general-profile.md`, `features/letter-generation.md`,
-  `technical/api-endpoints.md`
-
----
-
-## Open Questions
-
-- [ ] DPA with FCM/Google: confirm EU server routing is enforceable
-      before push notifications go to production.
-- [ ] Sentry configuration: verify no device identifiers are captured
-      in error payloads before production launch.
+- Referenced by: `user/values-and-priorities.md`, `user/onboarding.md`,
+  `features/letter-generation.md`, `technical/api-endpoints.md`

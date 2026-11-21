@@ -11,19 +11,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from meinimpact.api.dependencies import get_database
 from meinimpact.api.routes import (
-    actions,
     admin,
     admin_portal,
     auth,
-    beta,
-    feedback,
     health,
     letters,
     location,
-    mdb,
-    news,
     opportunities,
-    push,
     usage,
 )
 from meinimpact.core.config import Settings, get_settings
@@ -38,8 +32,9 @@ from meinimpact.services.ingestion_runs import IngestionRuns, run_scheduler
 logger = logging.getLogger(__name__)
 
 # Requests the access log must never show, so no log line ties a caller's
-# address to having done an action, or to their PLZ (old app versions send
-# it in the URL of /v1/mdb).
+# address to having done an action. Also /v1/mdb: the route is gone, but old
+# app versions still call it with their PLZ in the URL, and the 404 would
+# otherwise be logged with it.
 _UNLOGGED_PATHS = frozenset({"/v1/opportunities/tracked", "/v1/mdb"})
 
 
@@ -67,7 +62,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         await wks.load()
         if not wks.is_healthy:
             logger.critical(
-                "WKS SERVICE DID NOT LOAD — /v1/mdb will return 503. Error: %s",
+                "WKS SERVICE DID NOT LOAD — /v1/location returns no Wahlkreise. "
+                "Error: %s",
                 wks.load_error,
             )
         app.state.wks_service = wks
@@ -124,16 +120,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.include_router(health.router)
     app.include_router(auth.router)
-    app.include_router(actions.router)
     app.include_router(opportunities.public_router)
     app.include_router(opportunities.router)
     app.include_router(letters.router)
-    app.include_router(mdb.router)
     app.include_router(location.router)
-    app.include_router(news.router)
-    app.include_router(push.router)
-    app.include_router(feedback.router)
-    app.include_router(beta.router)
     app.include_router(usage.router)
     app.include_router(admin.router)
     app.include_router(admin_portal.router)

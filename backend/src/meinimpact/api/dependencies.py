@@ -9,52 +9,32 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from meinimpact.core.config import Settings, get_settings
 from meinimpact.domain import repositories
-from meinimpact.infrastructure.actions.postgres_action_repository import (
-    PostgresActionRepository,
-)
-from meinimpact.infrastructure.actions.postgres_stats_repository import (
-    PostgresActionStatsRepository,
-)
 from meinimpact.infrastructure.ai.base import AiTextGenerator
 from meinimpact.infrastructure.ai.dummy_generator import DummyTextGenerator
 from meinimpact.infrastructure.ai.mistral_client import MistralTextGenerator
-from meinimpact.infrastructure.beta.postgres_beta_repository import (
-    PostgresBetaTokenRepository,
-)
 from meinimpact.infrastructure.council.postgres_council_repository import (
     PostgresCouncilRepository,
 )
 from meinimpact.infrastructure.database import Database
-from meinimpact.infrastructure.feedback.postgres_feedback_repository import (
-    PostgresFeedbackRepository,
-)
 from meinimpact.infrastructure.geo.locality import LocalityResolver
 from meinimpact.infrastructure.geo.plz import PlzIndex
 from meinimpact.infrastructure.impact.postgres_news_repository import (
     PostgresImpactNewsRepository,
 )
 from meinimpact.infrastructure.listings.catalog import default_locality_resolver
-from meinimpact.infrastructure.news.dummy_news_repository import DummyNewsRepository
 from meinimpact.infrastructure.opportunities.postgres_opportunity_repository import (
     PostgresOpportunityRepository,
-)
-from meinimpact.infrastructure.push.postgres_push_repository import (
-    PostgresPushSubscriptionRepository,
 )
 from meinimpact.infrastructure.security.tokens import (
     Principal,
     TokenError,
     TokenService,
 )
-from meinimpact.infrastructure.tracking.postgres_tracking_repository import (
-    PostgresTrackingRepository,
-)
 from meinimpact.infrastructure.usage.postgres_usage_repository import (
     PostgresUsageRepository,
 )
 from meinimpact.services.draft_service import DraftService
 from meinimpact.services.ingestion_runs import IngestionRuns
-from meinimpact.services.recommendation_service import RecommendationService
 
 _bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -114,13 +94,6 @@ def get_ingestion_runs(
     return IngestionRuns(database, settings)
 
 
-def get_action_repository(
-    session: AsyncSession = Depends(get_db_session),
-) -> repositories.CivicActionRepository:
-    """Returns the PostgreSQL-backed civic action repository."""
-    return PostgresActionRepository(session)
-
-
 def get_opportunity_repository(
     session: AsyncSession = Depends(get_db_session),
 ) -> repositories.OpportunityRepository:
@@ -149,41 +122,6 @@ def get_usage_repository(
     return PostgresUsageRepository(session)
 
 
-def get_action_stats_repository(
-    session: AsyncSession = Depends(get_db_session),
-) -> repositories.ActionStatsRepository:
-    """Returns the PostgreSQL-backed action stats repository."""
-    return PostgresActionStatsRepository(session)
-
-
-def get_tracking_repository(
-    session: AsyncSession = Depends(get_db_session),
-) -> repositories.TrackingRepository:
-    """Returns the PostgreSQL-backed tracking repository."""
-    return PostgresTrackingRepository(session)
-
-
-def get_push_repository(
-    session: AsyncSession = Depends(get_db_session),
-) -> repositories.PushSubscriptionRepository:
-    """Returns the PostgreSQL-backed push subscription repository."""
-    return PostgresPushSubscriptionRepository(session)
-
-
-def get_feedback_repository(
-    session: AsyncSession = Depends(get_db_session),
-) -> repositories.FeedbackRepository:
-    """Returns the PostgreSQL-backed feedback repository."""
-    return PostgresFeedbackRepository(session)
-
-
-def get_beta_repository(
-    session: AsyncSession = Depends(get_db_session),
-) -> repositories.BetaTokenRepository:
-    """Returns the PostgreSQL-backed beta token repository."""
-    return PostgresBetaTokenRepository(session)
-
-
 @cache
 def get_plz_index() -> PlzIndex:
     """Returns the committed PLZ table, loaded on first use."""
@@ -196,11 +134,6 @@ def get_locality_resolver() -> LocalityResolver:
     return default_locality_resolver(get_plz_index())
 
 
-def get_news_repository() -> repositories.NewsRepository:
-    """Returns the current news repository."""
-    return DummyNewsRepository()
-
-
 def get_ai_generator(settings: Settings = Depends(get_settings)) -> AiTextGenerator:
     """Returns the configured AI text generator."""
     if settings.mistral_api_key:
@@ -210,15 +143,6 @@ def get_ai_generator(settings: Settings = Depends(get_settings)) -> AiTextGenera
             model=settings.mistral_model,
         )
     return DummyTextGenerator()
-
-
-def get_recommendation_service(
-    action_repository: repositories.CivicActionRepository = Depends(
-        get_action_repository
-    ),
-) -> RecommendationService:
-    """Returns the action recommendation service."""
-    return RecommendationService(action_repository)
 
 
 def get_draft_service(

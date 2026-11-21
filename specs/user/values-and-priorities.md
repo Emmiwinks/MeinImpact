@@ -118,8 +118,10 @@ section is usually inside that range still needs checking.
 | `sicherheit`     | Sicherheit & Ordnung          |
 | `gruen_klima`    | Grün, Umwelt & Klima          |
 
-Open: Wohnen as a ninth area (the city mostly regulates rather than
-pays, but Dresden does own housing).
+These 8 stay (decided 2026-11-21): no ninth area. "Kämmerer" is only the
+internal name; in the app there is no job title (Sachsen says
+Finanzbürgermeister), the step asks "Wohin mit dem Geld deiner Stadt?"
+and the result is "Dein Stadthaushalt".
 
 ### Interaction (concept, to be sketched with impeccable)
 
@@ -131,12 +133,23 @@ pays, but Dresden does own housing).
 - Optional reveal "So verteilt Dresden": needs the real shares from the
   Haushaltsplan. Only with sourced numbers, otherwise left out.
 
-### Placement (open question)
+### Placement (decided 2026-11-21)
 
-Not in onboarding (Werte and Rucksack are already two steps). Proposal: a
-special card in the Hand the first time a money card comes up ("Das ist
-eine Geldfrage. Willst du mal Kämmerer sein?"). Without priorities the
-signal is simply 0.
+A required onboarding step, no "Überspringen": in the beta everyone fills
+in everything, so the app needs no "what if it is missing" paths and every
+tester exercises the full ranking. The step carries one line: "Entscheide
+aus dem Bauch heraus. Du kannst deine Angaben jederzeit ändern." Changing
+later = "Neu verteilen" in the profile. The Werte questionnaire loses its
+"Überspringen" too and gets the same line; the start of onboarding says
+how long the whole thing takes (estimate ~3 minutes, to be measured).
+
+Intro (decided 2026-11-21): "Mitreden, wo es dich betrifft." + three
+plain items with small previews of the real elements (Deine Werte /
+Deine Lebenslage / Deine Prioritäten, each with one explaining line),
+button "Los geht's · ca. 3 Minuten", link "Nur mal reinschnuppern? Nimm
+das Beispielprofil." (example mode marked in the profile, with "Eigenes
+Profil anlegen"). No privacy line on the intro: each step says it where
+the data is entered, like PLZ and Lebenslagen already do.
 
 ### Storage
 
@@ -176,8 +189,11 @@ guessed. The old tie-break on `werteAlignment` goes away.
 - Two chips above "Was ist dir wichtig?": **Ich bin dafür / Ich bin
   dagegen**. Nothing is preselected. When the card's lean is clear
   (|lean| ≥ 0.3), the matching chip gets a small hint: "passt zu deinem
-  Wertebild" or "passt zu deinen Prioritäten". The chosen stance is sent
-  as `stance`; scores are not.
+  Wertebild" or "passt zu deinen Prioritäten". The chosen stance stays on
+  the device and only feeds the user's own ranking (decided 2026-11-21).
+  The letter takes its stance from the user's own notes, as today. Sending
+  feedback to the server for improvement is planned but needs its own
+  privacy design first.
 - **"+ Gegenvorschlag"** appears only on money cards when the chosen side
   spends money. A small sheet lists the 8 areas (the user's lowest
   priorities first, none preselected) plus "Eigene Idee" (150 characters).
@@ -210,9 +226,11 @@ neutral 0.5, and new fields are ignored.
 
 ## Open questions
 
-- Kämmerer placement: Hand card on the first money card, or elsewhere?
-- Wohnen as ninth area?
-- Is there a sourced split of Dresden's budget for "So verteilt Dresden"?
+- Real shares for "So verteilt <Stadt>": must scale to many cities.
+  Municipal budgets share the same Produktbereiche, so either the official
+  municipal accounts statistics (if broken down per city) or a one-off
+  Mistral extraction of each Haushaltsplan's Produktbereich overview,
+  checked by hand. Optional extra; the Kämmerer works without it.
 - Should the Gegenvorschlag area choice slowly adjust priorities, or do
   priorities change only through "Neu verteilen"? (Proposal: only
   explicitly, for v1.)
