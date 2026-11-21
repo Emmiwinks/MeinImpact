@@ -1,6 +1,8 @@
 """Turns a registry listing into what the app shows, and decides relevance.
 
-One LLM call per listing covers the first four points:
+One LLM call per listing covers the first four points (the questionnaire
+statements of point 3 get a second, short call for relevant listings, see
+`build_werte_prompt`):
 1. Is this a real way for citizens to influence a public decision, at a
    level the app covers? Registries also list property viewings, staff
    trainings, award ceremonies and highly technical EU acts (all seen
@@ -12,8 +14,8 @@ One LLM call per listing covers the first four points:
 3. Engaging, neutral plain-language framing, topic tags, pro/contra and
    personal-impact snippets. Which questionnaire statements directly
    predict support (werte_relevanz), which budget areas get more or less
-   money (geld), and why it is on the table now (anlass). The model first
-   says in one sentence what supporters want; the statements and the money
+   money (geld), and why it is on the table now (anlass). Both calls first
+   say in one sentence what supporters want; the statements and the money
    are judged against that sentence, which keeps "stop X" cards from
    flipping sides.
 4. A free-text topic label next to the fixed tags, so gaps in the taxonomy
@@ -56,10 +58,12 @@ from meinimpact.infrastructure.geo.districts import DistrictMatcher
 from meinimpact.infrastructure.geo.locality import Reach
 from meinimpact.infrastructure.listings.model import Listing, Region
 
-ENRICHMENT_VERSION = "13"
+ENRICHMENT_VERSION = "14"
 
 
 _MAX_DETAIL_CHARS = 4000
+# Registry text in the werte call, as in the probe that calibrated it
+_MAX_WERTE_TEXT_CHARS = 1500
 _MAX_ARGUMENTS = 3
 _MAX_PLACES = 3
 _MAX_AUSSAGEN = 2
@@ -139,10 +143,6 @@ def build_prompt(listing: Listing, detail: str | None) -> str:
         f"- {tag}" + (f" ({TAG_HINTS[tag]})" if tag in TAG_HINTS else "")
         for tag in TAGS
     )
-    aussagen_list = "\n".join(
-        f"{number}. LINKS: {left}\n   RECHTS: {right}"
-        for number, (left, right) in enumerate(WERTE_AUSSAGEN.values(), start=1)
-    )
     geld_list = "\n".join(f"- {area}: {label}" for area, label in GELD_BEREICHE.items())
     lebenslagen_list = "\n".join(
         f"- {item.id}: {item.label} ({item.area})" for item in LEBENSLAGEN
@@ -190,10 +190,6 @@ Eintrag unten und antworte NUR mit JSON in genau dieser Struktur:
   "lebenslagen": [{{"id": "<id>", "grund": "<was sich für sie ändert>"}}, ...],
   "lebenslage_frei": "<Gruppe oder leer>",
   "dafuer": "<ein Satz>",
-  "streit": "streit" | "einig",
-  "aussagen": [
-    {{"nr": <1-8>, "warum": "<halber Satz>", "dafuer_ist": "links" | "rechts"}}
-  ],
   "geld": [{{"bereich": "<id>", "richtung": "mehr" | "weniger"}}],
   "anlass": "<ein Satz oder leer>",
   "pro_argumente": ["<arg>", "<arg>"],
@@ -324,21 +320,6 @@ dafuer: Wofür ist, wer hier mitmacht und dafür ist? Ein Satz. Bei Petitionen
 das Anliegen, bei Ratsvorlagen und Konsultationen der Vorschlag selbst. Bei
 "Stoppt X" ist man dafür, dass X nicht passiert.
 
-streit: "streit", wenn Menschen mit unterschiedlichen politischen
-Grundüberzeugungen hier typischerweise verschieden entscheiden würden.
-"einig", wenn sich fast alle Betroffenen unabhängig von ihrer Weltanschauung
-einig wären (z.B. die eigene Kita, Bahnlinie oder das Bad erhalten) oder es
-vor allem um eigene Interessen geht.
-
-aussagen: Welche Aussagenpaare unten sagen direkt voraus, ob jemand für den
-Satz aus "dafuer" ist? Nur wenn die Aussage den Kern trifft, nicht wenn sie
-nur thematisch verwandt ist. Meistens passt keins, höchstens 2. Für jedes
-Paar: erst "warum" (wer würde den Satz aus "dafuer" unterstützen, und
-warum), dann "dafuer_ist": "links", wenn eher Menschen, die der linken
-Aussage zustimmen, den Satz aus "dafuer" unterstützen, sonst "rechts".
-Bei "einig" fast immer [].
-{aussagen_list}
-
 geld: Wenn passiert, wofür man laut "dafuer" ist: Bekommt ein Bereich
 öffentlicher Ausgaben dadurch klar mehr oder weniger Geld? Höchstens 2,
 [] wenn es nicht ums Geld geht oder es unklar ist.
@@ -350,8 +331,12 @@ weniger) -> kinder_bildung weniger.
 
 anlass: Warum steht das gerade an? Ein Satz, höchstens 140 Zeichen, nur
 wenn der Text einen Grund nennt (z.B. Sparzwang, weniger Kinder, ein
-Gerichtsurteil, eine auslaufende Förderung). Keine Zahlen, die nicht im
-Text stehen. Nicht die Zusammenfassung wiederholen. Sonst leer.
+Gerichtsurteil, eine auslaufende Förderung). Neutral wie title und summary:
+die Tatsache nennen, nicht die Bewertung der Initiatoren übernehmen (nicht
+"Drohende Kürzungen gefährden X", sondern "Der Haushaltsentwurf sieht
+Kürzungen bei X vor"). Ein Vorgang ist kein Grund: "Der Stadtrat
+entscheidet" oder "Der Entwurf liegt vor" -> leer. Keine Zahlen, die nicht
+im Text stehen. Nicht die Zusammenfassung wiederholen. Sonst leer.
 
 pro_argumente / contra_argumente: je 1-{_MAX_ARGUMENTS} sachliche Argumente,
 jedes ein kurzer Satz.
@@ -367,6 +352,58 @@ Eintrag:
 Weiterer Text von der Quelle:
 {detail_text}
 """
+
+
+def build_werte_prompt(listing: Listing, enrichment: Enrichment) -> str:
+    """The questionnaire statements get a call of their own: as one of ~20
+    tasks in the main prompt the model put "the state must regulate markets"
+    on almost every card (Bund 36/38, Dresden 26/60 in the first full run),
+    alone it stays selective (Bund 20/37, Dresden 4/59 on the same cards)."""
+    aussagen_list = "\n".join(
+        f"{number}. LINKS: {left}\n   RECHTS: {right}"
+        for number, (left, right) in enumerate(WERTE_AUSSAGEN.values(), start=1)
+    )
+    return f"""Du arbeitest für eine neutrale deutsche Civic-Tech-App. Bewerte die
+Beteiligungsmöglichkeit unten und antworte nur mit JSON in genau dieser Struktur:
+
+{{"dafuer": "<ein Satz>", "streit": "streit" | "einig",
+  "aussagen": [
+    {{"nr": <1-8>, "warum": "<halber Satz>", "dafuer_ist": "links" | "rechts"}}
+  ]}}
+
+dafuer: Wofür ist, wer hier mitmacht und dafür ist? Ein Satz. Bei Petitionen
+das Anliegen, bei Ratsvorlagen und Konsultationen der Vorschlag selbst. Bei
+"Stoppt X" ist man dafür, dass X nicht passiert.
+
+streit: "streit", wenn Menschen mit unterschiedlichen politischen
+Grundüberzeugungen hier typischerweise verschieden entscheiden würden.
+"einig", wenn sich fast alle Betroffenen unabhängig von ihrer Weltanschauung
+einig wären (z.B. die eigene Kita, Bahnlinie oder das Bad erhalten) oder es
+vor allem um eigene Interessen geht.
+
+aussagen: Welche Aussagenpaare unten sagen direkt voraus, ob jemand für den
+Satz aus "dafuer" ist? Nur wenn die Aussage den Kern trifft, nicht wenn sie
+nur thematisch verwandt ist. Meistens passt keins, höchstens 2. Für jedes
+Paar: erst "warum" (wer würde den Satz aus "dafuer" unterstützen, und
+warum), dann "dafuer_ist": "links", wenn eher Menschen, die der linken
+Aussage zustimmen, den Satz aus "dafuer" unterstützen, sonst "rechts".
+Bei "einig" fast immer [].
+{aussagen_list}
+
+Eintrag:
+Art: {listing.kind}
+Titel: {enrichment.title}
+Kurz: {enrichment.summary}
+Original: {listing.title}
+
+Weiterer Text von der Quelle:
+{(listing.summary or "")[:_MAX_WERTE_TEXT_CHARS] or "(kein Text)"}
+"""
+
+
+def parse_werte(raw: Mapping[str, Any]) -> dict[str, float]:
+    """The werte call's answer as questionnaire key -> -1 / +1."""
+    return _werte(raw.get("aussagen"))
 
 
 def parse_enrichment(raw: Mapping[str, Any]) -> Enrichment:
@@ -410,7 +447,6 @@ def parse_enrichment(raw: Mapping[str, Any]) -> Enrichment:
         lebenslagen=tuple(lebenslagen),
         lebenslagen_gruende=lebenslagen,
         lebenslage_frei=_text(raw.get("lebenslage_frei")),
-        werte_relevanz=_werte(raw.get("aussagen")),
         geld=_geld(raw.get("geld")),
         anlass=_text(raw.get("anlass"))[:_MAX_ANLASS_CHARS],
         pro_argumente=_strings(raw.get("pro_argumente"))[:_MAX_ARGUMENTS],
@@ -512,13 +548,20 @@ class ListingEnricher:
         to retry (the listing stays pending until enriched)."""
         raw = await self._completer.complete_json(build_prompt(listing, detail))
         enrichment = parse_enrichment(raw)
+        if not enrichment.is_relevant:
+            return enrichment
+
+        werte = await self._completer.complete_json(
+            build_werte_prompt(listing, enrichment)
+        )
+        enrichment = replace(enrichment, werte_relevanz=parse_werte(werte))
 
         matcher = (
             self._district_matchers.get(enrichment.region)
             if enrichment.region
             else None
         )
-        if matcher is None or not enrichment.is_relevant:
+        if matcher is None:
             return enrichment
         text = "\n".join(
             part for part in (listing.title, listing.summary, detail) if part

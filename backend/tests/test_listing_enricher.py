@@ -11,8 +11,10 @@ from meinimpact.infrastructure.ai.listing_enricher import (
     EnrichmentError,
     ListingEnricher,
     build_prompt,
+    build_werte_prompt,
     enrichment_input_hash,
     parse_enrichment,
+    parse_werte,
 )
 from meinimpact.infrastructure.ai.taxonomy import (
     CANDIDATE_TOPICS,
@@ -80,13 +82,23 @@ def test_prompt_lists_every_tag_and_candidate_topic() -> None:
         assert f"- {topic}" in prompt
 
 
-def test_prompt_lists_every_statement_pair_and_budget_area() -> None:
+def test_main_prompt_lists_every_budget_area_but_no_statements() -> None:
     prompt = build_prompt(make_listing(), None)
+
+    for area, label in GELD_BEREICHE.items():
+        assert f"- {area}: {label}" in prompt
+    assert "LINKS:" not in prompt
+
+
+def test_werte_prompt_lists_every_statement_pair_and_the_card() -> None:
+    enrichment = parse_enrichment(_relevant())
+
+    prompt = build_werte_prompt(make_listing("x", title="BP 3093"), enrichment)
 
     for number, (left, right) in enumerate(WERTE_AUSSAGEN.values(), start=1):
         assert f"{number}. LINKS: {left}\n   RECHTS: {right}" in prompt
-    for area, label in GELD_BEREICHE.items():
-        assert f"- {area}: {label}" in prompt
+    assert f"Titel: {enrichment.title}" in prompt
+    assert "Original: BP 3093" in prompt
 
 
 def test_taxonomy_tables_agree_with_each_other() -> None:
@@ -109,7 +121,7 @@ def test_relevant_listing_is_parsed() -> None:
     assert (enrichment.everyday_relevance, enrichment.accessibility) == (4, 5)
     assert enrichment.title.startswith("Soll am Alten")
     assert enrichment.affected_tags == ("Wohnen/Miete",)
-    assert enrichment.werte_relevanz == {"wandel_tradition": 1.0}
+    assert enrichment.werte_relevanz == {}  # from the werte call only
     assert enrichment.geld == (("strassen", 1),)
     assert enrichment.anlass == "Der alte Bahnhof liegt seit Jahren brach."
     assert enrichment.personal_impact_snippets == {
@@ -168,9 +180,9 @@ def test_tag_without_snippet_keys_gets_no_snippets() -> None:
 
 
 def test_statements_become_questionnaire_keys_with_the_supporters_side() -> None:
-    enrichment = parse_enrichment(
-        _relevant(
-            aussagen=[
+    werte = parse_werte(
+        {
+            "aussagen": [
                 {"nr": 1, "warum": "Umverteilung", "dafuer_ist": "links"},
                 {"nr": 1, "warum": "doppelt", "dafuer_ist": "rechts"},
                 {"nr": 9, "dafuer_ist": "links"},
@@ -181,18 +193,15 @@ def test_statements_become_questionnaire_keys_with_the_supporters_side() -> None
                 {"nr": 6, "warum": "Bürgerrechte", "dafuer_ist": "rechts"},
                 {"nr": 8, "warum": "zu viele", "dafuer_ist": "links"},
             ]
-        )
+        }
     )
 
-    assert enrichment.werte_relevanz == {
-        "wirtschaft_gleichheit": -1.0,
-        "freiheit_sicherheit": 1.0,
-    }
+    assert werte == {"wirtschaft_gleichheit": -1.0, "freiheit_sicherheit": 1.0}
 
 
 @pytest.mark.parametrize("aussagen", [[], None, "1 links", {"nr": 1}])
 def test_no_usable_statement_means_no_werte(aussagen: object) -> None:
-    assert parse_enrichment(_relevant(aussagen=aussagen)).werte_relevanz == {}
+    assert parse_werte({"aussagen": aussagen}) == {}
 
 
 def test_money_keeps_known_areas_with_a_direction() -> None:
@@ -375,6 +384,26 @@ async def test_no_districts_outside_cities_with_district_data() -> None:
     enrichment = await enricher.enrich(make_listing("x"), "Dresden-Plauen")
 
     assert enrichment.districts == ()
+
+
+async def test_relevant_listing_gets_its_werte_from_a_second_call() -> None:
+    completer = FakeCompleter(_relevant())
+
+    enrichment = await ListingEnricher(completer).enrich(make_listing("x"), None)
+
+    assert len(completer.prompts) == 2
+    assert "LINKS:" in completer.prompts[1]
+    assert enrichment.werte_relevanz == {"wandel_tradition": 1.0}
+    assert enrichment.geld == (("strassen", 1),)
+
+
+async def test_irrelevant_listing_costs_one_call() -> None:
+    completer = FakeCompleter({"is_participation": False, "reason": "Besichtigung"})
+
+    enrichment = await ListingEnricher(completer).enrich(make_listing("x"), None)
+
+    assert not enrichment.is_relevant
+    assert len(completer.prompts) == 1
 
 
 async def test_enricher_sends_the_prompt_and_parses_the_answer() -> None:
