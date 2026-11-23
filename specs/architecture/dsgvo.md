@@ -78,6 +78,25 @@ and anonymous counts.
 | Usage counts per event and Berlin day (name only) | `usage_counts` | indefinite | /admin dashboard |
 | Day an opportunity was first marked done (no count, no device) | `opportunities.tracked_since` | while the row exists | decides what Mein Impact follows |
 
+### Stored on the server, pseudonymous (beta feedback)
+
+Only what a tester actively sends. The tester is named by a 12-character
+keyed hash of the installation id (HMAC with a key derived from the
+server's JWT secret, `services/beta_feedback.py`): the same phone always
+gets the same name, so we can tell one tester saying something 30 times
+from 15 testers saying it once, but the name leads back to no id and no
+person. A reinstall starts a new name. Only the Berlin day is kept, no
+time. Never sent to an LLM.
+
+| Data | Table | Retention | Purpose |
+|---|---|---|---|
+| Card thrown away: opportunity id, reason, optional note (≤500), the ranker's score parts for that card (position, appeal, situation, interest, locality, Werte alignment; no profile fields), app version | `card_feedback` | 180 days (`feedback_retention_days`, daily cleanup) | recalibrate the ranking |
+| Free-text message: kind, text (≤2000), screen, app version, platform | `beta_feedback` | 180 days | fix bugs, collect ideas |
+
+The reason "Möchte ich nicht unterstützen" plus its note can reveal a
+political opinion about a concrete matter (Art. 9): covered by explicit
+consent, see below.
+
 ### Logs
 
 Fly.io keeps platform logs including access lines (client IP, method,
@@ -101,6 +120,7 @@ app; the app only hands over the text and recipients.
 | Letter notes to backend and Mistral | Explicit consent, Art. 9(2)(a) |
 | PLZ lookup, Kreis for the feed, anonymous session | Use of the requested service, Art. 6(1)(b) |
 | Anonymous usage counts, tracked date | No personal data stored |
+| Beta feedback (pseudonymous, may hold political opinions) | Explicit consent, Art. 9(2)(a); sending is voluntary each time |
 | Access logs (IP) | Legitimate interest in operation and security, Art. 6(1)(f) |
 | Device storage | Strictly necessary for the requested service (§ 25(2) TDDDG) |
 
@@ -116,6 +136,8 @@ One screen after the intro, before the Werte questions. Blocking; the
    - Werte, Lebenslage and priorities stay on the phone.
    - For a letter, the user's text goes briefly to an AI in the EU that
      drafts it; we do not store it.
+   - Feedback the user sends (why a card went away, messages) is stored
+     under a code name for 180 days. (Wording still to draft.)
 2. Link to the full policy, as a joke: "Und hier das rechtssichere
    Bla-bla zum Gegenlesen."
 3. Age confirmation checkbox: at least 16 (GDPR consent age in
@@ -132,11 +154,14 @@ public launch.
 
 ## User rights
 
-- **Access / portability:** all personal data is on the device. The
-  server holds nothing linked to a person, so there is nothing to export
-  there.
-- **Erasure:** uninstalling the app deletes everything. An in-app
-  "Alle Daten löschen" does not exist yet (open).
+- **Access / portability:** all personal data is on the device, apart
+  from beta feedback. The server cannot find a person's feedback from
+  their name or email; only the installation id leads to the code name,
+  and it lives on the phone.
+- **Erasure:** uninstalling the app deletes everything on the device;
+  feedback on the server is deleted after 180 days. An in-app
+  "Alle Daten löschen" does not exist yet (open; it could also delete
+  the tester's feedback by sending the installation id once).
 - **Withdraw consent:** stop drafting letters; uninstall or delete data.
 
 ---
@@ -182,10 +207,10 @@ For every new feature:
   data and needs no mention in the privacy policy. Keep it that way.
 - "Alle Daten löschen" in the profile.
 - Legacy tables from removed endpoints (`civic_actions`, `action_stats`,
-  `tracking_events`, `mdb_statements`, `push_subscriptions`, `feedback`,
+  `tracking_events`, `mdb_statements`, `push_subscriptions`,
   `beta_tokens`) still exist in the database; drop them in a migration.
-  `news_items` stays on purpose (shelved media pipeline).
-- Server-side feedback on stance/ranking: design before building.
+  `news_items` stays on purpose (shelved media pipeline). (`feedback` was
+  dropped in migration 0025.)
 - Impressum and legal entity: unchanged from the earlier plan (sole
   trader/GbR now, gGmbH before public launch); confirm.
 

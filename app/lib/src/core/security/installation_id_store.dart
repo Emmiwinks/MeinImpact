@@ -2,9 +2,10 @@ import 'dart:math';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-/// A random id per install, created on first start. The backend uses it only
-/// as the subject of the anonymous session token; it carries nothing about
-/// the person and is never linked to what they do in the app.
+/// A random id per install, created on first start. The backend uses it as
+/// the subject of the anonymous session token; it carries nothing about the
+/// person. Only beta feedback the user sends is kept under a code name
+/// derived from it (backend services/beta_feedback.py).
 class InstallationIdStore {
   const InstallationIdStore({FlutterSecureStorage? storage, Random? random})
       : _storage = storage ?? const FlutterSecureStorage(),

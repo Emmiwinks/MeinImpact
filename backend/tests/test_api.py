@@ -50,7 +50,6 @@ def test_legacy_routes_are_gone() -> None:
         ("GET", "/v1/actions/pool"),
         ("GET", "/v1/news"),
         ("POST", "/v1/push/register"),
-        ("POST", "/v1/feedback"),
         ("POST", "/v1/beta/activate"),
     ]:
         assert client.request(method, path).status_code == 404, path

@@ -14,6 +14,7 @@ from meinimpact.api.routes import (
     admin,
     admin_portal,
     auth,
+    feedback,
     health,
     letters,
     location,
@@ -26,6 +27,7 @@ from meinimpact.core.middleware import (
     SecurityHeadersMiddleware,
 )
 from meinimpact.infrastructure.mdb.wks_service import WksService
+from meinimpact.services.beta_feedback import run_feedback_cleanup
 from meinimpact.services.impact_news import run_news_scheduler
 from meinimpact.services.ingestion_runs import IngestionRuns, run_scheduler
 
@@ -91,9 +93,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 )
             )
 
+        # Deletes beta feedback past its retention, daily, on the machines
+        # that also ingest
+        feedback_cleanup: asyncio.Task[None] | None = None
+        if resolved_settings.ingestion_scheduler_enabled:
+            feedback_cleanup = asyncio.create_task(
+                run_feedback_cleanup(
+                    get_database(resolved_settings),
+                    resolved_settings,
+                    timedelta(days=1),
+                )
+            )
+
         yield
 
-        for task in (scheduler, news_scheduler):
+        for task in (scheduler, news_scheduler, feedback_cleanup):
             if task is not None:
                 task.cancel()
                 with suppress(asyncio.CancelledError):
@@ -125,6 +139,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(letters.router)
     app.include_router(location.router)
     app.include_router(usage.router)
+    app.include_router(feedback.router)
     app.include_router(admin.router)
     app.include_router(admin_portal.router)
     app.dependency_overrides[get_settings] = lambda: resolved_settings

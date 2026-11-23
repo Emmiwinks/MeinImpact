@@ -1,5 +1,5 @@
 """The /admin page: start ingestion, set its schedule, see past runs and the
-anonymous usage counters.
+anonymous usage counters. /admin/feedback shows the beta feedback.
 
 Server-rendered HTML without JavaScript. Login is one password
 (MEINIMPACT_ADMIN_PASSWORD); a correct one gets a signed session cookie that
@@ -7,9 +7,12 @@ is HttpOnly, SameSite=Strict (which also stops cross-site form posts) and
 scoped to /admin. Failed logins are throttled per client IP.
 """
 
+import csv
 import hashlib
+import io
 import secrets
 import time
+import uuid
 from collections import defaultdict, deque
 from datetime import UTC, date, datetime, timedelta
 from html import escape
@@ -21,8 +24,19 @@ import jwt
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
-from meinimpact.api.dependencies import get_ingestion_runs, get_usage_repository
+from meinimpact.api.dependencies import (
+    get_feedback_repository,
+    get_ingestion_runs,
+    get_usage_repository,
+)
 from meinimpact.core.config import Settings, get_settings
+from meinimpact.infrastructure.feedback.postgres_feedback_repository import (
+    CardNote,
+    DismissedCard,
+    PostgresFeedbackRepository,
+    ReasonCounts,
+    StoredMessage,
+)
 from meinimpact.infrastructure.pipeline.run_repository import RunRecord, Schedule
 from meinimpact.infrastructure.usage.postgres_usage_repository import (
     PostgresUsageRepository,
@@ -164,6 +178,68 @@ async def save_schedule(
     return _redirect("/admin?notice=saved")
 
 
+@router.get("/feedback")
+async def feedback_page(
+    request: Request,
+    settings: Settings = Depends(get_settings),
+    feedback: PostgresFeedbackRepository = Depends(get_feedback_repository),
+) -> Response:
+    if not _signed_in(request, settings):
+        return _redirect("/admin/login")
+    since = datetime.now(_BERLIN).date() - timedelta(days=_FEEDBACK_DAYS - 1)
+    return _page(
+        "Feedback",
+        _feedback_body(
+            await feedback.reason_counts(since),
+            await feedback.most_dismissed(since, limit=20),
+            await feedback.card_notes(limit=50),
+            await feedback.messages(limit=100),
+        ),
+    )
+
+
+@router.post("/feedback/{message_id}/handled")
+async def mark_handled(
+    message_id: uuid.UUID,
+    request: Request,
+    settings: Settings = Depends(get_settings),
+    feedback: PostgresFeedbackRepository = Depends(get_feedback_repository),
+) -> Response:
+    if not _signed_in(request, settings):
+        return _redirect("/admin/login")
+    form = await _form(request)
+    await feedback.set_handled(message_id, form.get("handled") == "on")
+    await feedback.commit()
+    return _redirect("/admin/feedback#nachrichten")
+
+
+@router.get("/feedback.csv")
+async def feedback_csv(
+    request: Request,
+    settings: Settings = Depends(get_settings),
+    feedback: PostgresFeedbackRepository = Depends(get_feedback_repository),
+) -> Response:
+    if not _signed_in(request, settings):
+        return _redirect("/admin/login")
+    rows = await feedback.export_cards()
+    columns = list(dict.fromkeys(key for row in rows for key in row))
+    buffer = io.StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=columns)
+    writer.writeheader()
+    for row in rows:
+        writer.writerow(
+            {
+                key: ";".join(value) if isinstance(value, list) else value
+                for key, value in row.items()
+            }
+        )
+    return Response(
+        buffer.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="card_feedback.csv"'},
+    )
+
+
 def _session_token(settings: Settings) -> str:
     now = datetime.now(UTC)
     token = jwt.encode(
@@ -263,8 +339,9 @@ def _dashboard_body(overview: Overview, settings: Settings, notice: str | None) 
     running = overview.running
     parts = [
         """<header><h1>Admin</h1>
+<nav class="row"><a href="/admin/feedback">Feedback</a>
 <form method="post" action="/admin/logout"><button class="link">Abmelden</button>
-</form></header>"""
+</form></nav></header>"""
     ]
     if notice:
         parts.append(f'<p class="notice">{escape(notice)}</p>')
@@ -405,6 +482,7 @@ _USAGE_COLUMNS = (
     ("Aktive Handys", None),
     ("Onboarding fertig", "onboarding_done"),
     ("Karte umgedreht", "card_turned"),
+    ("Karte weggeworfen", "card_dismissed"),
     ("Aktion geöffnet", "action_opened"),
     ("Fertig", "action_done"),
     ("Brief an Mail-App", "letter_to_mail_app"),
@@ -447,6 +525,118 @@ def _usage_body(counts: dict[date, dict[str, int]], today: date) -> str:
   <h3>Pro Tag</h3>
   <div class="table"><table><tr><th>Tag</th>{head}</tr>{day_rows}</table></div>
 </section>"""
+
+
+_FEEDBACK_DAYS = 28
+# Reason, its label in the app, and what it points at
+_REASONS = (
+    ("too_far", "Zu weit weg", "Ort-Ranking"),
+    ("not_interested", "Thema interessiert mich nicht", "Interessen"),
+    ("not_affected", "Betrifft mich nicht", "Lebenslagen"),
+    ("too_much_effort", "Zu viel Aufwand", "Appeal"),
+    ("unclear_text", "Text unklar oder falsch", "Anreicherung"),
+    ("dont_support", "Möchte ich nicht unterstützen", "Werte"),
+    ("already_done", "Schon erledigt", ""),
+    ("other", "Sonstiges", ""),
+)
+_REASON_LABELS = {key: label for key, label, _ in _REASONS}
+_REACHES = (
+    ("nachbarschaft", "Viertel"),
+    ("ort", "Ort"),
+    ("stadt", "Stadt"),
+    ("umland", "Umland"),
+    (None, "ohne"),
+)
+_KIND_LABELS = {"bug": "Fehler", "idea": "Idee", "praise": "Lob", "other": "Sonstiges"}
+
+
+def _feedback_body(
+    counts: ReasonCounts,
+    dismissed: list[DismissedCard],
+    notes: list[CardNote],
+    messages: list[StoredMessage],
+) -> str:
+    parts = [
+        """<header><h1>Feedback</h1>
+<nav class="row"><a href="/admin">Admin</a>
+<a href="/admin/feedback.csv">CSV für die Kalibrierung</a></nav></header>"""
+    ]
+
+    head = "".join(f"<th>{label}</th>" for _, label in _REACHES)
+    rows = ""
+    for key, label, knob in _REASONS:
+        reaches = counts.by_reach.get(key, {})
+        rows += (
+            f"<tr><th>{escape(label)}"
+            f"{f' <span class=muted>({knob})</span>' if knob else ''}</th>"
+            f"<td>{sum(reaches.values())}</td><td>{counts.testers.get(key, 0)}</td>"
+            + "".join(f"<td>{reaches.get(reach, 0)}</td>" for reach, _ in _REACHES)
+            + "</tr>"
+        )
+    parts.append(f"""
+<section class="card">
+  <h2>Warum weggeworfen</h2>
+  <p class="muted">Letzte {_FEEDBACK_DAYS} Tage, nach Reichweite der Karte.
+  Alle weggeworfenen Karten, auch ohne Grund, zählt die Nutzung auf /admin.</p>
+  <div class="table"><table><tr><th>Grund</th><th>Gesamt</th><th>Tester</th>
+  {head}</tr>{rows}</table></div>
+</section>""")
+
+    cards = "".join(
+        f'<div class="run"><p><a href="{escape(card.source_url)}">'
+        f"{escape(card.title)}</a></p>"
+        f'<p class="counts">{card.count} Mal, von {card.testers} Testern · '
+        + " · ".join(
+            f"{count} {escape(_REASON_LABELS.get(reason, reason))}"
+            for reason, count in card.reasons.items()
+        )
+        + "</p></div>"
+        for card in dismissed
+    )
+    parts.append(_list_section("Am häufigsten weggeworfen", cards))
+
+    note_rows = "".join(
+        f'<div class="run"><p class="text">{escape(note.note)}</p>'
+        f'<p class="counts">{note.day:%d.%m.} · {note.tester} · '
+        f"{escape(_REASON_LABELS.get(note.reason, note.reason))}"
+        f"{f' · {escape(note.title)}' if note.title else ''}</p></div>"
+        for note in notes
+    )
+    parts.append(_list_section("Notizen zu Karten", note_rows))
+
+    message_rows = "".join(_message_row(message) for message in messages)
+    parts.append(_list_section("Nachrichten", message_rows, anchor="nachrichten"))
+    return "".join(parts)
+
+
+def _list_section(title: str, rows: str, *, anchor: str = "") -> str:
+    content = (
+        f'<div class="runs">{rows}</div>'
+        if rows
+        else '<p class="muted">Noch keine.</p>'
+    )
+    section_id = f' id="{anchor}"' if anchor else ""
+    return f"""
+<section class="card"{section_id}>
+  <h2>{title}</h2>
+  {content}
+</section>"""
+
+
+def _message_row(message: StoredMessage) -> str:
+    checked = " checked" if message.handled else ""
+    screen = f" · {escape(message.screen)}" if message.screen else ""
+    kind = _KIND_LABELS.get(message.kind, escape(message.kind))
+    return f"""<div class="run{" handled" if message.handled else ""}">
+<p><span class="status">{kind}</span></p>
+<p class="text">{escape(message.message)}</p>
+<form method="post" action="/admin/feedback/{message.id}/handled" class="row counts">
+  <span>{message.day:%d.%m.} · {message.tester} · {escape(message.platform)}
+  {escape(message.app_version)}{screen}</span>
+  <label class="check"><input type="checkbox" name="handled"{checked}>
+    Erledigt</label>
+  <button type="submit" class="link">Speichern</button>
+</form></div>"""
 
 
 def _week_start(day: date) -> date:
@@ -503,6 +693,9 @@ th, td { padding: 4px 8px; border-top: 1px solid var(--line); text-align: right;
 tr:first-child th { border-top: 0; color: var(--muted); font-weight: 500;
   white-space: normal; vertical-align: bottom; }
 tr > th:first-child { text-align: left; font-weight: 500; }
+a { color: var(--accent); }
+.run.handled > p { color: var(--muted); }
+.text { white-space: pre-line; overflow-wrap: anywhere; }
 details { margin-top: 6px; font-size: .9rem; }
 details li { overflow-wrap: anywhere; }
 """

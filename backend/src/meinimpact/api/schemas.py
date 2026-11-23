@@ -1,11 +1,16 @@
 """Pydantic schemas for the public HTTP API."""
 
 from datetime import date, datetime
+from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from meinimpact.domain.entities import Opportunity
+from meinimpact.infrastructure.feedback.postgres_feedback_repository import (
+    CardReason,
+    MessageKind,
+)
 from meinimpact.infrastructure.geo.locality import Locality
 from meinimpact.infrastructure.usage.postgres_usage_repository import UsageEvent
 
@@ -308,6 +313,50 @@ class UsageRequest(BaseModel):
     """One anonymous usage event: only its name, counted per day."""
 
     event: UsageEvent
+
+
+# ── Beta feedback ─────────────────────────────────────────────────────────────
+
+
+class CardRanking(BaseModel):
+    """The score parts the app's ranker gave a card: never profile data.
+
+    Each part is what it added to the card's blended score
+    (opportunity_relevance_ranker.dart); `werte` is the 0-1 tie-break.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    position: int = Field(ge=0, le=500)
+    score: float = Field(ge=-100, le=100)
+    appeal: float = Field(ge=-100, le=100)
+    situation: float = Field(ge=-100, le=100)
+    interest: float = Field(ge=-100, le=100)
+    locality: float = Field(ge=-100, le=100)
+    werte: float = Field(ge=0, le=1)
+    # The card took an exploration slot (a topic with no learned interest yet)
+    exploration: bool = False
+
+
+class CardFeedbackRequest(BaseModel):
+    """Why the tester threw a card away. The id travels in the body so access
+    logs never show which card."""
+
+    opportunity_id: UUID
+    reason: CardReason
+    note: str | None = Field(default=None, max_length=500)
+    ranking: CardRanking
+    app_version: str = Field(min_length=1, max_length=40)
+
+
+class BetaFeedbackRequest(BaseModel):
+    kind: MessageKind
+    message: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)
+    ]
+    screen: str | None = Field(default=None, max_length=60)
+    app_version: str = Field(min_length=1, max_length=40)
+    platform: Literal["android", "ios", "web"]
 
 
 class ImpactNewsItemResponse(BaseModel):

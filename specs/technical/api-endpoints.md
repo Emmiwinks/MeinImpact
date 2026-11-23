@@ -306,19 +306,50 @@ Response 200:
 
 ### Feedback
 
+Beta feedback, shown on `/admin/feedback`. Both need the anonymous
+session token; the server keeps a tester code name derived from it and the
+Berlin day (see `architecture/dsgvo.md`).
+
 ```
-POST /feedback
+POST /v1/feedback/card          (a card was thrown away)
 
 Body:
 {
-  "action_id": "uuid",    // null for general app feedback
-  "rating": 4,            // 1–5
-  "comment": "..."        // max 500 chars, optional
+  "opportunity_id": "uuid",
+  "reason": "too_far",   // too_far | not_interested | not_affected |
+                         // too_much_effort | unclear_text | dont_support |
+                         // already_done | other
+  "note": "...",         // optional, max 500 chars
+  "ranking": {           // the on-device ranker's parts for this card;
+    "position": 2,       // extra keys are rejected
+    "score": 1.4,
+    "appeal": 0.6,
+    "situation": 0.5,
+    "interest": 0.1,
+    "locality": 0.2,
+    "werte": 0.5,        // 0-1, the tie-break
+    "exploration": false
+  },
+  "app_version": "0.3.0+12"
 }
 
-Response 200:
+POST /v1/feedback               (free-text message)
+
+Body:
+{
+  "kind": "bug",         // bug | idea | praise | other
+  "message": "...",      // 1-2000 chars
+  "screen": "hand",      // optional, where it was sent from
+  "app_version": "0.3.0",
+  "platform": "android"  // android | ios | web
+}
+
+Response 200 (both):
 { "ok": true }
 ```
+
+Every throw-away also sends the usage event `card_dismissed`, so cards
+thrown away without a reason are counted too.
 
 ---
 

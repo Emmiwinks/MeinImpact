@@ -16,6 +16,9 @@ from meinimpact.infrastructure.council.postgres_council_repository import (
     PostgresCouncilRepository,
 )
 from meinimpact.infrastructure.database import Database
+from meinimpact.infrastructure.feedback.postgres_feedback_repository import (
+    PostgresFeedbackRepository,
+)
 from meinimpact.infrastructure.geo.locality import LocalityResolver
 from meinimpact.infrastructure.geo.plz import PlzIndex
 from meinimpact.infrastructure.impact.postgres_news_repository import (
@@ -120,6 +123,13 @@ def get_usage_repository(
 ) -> PostgresUsageRepository:
     """Returns the PostgreSQL-backed anonymous usage counters."""
     return PostgresUsageRepository(session)
+
+
+def get_feedback_repository(
+    session: AsyncSession = Depends(get_db_session),
+) -> PostgresFeedbackRepository:
+    """Returns the PostgreSQL-backed beta feedback store."""
+    return PostgresFeedbackRepository(session)
 
 
 @cache

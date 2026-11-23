@@ -319,11 +319,11 @@ def test_dashboard_shows_usage_per_day_and_week() -> None:
 
     assert usage.asked_since == monday - timedelta(weeks=3)
     # Per day: active phones from active_day, Fertig as counted
-    assert row(f"Mo {monday:%d.%m.}", 3, 0, 0, 0, 2) in page
+    assert row(f"Mo {monday:%d.%m.}", 3, 0, 0, 0, 0, 2) in page
     # Per week: active phones from active_week, Fertig summed over the week
-    assert row(f"ab {monday:%d.%m.}", 3, 0, 0, 0, 2) in page
+    assert row(f"ab {monday:%d.%m.}", 3, 0, 0, 0, 0, 2) in page
     last_week = monday - timedelta(weeks=1)
-    assert row(f"ab {last_week:%d.%m.}", 0, 0, 0, 0, 5) in page
+    assert row(f"ab {last_week:%d.%m.}", 0, 0, 0, 0, 0, 5) in page
 
 
 def test_logout_clears_session() -> None:

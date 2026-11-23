@@ -58,6 +58,9 @@ class Settings(BaseSettings):
     # Prices looked up 2026-11-11 in USD, counted 1:1 as EUR (overstates a
     # little, the safe side for a budget). Tavily pay-as-you-go, basic
     # search = 1 credit; Mistral Medium 3.5 per million tokens.
+    # Beta feedback (card reasons, messages) is deleted after this many days.
+    # The cleanup runs with the ingestion scheduler.
+    feedback_retention_days: int = 180
     tavily_eur_per_credit: float = 0.008
     mistral_extraction_eur_per_m_input: float = 1.5
     mistral_extraction_eur_per_m_output: float = 7.5

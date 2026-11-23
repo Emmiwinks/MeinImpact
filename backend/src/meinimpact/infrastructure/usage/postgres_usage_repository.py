@@ -20,6 +20,8 @@ UsageEvent = Literal[
     "active_week",
     "onboarding_done",
     "card_turned",
+    # Every card thrown away, also when the tester skips the reason
+    "card_dismissed",
     "action_opened",
     "action_done",
     "letter_to_mail_app",

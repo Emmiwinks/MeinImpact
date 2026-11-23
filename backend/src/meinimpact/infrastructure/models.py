@@ -522,25 +522,56 @@ class MdbStatementRecord(Base):
     )
 
 
-class FeedbackRecord(Base):
-    """Anonymous in-app feedback entry."""
+class CardFeedbackRecord(Base):
+    """Why a beta tester threw a card away, with how the app had ranked it.
 
-    __tablename__ = "feedback"
+    `tester` is a keyed hash of the installation id: it tells testers apart
+    but leads back to nothing. Only the day is kept, no time.
+    """
 
-    __table_args__ = (CheckConstraint("rating BETWEEN 1 AND 5", name="chk_rating"),)
+    __tablename__ = "card_feedback"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid4,
+        UUID(as_uuid=True), primary_key=True, default=uuid4
     )
-    action_id: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
-    rating: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
-    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
-        nullable=False,
+    created_on: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    tester: Mapped[str] = mapped_column(String(length=16), nullable=False)
+    opportunity_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("opportunities.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    # The enrichment the tester saw, so a reworded card counts apart
+    enrichment_input_hash: Mapped[str | None] = mapped_column(
+        String(length=64), nullable=True
+    )
+    reason: Mapped[str] = mapped_column(String(length=40), nullable=False)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The on-device ranker's score parts for this card (schemas.CardRanking)
+    ranking: Mapped[dict[str, float | int | bool]] = mapped_column(
+        JSONB, nullable=False, server_default="{}"
+    )
+    app_version: Mapped[str] = mapped_column(String(length=40), nullable=False)
+
+
+class BetaFeedbackRecord(Base):
+    """A free-text message from a beta tester (Fehler, Idee, Lob, ...)."""
+
+    __tablename__ = "beta_feedback"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    created_on: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    tester: Mapped[str] = mapped_column(String(length=16), nullable=False)
+    kind: Mapped[str] = mapped_column(String(length=20), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    # Where in the app it was sent from
+    screen: Mapped[str | None] = mapped_column(String(length=60), nullable=True)
+    app_version: Mapped[str] = mapped_column(String(length=40), nullable=False)
+    platform: Mapped[str] = mapped_column(String(length=20), nullable=False)
+    handled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false"
     )
 
 
