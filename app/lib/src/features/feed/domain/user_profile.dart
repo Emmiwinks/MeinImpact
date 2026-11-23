@@ -27,6 +27,7 @@ class UserProfile {
     this.home,
     this.lebenslagen = const {},
     this.interests = const InterestWeights(),
+    this.prioritaeten = const {},
   });
 
   factory UserProfile.fromJson(Map<String, Object?> json) {
@@ -35,6 +36,7 @@ class UserProfile {
     final legacyRaw = json['betroffenheitsprofil'] as Map<String, Object?>?;
     final interestsRaw = json['interests'] as Map<String, Object?>?;
     final homeRaw = json['home'] as Map<String, Object?>?;
+    final prioritaetenRaw = json['prioritaeten'] as Map<String, Object?>?;
     return UserProfile(
       // Saved as whole steps before the slider went continuous.
       werte: werteRaw.map((k, v) => MapEntry(k, (v as num).toDouble())),
@@ -57,6 +59,10 @@ class UserProfile {
       interests: interestsRaw != null
           ? InterestWeights.fromJson(interestsRaw)
           : const InterestWeights(),
+      prioritaeten: prioritaetenRaw?.map(
+            (k, v) => MapEntry(k, (v as num).toInt()),
+          ) ??
+          const {},
     );
   }
 
@@ -65,6 +71,7 @@ class UserProfile {
     HomeLocation? home,
     Set<String>? lebenslagen,
     InterestWeights? interests,
+    Map<String, int>? prioritaeten,
   }) {
     return UserProfile(
       werte: werte ?? this.werte,
@@ -76,6 +83,7 @@ class UserProfile {
       home: home ?? this.home,
       lebenslagen: lebenslagen ?? this.lebenslagen,
       interests: interests ?? this.interests,
+      prioritaeten: prioritaeten ?? this.prioritaeten,
     );
   }
 
@@ -105,10 +113,13 @@ class UserProfile {
   // the feed, never filters it.
   final InterestWeights interests;
 
-  // Derived axes (-2.0 to +2.0). Names match the backend's werte_relevanz
-  // axis vocabulary (opportunity_extractor.py's TAG_AXES) — renamed from
-  // the pre-rebuild wirtschaft/diplomatie/freiheit/wandel keys, same
-  // underlying 8values questions, no change to the quiz itself.
+  // Coins per budget area from the Stadthaushalt step (GeldEffekt.bereich
+  // keys); on-device only. Empty until the user has distributed them.
+  final Map<String, int> prioritaeten;
+
+  // Derived axes (-2.0 to +2.0) for the profile's scales. Ranking matches
+  // per question instead (an opportunity's werteRelevanz is keyed by
+  // werteQuestionKeys), since the two questions of an axis can disagree.
   double get axisEqualityMarkets =>
       (_q('wirtschaft_gleichheit') + _q('wirtschaft_staat')) / 2.0;
   double get axisNationGlobe =>
@@ -117,15 +128,6 @@ class UserProfile {
       (_q('freiheit_staat') + _q('freiheit_sicherheit')) / 2.0;
   double get axisTraditionProgress =>
       (_q('wandel_tradition') + _q('wandel_zukunft')) / 2.0;
-
-  /// All four axes keyed exactly like an opportunity's `werteRelevanz` map,
-  /// for direct comparison in `OpportunityRelevanceRanker`.
-  Map<String, double> get axisValues => {
-        'equality_markets': axisEqualityMarkets,
-        'nation_globe': axisNationGlobe,
-        'liberty_authority': axisLibertyAuthority,
-        'tradition_progress': axisTraditionProgress,
-      };
 
   int get answeredCount => werte.values.where((v) => v != 0).length;
 
@@ -142,6 +144,7 @@ class UserProfile {
       'home': home?.toJson(),
       'lebenslagen': lebenslagen.toList(),
       'interests': interests.toJson(),
+      'prioritaeten': prioritaeten,
     };
   }
 }

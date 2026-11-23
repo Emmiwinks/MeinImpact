@@ -55,7 +55,10 @@ void main() {
         'title': 'Soll am Alten Leipziger Bahnhof gebaut werden?',
         'summary': 'Zusammenfassung.',
         'affected_tags': ['Wohnen/Miete'],
-        'werte_relevanz': {'equality_markets': -0.8},
+        'werte_relevanz': {'wandel_tradition': 1},
+        'geld': [
+          {'bereich': 'strassen', 'richtung': -1},
+        ],
         'pro_argumente': ['Argument 1'],
         'contra_argumente': ['Gegenargument 1'],
         'personal_impact_snippets': {
@@ -76,7 +79,9 @@ void main() {
       expect(opportunity.organizer, 'Landeshauptstadt Dresden');
       expect(opportunity.districts, ['Mockritz']);
       expect(opportunity.affectedTags, ['Wohnen/Miete']);
-      expect(opportunity.werteRelevanz, {'equality_markets': -0.8});
+      expect(opportunity.werteRelevanz, {'wandel_tradition': 1.0});
+      expect(opportunity.geld.single.bereich, 'strassen');
+      expect(opportunity.geld.single.richtung, -1);
       expect(opportunity.opensOn, DateTime.parse('2026-11-02'));
       expect(opportunity.closesOn, DateTime.parse('2026-12-04'));
       expect(opportunity.supportCount, 3);
@@ -104,6 +109,7 @@ void main() {
       expect(opportunity.districts, isEmpty);
       expect(opportunity.affectedTags, isEmpty);
       expect(opportunity.werteRelevanz, isEmpty);
+      expect(opportunity.geld, isEmpty);
       expect(opportunity.closesOn, isNull);
       expect(opportunity.supportCount, isNull);
       expect(opportunity.personalImpactSnippets, isEmpty);
@@ -238,14 +244,22 @@ void main() {
       expect(profile.axisTraditionProgress, 0.0);
     });
 
-    test('axisValues keys match the backend werte_relevanz vocabulary', () {
-      const profile = UserProfile(werte: {'wirtschaft_gleichheit': 2});
-      expect(profile.axisValues.keys, {
-        'equality_markets',
-        'nation_globe',
-        'liberty_authority',
-        'tradition_progress',
-      });
+    test('Stadthaushalt coins survive a save and load', () {
+      const profile = UserProfile(prioritaeten: {'kultur': 6, 'strassen': 0});
+
+      final loaded = UserProfile.fromJson(profile.toJson());
+
+      expect(loaded.prioritaeten, {'kultur': 6, 'strassen': 0});
+      expect(UserProfile.fromJson(const {}).prioritaeten, isEmpty);
+    });
+  });
+
+  group('Ebene', () {
+    test('comes from the gebiet, so a new city needs no change', () {
+      expect(Ebene.of(''), Ebene.bund);
+      expect(Ebene.of('14'), Ebene.land);
+      expect(Ebene.of('14612'), Ebene.kommune);
+      expect(Ebene.of('05315'), Ebene.kommune);
     });
   });
 
@@ -278,30 +292,102 @@ void main() {
       expect(ranked.last.matchedSnippet, isNull);
     });
 
-    test('orders by werte alignment when profile is sufficiently answered', () {
-      final aligned = _opportunity(
-        id: 'aligned',
-        werteRelevanz: const {'equality_markets': 1.0},
+    // 4 answered questions, the minimum for the Werteprofil to count; the
+    // user agrees with the left statement of question 1.
+    const werteProfile = UserProfile(
+      werte: {
+        'wirtschaft_gleichheit': -2,
+        'wirtschaft_staat': -1,
+        'diplomatie_nation': 1,
+        'freiheit_staat': 1,
+      },
+    );
+
+    test('a petition the user would likely sign ranks above one they would '
+        'not', () {
+      final sign = _opportunity(
+        id: 'sign',
+        werteRelevanz: const {'wirtschaft_gleichheit': -1},
       );
-      final opposed = _opportunity(
-        id: 'opposed',
-        werteRelevanz: const {'equality_markets': -1.0},
+      final oppose = _opportunity(
+        id: 'oppose',
+        werteRelevanz: const {'wirtschaft_gleichheit': 1},
       );
-      // 4 answered questions — meets _minAnsweredForWerteMatch.
+
+      final ranked = ranker.rank([oppose, sign], werteProfile);
+
+      expect(ranked.first.opportunity.id, 'sign');
+      expect(ranked.first.haltung, 1.0);
+      expect(ranked.last.haltung, -1.0);
+    });
+
+    test('an open procedure rises with how much the user cares, either side',
+        () {
+      for (final side in [-1.0, 1.0]) {
+        final decision = _opportunity(
+          kind: OpportunityKind.decision,
+          werteRelevanz: {'wirtschaft_gleichheit': side},
+        );
+
+        final ranked = ranker.rank([decision], werteProfile);
+
+        expect(ranked.single.haltung, 1.0);
+      }
+    });
+
+    test('the Werteprofil stays out with under 4 answers', () {
+      final opportunity = _opportunity(
+        werteRelevanz: const {'wirtschaft_gleichheit': -1},
+      );
+      const profile = UserProfile(werte: {'wirtschaft_gleichheit': -2});
+
+      final ranked = ranker.rank([opportunity], profile);
+
+      expect(ranked.single.haltung, 0);
+    });
+
+    test('Stadthaushalt coins weigh against the fullest pot, not a cap', () {
+      Opportunity spends(String id, String bereich, int richtung) =>
+          Opportunity.fromJson({
+            ..._json(id),
+            'kind': 'decision',
+            'geld': [
+              {'bereich': bereich, 'richtung': richtung},
+            ],
+          });
       const profile = UserProfile(
-        werte: {
-          'wirtschaft_gleichheit': 2,
-          'wirtschaft_staat': 2,
-          'diplomatie_nation': 1,
-          'freiheit_staat': 1,
-        },
+        prioritaeten: {'oepnv_rad': 9, 'gruen_klima': 5, 'strassen': 0},
       );
 
-      final ranked = ranker.rank([opposed, aligned], profile);
+      double haltungOf(Opportunity o) =>
+          ranker.rank([o], profile).single.haltung;
 
-      expect(ranked.first.opportunity.id, 'aligned');
-      expect(ranked.first.werteAlignment, greaterThan(0.5));
-      expect(ranked.last.werteAlignment, lessThan(0.5));
+      expect(haltungOf(spends('bus', 'oepnv_rad', 1)), 1.0);
+      expect(haltungOf(spends('gruen', 'gruen_klima', 1)), closeTo(0.38, 0.01));
+      // On an open procedure a pot the user left empty does not count
+      expect(haltungOf(spends('strasse', 'strassen', 1)), 0);
+    });
+
+    test('a personal snippet counts by how rare it is in the pool', () {
+      final pool = [
+        for (var i = 0; i < 9; i++)
+          _opportunity(
+            id: 'mieter$i',
+            personalImpactSnippets: const {'wohnsituation:mieter': 'Miete.'},
+          ),
+        _opportunity(
+          id: 'rente',
+          personalImpactSnippets: const {'erwerbsstatus:rentner': 'Rente.'},
+        ),
+      ];
+      const profile = UserProfile(lebenslagen: {'mieter', 'rentner'});
+
+      final ranked = ranker.rank(pool, profile);
+
+      expect(ranked.first.opportunity.id, 'rente');
+      expect(ranked.first.matchStrength, 1.0);
+      expect(ranked.last.matchStrength, lessThan(0.4));
+      expect(ranked.last.matchedSnippet, 'Miete.');
     });
 
     test('a match outweighs a small appeal gap but not a large one', () {
@@ -394,7 +480,6 @@ void main() {
           RankedOpportunity(
             opportunity: _opportunity(),
             matchedSnippet: null,
-            werteAlignment: 0.5,
             matchedLebenslage: lebenslage,
             interestTag: tag,
           );
@@ -414,15 +499,22 @@ void main() {
       expect(_opportunity(everyday: 1, accessible: 1).appeal, 0.0);
     });
 
-    test('werte alignment stays neutral when profile has under 4 answers', () {
-      final opportunity = _opportunity(
-        werteRelevanz: const {'equality_markets': 1.0},
-      );
-      const profile = UserProfile(werte: {'wirtschaft_gleichheit': 2});
-
-      final ranked = ranker.rank([opportunity], profile);
-
-      expect(ranked.single.werteAlignment, 0.5);
-    });
   });
 }
+
+Map<String, Object?> _json(String id) => {
+      'id': id,
+      'source_org': 'Ratsinfo',
+      'source_url': 'https://example.org/$id',
+      'kind': 'petition',
+      'status': 'open',
+      'region': 'dresden',
+      'title': 'Title $id',
+      'summary': 'Summary $id',
+      'affected_tags': <String>[],
+      'werte_relevanz': <String, Object?>{},
+      'pro_argumente': <String>[],
+      'contra_argumente': <String>[],
+      'personal_impact_snippets': <String, Object?>{},
+      'first_seen_at': '2026-11-01T00:00:00Z',
+    };

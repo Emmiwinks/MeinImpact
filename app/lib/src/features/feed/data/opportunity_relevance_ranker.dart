@@ -12,10 +12,11 @@ class RankedOpportunity {
   const RankedOpportunity({
     required this.opportunity,
     required this.matchedSnippet,
-    required this.werteAlignment,
     this.interestTag,
     this.matchedLebenslage,
     this.matchStrength = 0,
+    this.haltung = 0,
+    this.inOwnNeighbourhood = false,
     this.options = const [],
   });
 
@@ -25,10 +26,11 @@ class RankedOpportunity {
     return RankedOpportunity(
       opportunity: opportunity,
       matchedSnippet: matchedSnippet,
-      werteAlignment: werteAlignment,
       interestTag: interestTag,
       matchedLebenslage: matchedLebenslage,
       matchStrength: matchStrength,
+      haltung: haltung,
+      inOwnNeighbourhood: inOwnNeighbourhood,
       options: options,
     );
   }
@@ -45,9 +47,9 @@ class RankedOpportunity {
   // secondary tag never shows. Private ones are never named at all.
   final String? matchedLebenslage;
   // 0-1: how strongly the card concerns the user's situation. A personal
-  // snippet counts fully; a Lebenslage counts by how rare it is in the
-  // pool, so a broad group ("Eltern" on a quarter of the cards) moves little
-  // and a specific one ("Pflegende Angehörige") a lot.
+  // snippet or a Lebenslage counts by how rare it is in the pool, so a broad
+  // one ("Mieter" on a sixth of the cards) moves little and a specific one
+  // ("Pflegende Angehörige") a lot.
   final double matchStrength;
 
   // The personal_impact_snippet matching the user's Lebenslagen (through
@@ -56,27 +58,39 @@ class RankedOpportunity {
   final String? matchedSnippet;
 
   bool get isSituationMatch => matchStrength > 0;
-  // 0.0-1.0, 0.5 = neutral/no signal (opportunity has no relevant axis, or
-  // profile isn't answered enough to have an opinion).
-  final double werteAlignment;
+
+  // -1..1: how the card fits the user's stance. On a petition, whether they
+  // would likely sign it; on an open procedure (a council decision, a
+  // consultation, a plan), only how much they care, since one can take
+  // part on either side. 0 = no signal.
+  final double haltung;
+
+  // A neighbourhood's card (Ortschaftsrat, Stadtbezirksbeirat ...) for the
+  // neighbourhood the user lives in.
+  final bool inOwnNeighbourhood;
+
+  /// Whether the card concerns the user personally, not just by appeal:
+  /// what the hand's local slot asks of a city's card (see mixHand).
+  bool get isPersonal => isSituationMatch || haltung > 0 || inOwnNeighbourhood;
 }
 
 /// Orders the open opportunities by on-device relevance with one blended
 /// score, so no signal can lock out another:
 ///   appeal (easy, everyday cards first: quick wins)
 ///   + [InterestConfig.matchBonus] scaled by the match strength, if the
-///     card concerns the user's situation (a personal snippet, or one of
-///     their Lebenslagen weighted by its rarity in the pool)
-///   + learned topic interest, scaled by [InterestConfig.rankingInfluence]
+///     card concerns the user's situation (a personal snippet or one of
+///     their Lebenslagen, each weighted by its rarity in the pool)
 ///   + nearness to home: a city's or neighbourhood's matters sink with
 ///     distance from where the user lives, their own neighbourhood's rise
-///     ([LocalityConfig]).
-/// Ties fall back to Werteprofil alignment. (A hard "matched first" tier
-/// used to sit above all of this; with ~45% of cards matched it made
-/// learned interests in unmatched topics invisible.)
-/// Never drops an opportunity, only reorders. No recency or support-count
-/// component: the server only serves opportunities that are still open,
-/// and support counts are informational, never a ranking signal.
+///     ([LocalityConfig])
+///   + learned topic interest, scaled by [InterestConfig.rankingInfluence]
+///   + Haltung, scaled by [InterestConfig.haltungInfluence]: the
+///     Werteprofil where the card carries questionnaire statements, the
+///     Stadthaushalt where it moves money.
+/// Never drops an opportunity, only reorders; which levels the hand mixes
+/// is mixHand's job. No recency or support-count component: the server only
+/// serves opportunities that are still open, and support counts are
+/// informational, never a ranking signal.
 ///
 /// Once the user has learned interests, every
 /// [InterestConfig.explorationInterval]th slot goes to the best card from a
@@ -92,6 +106,8 @@ class OpportunityRelevanceRanker {
   final LocalityConfig localityConfig;
 
   static const _minAnsweredForWerteMatch = 4;
+  // The even share of a Stadthaushalt pot: 20 coins over 8 pots.
+  static const _evenCoins = 2.5;
 
   List<RankedOpportunity> rank(
     List<Opportunity> pool,
@@ -100,23 +116,23 @@ class OpportunityRelevanceRanker {
   }) {
     final at = now ?? DateTime.now();
     final interests = profile.interests;
-    final rarity = _rarity(pool);
-    final ranked = pool.map((o) => _rankOne(o, profile, at, rarity)).toList();
+    final rarity = _rarity(pool, (o) => o.lebenslagen);
+    final snippetRarity = _rarity(pool, (o) => o.personalImpactSnippets.keys);
+    final ranked = pool
+        .map((o) => _rankOne(o, profile, at, rarity, snippetRarity))
+        .toList();
     double score(RankedOpportunity r) =>
         r.opportunity.appeal +
         interestConfig.matchBonus * r.matchStrength +
+        localityConfig.adjustment(r.opportunity, profile.home) +
         interestConfig.rankingInfluence *
             interests.interestIn(
               r.opportunity.affectedTags,
               at,
               interestConfig,
             ) +
-        localityConfig.adjustment(r.opportunity, profile.home);
-    ranked.sort((a, b) {
-      final byScore = score(b).compareTo(score(a));
-      if (byScore != 0) return byScore;
-      return b.werteAlignment.compareTo(a.werteAlignment);
-    });
+        interestConfig.haltungInfluence * r.haltung;
+    ranked.sort((a, b) => score(b).compareTo(score(a)));
     if (interestConfig.explorationInterval <= 0 ||
         !interests.hasSignal(at, interestConfig)) {
       return ranked;
@@ -156,22 +172,26 @@ class OpportunityRelevanceRanker {
     return result;
   }
 
-  /// Weight per Lebenslage from how many cards in the pool carry it: 1 for a
-  /// group on a single card, falling to [InterestConfig.minMatchWeight] for
-  /// one on every card (normalized inverse document frequency). Computed
-  /// from the current pool, so it adapts as the data changes.
-  Map<String, double> _rarity(List<Opportunity> pool) {
+  /// Weight per key (a Lebenslage, a snippet key) from how many cards in
+  /// the pool carry it: 1 for a key on a single card, falling to
+  /// [InterestConfig.minMatchWeight] for one on every card (normalized
+  /// inverse document frequency). Computed from the current pool, so it
+  /// adapts as the data changes.
+  Map<String, double> _rarity(
+    List<Opportunity> pool,
+    Iterable<String> Function(Opportunity) keysOf,
+  ) {
     final counts = <String, int>{};
     for (final opportunity in pool) {
-      for (final id in opportunity.lebenslagen.toSet()) {
-        counts[id] = (counts[id] ?? 0) + 1;
+      for (final key in keysOf(opportunity).toSet()) {
+        counts[key] = (counts[key] ?? 0) + 1;
       }
     }
     final minWeight = interestConfig.minMatchWeight;
-    if (pool.length < 2) return {for (final id in counts.keys) id: 1.0};
+    if (pool.length < 2) return {for (final key in counts.keys) key: 1.0};
     return {
-      for (final MapEntry(key: id, value: count) in counts.entries)
-        id: minWeight +
+      for (final MapEntry(key: key, value: count) in counts.entries)
+        key: minWeight +
             (1 - minWeight) * log(pool.length / count) / log(pool.length),
     };
   }
@@ -181,9 +201,10 @@ class OpportunityRelevanceRanker {
     UserProfile profile,
     DateTime now,
     Map<String, double> rarity,
+    Map<String, double> snippetRarity,
   ) {
-    final snippet = _matchedSnippetFor(opportunity, profile);
-    var strength = snippet != null ? 1.0 : 0.0;
+    final snippetKey = _matchedSnippetKey(opportunity, profile);
+    var strength = snippetKey == null ? 0.0 : snippetRarity[snippetKey] ?? 1.0;
     for (final id in opportunity.lebenslagen) {
       if (profile.lebenslagen.contains(id)) {
         strength = max(strength, rarity[id] ?? 1.0);
@@ -191,13 +212,21 @@ class OpportunityRelevanceRanker {
     }
     final main =
         opportunity.lebenslagen.isEmpty ? null : opportunity.lebenslagen.first;
+    final area = opportunity.umkreis;
+    final home = profile.home;
     return RankedOpportunity(
       opportunity: opportunity,
-      matchedSnippet: snippet,
+      matchedSnippet: snippetKey == null
+          ? null
+          : opportunity.personalImpactSnippets[snippetKey],
       matchedLebenslage:
           main != null && profile.lebenslagen.contains(main) ? main : null,
       matchStrength: strength,
-      werteAlignment: _computeWerteAlignment(opportunity, profile),
+      haltung: _haltung(opportunity, profile),
+      inOwnNeighbourhood: opportunity.reichweite == 'nachbarschaft' &&
+          area != null &&
+          home != null &&
+          nearness(area, home) == 1,
       interestTag: profile.interests.reasonTag(
         opportunity.affectedTags,
         now,
@@ -206,32 +235,69 @@ class OpportunityRelevanceRanker {
     );
   }
 
-  String? _matchedSnippetFor(Opportunity opportunity, UserProfile profile) {
+  String? _matchedSnippetKey(Opportunity opportunity, UserProfile profile) {
     if (opportunity.personalImpactSnippets.isEmpty) return null;
-    final matchingKeys = profile.snippetKeys;
-    for (final key in matchingKeys) {
-      final snippet = opportunity.personalImpactSnippets[key];
-      if (snippet != null) return snippet;
+    for (final key in profile.snippetKeys) {
+      if (opportunity.personalImpactSnippets.containsKey(key)) return key;
     }
     return null;
   }
 
-  double _computeWerteAlignment(Opportunity opportunity, UserProfile profile) {
-    if (opportunity.werteRelevanz.isEmpty) return 0.5;
-    if (profile.answeredCount < _minAnsweredForWerteMatch) return 0.5;
+  /// The mean of whichever stance signals the card carries, -1..1. A
+  /// petition can only be supported, so there the direction counts; on an
+  /// open procedure only how strongly the user feels, so the card rises
+  /// for both sides.
+  double _haltung(Opportunity opportunity, UserProfile profile) {
+    final petition = opportunity.kind == OpportunityKind.petition;
+    final parts = [
+      _werteSignal(opportunity, profile, petition: petition),
+      _geldSignal(opportunity, profile, petition: petition),
+    ].nonNulls;
+    if (parts.isEmpty) return 0;
+    return parts.reduce((a, b) => a + b) / parts.length;
+  }
 
-    final axes = profile.axisValues;
-    double score = 0;
-    int count = 0;
-    opportunity.werteRelevanz.forEach((axis, relevance) {
-      if (relevance == 0) return;
-      final userScore = axes[axis] ?? 0.0;
-      if (userScore == 0) return;
-      score += (userScore * relevance).clamp(-1.0, 1.0);
-      count++;
+  /// Per questionnaire statement on the card: the user's answer s (-2..2)
+  /// times the card's side v (-1 left, +1 right), halved to -1..1.
+  double? _werteSignal(
+    Opportunity opportunity,
+    UserProfile profile, {
+    required bool petition,
+  }) {
+    if (profile.answeredCount < _minAnsweredForWerteMatch) return null;
+    final values = <double>[];
+    opportunity.werteRelevanz.forEach((key, side) {
+      final answer = profile.werte[key] ?? 0;
+      if (answer == 0 || side == 0) return;
+      values.add(petition ? answer * side / 2 : answer.abs() / 2);
     });
+    if (values.isEmpty) return null;
+    return values.reduce((a, b) => a + b) / values.length;
+  }
 
-    if (count == 0) return 0.5;
-    return ((score / count) + 1) / 2;
+  /// Per budget area on the card: how far the user's coins in that pot lie
+  /// from the even share, rising evenly up to their own fullest pot (+1)
+  /// and down to an empty one (-1). On an open procedure only what the user
+  /// favours counts, not what they gave nothing.
+  double? _geldSignal(
+    Opportunity opportunity,
+    UserProfile profile, {
+    required bool petition,
+  }) {
+    final coins = profile.prioritaeten;
+    if (coins.isEmpty || opportunity.geld.isEmpty) return null;
+    final fullest = coins.values.reduce(max);
+    double tilt(int pot) => pot >= _evenCoins
+        ? (fullest > _evenCoins
+            ? (pot - _evenCoins) / (fullest - _evenCoins)
+            : 0)
+        : (pot - _evenCoins) / _evenCoins;
+    final values = [
+      for (final effect in opportunity.geld)
+        petition
+            ? tilt(coins[effect.bereich] ?? 0) * effect.richtung
+            : max(0.0, tilt(coins[effect.bereich] ?? 0)),
+    ];
+    return values.reduce((a, b) => a + b) / values.length;
   }
 }

@@ -159,29 +159,45 @@ on device only.
 
 ---
 
-## 3. Ranking (app)
+## 3. Ranking (app) — built 2026-11-23
 
-Two signals per card, each in -1..1:
+Decided after simulating three personas on the live pool (146 cards):
+"Betroffenheit zuerst" kept the hands varied and kept cards that concern
+the user even when their stance leans against them (a pensioner's pension
+petition); "Haltung zuerst" filled hands from one Stadthaushalt pot.
 
-- **Werte**, for each statement key `q` on the card with user score
-  `s` (-2..2, skip 0) and card value `v` (±1):
-  `lean = mean(s * v / 2)`, `care = mean(|s| / 2)`.
-- **Priorities**, for each `geld` entry with area share `p` (coins) and
-  `u = 2.5` (even share): `t = clamp((p - u) / u, -1, 1)`,
-  `lean = mean(t * richtung)`, `care = mean(|t|)`.
+**Haltung**, one signal per card in -1..1, from whatever the card carries:
+- **Werte** (≥ 4 answers), per statement key on the card with user score
+  `s` (-2..2, skip 0) and card side `v` (±1): `lean = mean(s * v / 2)`,
+  `care = mean(|s| / 2)`.
+- **Stadthaushalt**, per `geld` entry with coins `p` in that pot, even share
+  `u = 2.5` and the user's fullest pot `top`: `t = (p - u) / (top - u)`
+  above the even share, `(p - u) / u` below (no cap at 5 coins);
+  `lean = mean(t * richtung)`, `care = mean(max(0, t))` (an empty pot does
+  not lift a card).
+- Mean of both where both exist; `lean` for petitions, `care` otherwise.
 
-Card signal = mean of the available signals, using `lean` for petitions
-and `care` for everything else. Score:
+**Score**:
 
 ```
-appeal + matchBonus * matchStrength
-       + rankingInfluence * interest
-       + valuesInfluence * signal        // new, InterestConfig
+appeal
+  + matchBonus 0.5 * matchStrength      // Lebenslage or snippet, by rarity
+  + locality (neighbourhood +0.3, far away down to -0.8)
+  + rankingInfluence 0.3 * interest
+  + haltungInfluence 0.3 * haltung
 ```
 
-`valuesInfluence` starts below `rankingInfluence` (proposal 0.15) and is
-tuned with the calibration harness (`interest_calibration_test.dart`), not
-guessed. The old tie-break on `werteAlignment` goes away.
+A personal snippet now counts by how rare its key is in the pool, like a
+Lebenslage (it counted fully; 86 of 146 cards had one).
+
+**Hand mix** (`hand_mix.dart`, after done cards are removed): at most 3 of
+5 cards from one Ebene (Bund/EU, Land, Kommune, from `gebiet`); if none of
+the 5 is local, the best local card that concerns the user takes the last
+slot. Otherwise the ranking stands, so the exploration slot stays where
+the ranker put it.
+
+Known gap: a big PLZ's centre can lie far from where people live (01099
+Neustadt lies in the Dresdner Heide), so "own neighbourhood" can be wrong.
 
 ---
 

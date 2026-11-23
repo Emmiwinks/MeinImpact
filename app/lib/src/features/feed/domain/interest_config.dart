@@ -16,9 +16,10 @@ class InterestConfig {
     this.halfLife = const Duration(days: 30),
     this.neutralBand = 0.05,
     this.reasonThreshold = 0.15,
-    this.matchBonus = 0.25,
+    this.matchBonus = 0.5,
     this.minMatchWeight = 0.3,
     this.rankingInfluence = 0.3,
+    this.haltungInfluence = 0.3,
     this.explorationInterval = 5,
   });
 
@@ -39,15 +40,24 @@ class InterestConfig {
   final double neutralBand;
   // From this weight a topic is strong enough to be named on a card.
   final double reasonThreshold;
-  // Appeal (0-1 scale) added to a card whose personal snippet matches the
-  // user's situation. Large enough that a match usually wins, small enough
-  // that a strongly liked topic can overtake it.
+  // Appeal (0-1 scale) added to a card that concerns the user's situation,
+  // scaled by how rare that is in the pool. The strongest signal: what
+  // concerns you comes first, whatever you think of it (simulated on the
+  // live pool with three personas, 2026-11-23).
   final double matchBonus;
-  // Share of [matchBonus] a Lebenslage still earns when it is on every card
-  // in the pool; rarer groups earn more, up to the full bonus.
+  // Share of [matchBonus] a Lebenslage or personal snippet still earns when
+  // it is on every card in the pool; rarer ones earn more, up to the full
+  // bonus. (A snippet used to count fully; with one on 86 of 146 cards
+  // nearly every top card was a "full" match.)
   final double minMatchWeight;
   // How much appeal (0-1 scale) a topic at full weight is worth in ranking.
   final double rankingInfluence;
+  // How much appeal (0-1 scale) full Haltung is worth: the Werteprofil on
+  // cards with questionnaire statements (mostly Bund/EU), the Stadthaushalt
+  // on cards that move money (mostly a city's). Below [matchBonus]: as the
+  // strongest signal it put four cards of one pot into a hand and dropped
+  // a pensioner's own pension card.
+  final double haltungInfluence;
   // Every n-th slot goes to an unexplored topic; 0 turns exploration off.
   final int explorationInterval;
 

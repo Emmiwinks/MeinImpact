@@ -8,7 +8,7 @@ import 'opportunity.dart';
 class LocalityConfig {
   const LocalityConfig({
     this.farPenalty = 0.8,
-    this.neighbourhoodBonus = 0.2,
+    this.neighbourhoodBonus = 0.3,
   });
 
   // Appeal (0-1 scale) a card loses when the place it concerns is far from

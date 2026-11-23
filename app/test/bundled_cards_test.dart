@@ -31,7 +31,6 @@ RankedOpportunity _card(String id, {String? bundle}) => RankedOpportunity(
               ),
       ),
       matchedSnippet: null,
-      werteAlignment: 0.5,
     );
 
 List<String> _ids(List<RankedOpportunity> cards) => [

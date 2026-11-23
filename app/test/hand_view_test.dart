@@ -151,7 +151,6 @@ void main() {
           RankedOpportunity(
             opportunity: _o('p'),
             matchedSnippet: 'Betrifft dich.',
-            werteAlignment: 0.5,
             interestTag: 'Umwelt/Natur',
           ),
         ),
@@ -165,7 +164,6 @@ void main() {
       RankedOpportunity ranked({String? reason}) => RankedOpportunity(
             opportunity: _o('v', tags: ['Wohnen/Miete', 'Sicherheit']),
             matchedSnippet: null,
-            werteAlignment: 0.5,
             interestTag: reason,
           );
       expect(voteTopic(ranked()), 'Wohnen/Miete');
@@ -187,7 +185,6 @@ void main() {
                 ranked: RankedOpportunity(
                   opportunity: _o('v', tags: ['Wohnen/Miete']),
                   matchedSnippet: null,
-                  werteAlignment: 0.5,
                 ),
                 actionLabel: 'Unterschreiben',
                 onAction: () {},

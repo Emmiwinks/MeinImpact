@@ -8,6 +8,7 @@ import '../../tracking/domain/action_log.dart';
 import '../../tracking/domain/progress.dart';
 import '../../tracking/streak_flame.dart';
 import '../data/bundled_cards.dart';
+import '../data/hand_mix.dart';
 import '../data/opportunity_relevance_ranker.dart';
 import '../domain/interest_config.dart';
 import '../domain/interest_weights.dart';
@@ -196,7 +197,11 @@ class _AktionenTabState extends State<AktionenTab> with WidgetsBindingObserver {
           );
         }
         final pool = snapshot.data ?? const <RankedOpportunity>[];
-        final opportunities = bundleCards(pool, doneIds: widget.doneIds);
+        // Mixed after the done ones are out, so the hand on screen is mixed
+        final opportunities = mixHand(
+          bundleCards(pool, doneIds: widget.doneIds),
+          handSize: kHandSize,
+        );
         if (opportunities.isEmpty) {
           return pool.isEmpty
               ? const HandMessage(

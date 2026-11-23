@@ -30,6 +30,39 @@ enum OpportunityKind {
       );
 }
 
+/// Which level of the state an opportunity addresses, read from its
+/// [Opportunity.gebiet]: the hand mixes them (see mixHand).
+enum Ebene {
+  bund,
+  land,
+  kommune;
+
+  /// "" is Bund and EU, a two-digit AGS prefix a Land, anything longer a
+  /// Kreis or city; so a new city needs no change here.
+  static Ebene of(String gebiet) => gebiet.isEmpty
+      ? bund
+      : gebiet.length <= 2
+          ? land
+          : kommune;
+}
+
+/// A budget area (backend taxonomy GELD_BEREICHE, the pots of the
+/// Stadthaushalt step) and whether it gets more (+1) or less (-1) money if
+/// supporters get their way.
+class GeldEffekt {
+  const GeldEffekt({required this.bereich, required this.richtung});
+
+  factory GeldEffekt.fromJson(Map<String, Object?> json) {
+    return GeldEffekt(
+      bereich: json['bereich'] as String,
+      richtung: (json['richtung'] as num).toInt(),
+    );
+  }
+
+  final String bereich;
+  final int richtung;
+}
+
 /// The area an opportunity concerns: [km] around a centre.
 class Umkreis {
   const Umkreis({required this.lat, required this.lon, required this.km});
@@ -104,6 +137,7 @@ class Opportunity {
     required this.firstSeenAt,
     this.districts = const [],
     this.lebenslagen = const [],
+    this.geld = const [],
     this.gebiet = '',
     this.reichweite,
     this.umkreis,
@@ -148,6 +182,10 @@ class Opportunity {
       accessibility: json['accessibility'] as int?,
       districts: _strings(json['districts']),
       lebenslagen: _strings(json['lebenslagen']),
+      geld: [
+        for (final item in json['geld'] as List<Object?>? ?? const [])
+          GeldEffekt.fromJson(item! as Map<String, Object?>),
+      ],
       gebiet: json['gebiet'] as String? ?? '',
       reichweite: json['reichweite'] as String?,
       umkreis: json['umkreis'] is Map<String, Object?>
@@ -180,6 +218,7 @@ class Opportunity {
   // around a centre, city-wide ("stadt") or one neighbourhood's
   // ("nachbarschaft"). Unlike [region], which says who decides.
   final String gebiet;
+  Ebene get ebene => Ebene.of(gebiet);
   final String? reichweite;
   final Umkreis? umkreis;
   // Set when this is one of several options on one card.
@@ -191,7 +230,12 @@ class Opportunity {
   // Lebenslagen catalog ids this concerns (see Lebenslage), matched against
   // the ones the user picked.
   final List<String> lebenslagen;
+  // Questionnaire key (werteQuestionKeys) -> -1 / +1: supporters agree with
+  // its left / right statement. Only statements that directly predict
+  // support, mostly on Bund and EU cards.
   final Map<String, double> werteRelevanz;
+  // Budget areas this moves money in; mostly on a city's cards.
+  final List<GeldEffekt> geld;
   final List<String> proArgumente;
   final List<String> contraArgumente;
   // "field:value" -> sentence, keyed to match
