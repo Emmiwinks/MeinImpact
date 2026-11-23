@@ -10,9 +10,11 @@ from meinimpact.infrastructure.ai.lebenslagen import LEBENSLAGEN
 from meinimpact.infrastructure.ai.listing_enricher import (
     EnrichmentError,
     ListingEnricher,
+    build_anlass_prompt,
     build_prompt,
     build_werte_prompt,
     enrichment_input_hash,
+    parse_anlass,
     parse_enrichment,
     parse_werte,
 )
@@ -121,9 +123,9 @@ def test_relevant_listing_is_parsed() -> None:
     assert (enrichment.everyday_relevance, enrichment.accessibility) == (4, 5)
     assert enrichment.title.startswith("Soll am Alten")
     assert enrichment.affected_tags == ("Wohnen/Miete",)
-    assert enrichment.werte_relevanz == {}  # from the werte call only
+    # werte and anlass come from calls of their own
+    assert (enrichment.werte_relevanz, enrichment.anlass) == ({}, "")
     assert enrichment.geld == (("strassen", 1),)
-    assert enrichment.anlass == "Der alte Bahnhof liegt seit Jahren brach."
     assert enrichment.personal_impact_snippets == {
         "wohnsituation:mieter": "Neue Wohnungen können den Markt entlasten."
     }
@@ -222,9 +224,25 @@ def test_money_keeps_known_areas_with_a_direction() -> None:
     assert parse_enrichment(_relevant(geld=None)).geld == ()
 
 
-def test_reason_is_cut_to_one_short_line() -> None:
-    assert len(parse_enrichment(_relevant(anlass="x" * 400)).anlass) == 140
-    assert parse_enrichment(_relevant(anlass=None)).anlass == ""
+def test_a_too_long_reason_ends_at_a_full_word() -> None:
+    anlass = parse_anlass(
+        {"anlass": "Die Regierung stellt nur wenig Geld bereit, " + "obwohl " * 30}
+    )
+
+    assert len(anlass) <= 140
+    assert anlass.endswith("obwohl…")
+    assert parse_anlass({"anlass": "  Kurz.  "}) == "Kurz."
+    assert parse_anlass({"anlass": None}) == ""
+
+
+def test_anlass_prompt_sees_the_full_detail_text() -> None:
+    enrichment = parse_enrichment(_relevant())
+
+    prompt = build_anlass_prompt(make_listing(), "D" * 10_000, enrichment)
+
+    assert "D" * 4000 in prompt
+    assert "D" * 4001 not in prompt
+    assert '"Der Stadtrat entscheidet darüber." -> ""' in prompt
 
 
 @pytest.mark.parametrize(
@@ -386,14 +404,16 @@ async def test_no_districts_outside_cities_with_district_data() -> None:
     assert enrichment.districts == ()
 
 
-async def test_relevant_listing_gets_its_werte_from_a_second_call() -> None:
+async def test_relevant_listing_gets_werte_and_anlass_from_own_calls() -> None:
     completer = FakeCompleter(_relevant())
 
-    enrichment = await ListingEnricher(completer).enrich(make_listing("x"), None)
+    enrichment = await ListingEnricher(completer).enrich(make_listing("x"), "PDF")
 
-    assert len(completer.prompts) == 2
+    assert len(completer.prompts) == 3
     assert "LINKS:" in completer.prompts[1]
+    assert "PDF" in completer.prompts[2]
     assert enrichment.werte_relevanz == {"wandel_tradition": 1.0}
+    assert enrichment.anlass == "Der alte Bahnhof liegt seit Jahren brach."
     assert enrichment.geld == (("strassen", 1),)
 
 

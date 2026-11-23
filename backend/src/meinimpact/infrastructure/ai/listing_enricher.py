@@ -1,8 +1,9 @@
 """Turns a registry listing into what the app shows, and decides relevance.
 
-One LLM call per listing covers the first four points (the questionnaire
-statements of point 3 get a second, short call for relevant listings, see
-`build_werte_prompt`):
+One LLM call per listing covers the first four points (for relevant
+listings, the questionnaire statements and the reason line of point 3 get
+two short calls of their own, see `build_werte_prompt` and
+`build_anlass_prompt`):
 1. Is this a real way for citizens to influence a public decision, at a
    level the app covers? Registries also list property viewings, staff
    trainings, award ceremonies and highly technical EU acts (all seen
@@ -14,10 +15,10 @@ statements of point 3 get a second, short call for relevant listings, see
 3. Engaging, neutral plain-language framing, topic tags, pro/contra and
    personal-impact snippets. Which questionnaire statements directly
    predict support (werte_relevanz), which budget areas get more or less
-   money (geld), and why it is on the table now (anlass). Both calls first
-   say in one sentence what supporters want; the statements and the money
-   are judged against that sentence, which keeps "stop X" cards from
-   flipping sides.
+   money (geld), and why it is on the table now (anlass). The main and the
+   werte call first say in one sentence what supporters want; the
+   statements and the money are judged against that sentence, which keeps
+   "stop X" cards from flipping sides.
 4. A free-text topic label next to the fixed tags, so gaps in the taxonomy
    become visible (`scripts/topic_report.py`) instead of being force-fit.
 5. The city districts concerned, for cities with district data: only names
@@ -39,6 +40,7 @@ keys outside the Betroffenheitsprofil are dropped, never trusted.
 the prompt or parsing changes, and the next run re-enriches every listing.
 """
 
+import asyncio
 import hashlib
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
@@ -58,6 +60,9 @@ from meinimpact.infrastructure.geo.districts import DistrictMatcher
 from meinimpact.infrastructure.geo.locality import Reach
 from meinimpact.infrastructure.listings.model import Listing, Region
 
+# Not bumped when anlass moved to its own call (2026-11-23): the user chose
+# not to re-enrich the whole pool for it, so only new or changed listings
+# get the new reason line.
 ENRICHMENT_VERSION = "14"
 
 
@@ -191,7 +196,6 @@ Eintrag unten und antworte NUR mit JSON in genau dieser Struktur:
   "lebenslage_frei": "<Gruppe oder leer>",
   "dafuer": "<ein Satz>",
   "geld": [{{"bereich": "<id>", "richtung": "mehr" | "weniger"}}],
-  "anlass": "<ein Satz oder leer>",
   "pro_argumente": ["<arg>", "<arg>"],
   "contra_argumente": ["<arg>", "<arg>"],
   "personal_impact_snippets": {{"<feld:wert>": "<ein ganzer Satz>"}}
@@ -329,15 +333,6 @@ geschlossen werden?" (dafür = schließen) -> kinder_bildung weniger.
 "Steigen die Kita-Gebühren?" (dafür = Eltern zahlen mehr, die Stadt
 weniger) -> kinder_bildung weniger.
 
-anlass: Warum steht das gerade an? Ein Satz, höchstens 140 Zeichen, nur
-wenn der Text einen Grund nennt (z.B. Sparzwang, weniger Kinder, ein
-Gerichtsurteil, eine auslaufende Förderung). Neutral wie title und summary:
-die Tatsache nennen, nicht die Bewertung der Initiatoren übernehmen (nicht
-"Drohende Kürzungen gefährden X", sondern "Der Haushaltsentwurf sieht
-Kürzungen bei X vor"). Ein Vorgang ist kein Grund: "Der Stadtrat
-entscheidet" oder "Der Entwurf liegt vor" -> leer. Keine Zahlen, die nicht
-im Text stehen. Nicht die Zusammenfassung wiederholen. Sonst leer.
-
 pro_argumente / contra_argumente: je 1-{_MAX_ARGUMENTS} sachliche Argumente,
 jedes ein kurzer Satz.
 
@@ -406,6 +401,58 @@ def parse_werte(raw: Mapping[str, Any]) -> dict[str, float]:
     return _werte(raw.get("aussagen"))
 
 
+def build_anlass_prompt(
+    listing: Listing, detail: str | None, enrichment: Enrichment
+) -> str:
+    """The reason line gets a call of its own too: inside the main prompt it
+    often took the initiators' framing ("drohende Kürzungen gefährden …")
+    and turned steps of the process into reasons ("Der Entwurf liegt vor"),
+    even with that exact counter-example in the prompt. Unlike the werte
+    call it needs the full detail text: for council papers the reason is
+    only in the PDF."""
+    detail_text = (detail or listing.summary or "")[:_MAX_DETAIL_CHARS]
+    return f"""Du arbeitest für eine neutrale deutsche Civic-Tech-App. Lies den
+Eintrag unten und antworte nur mit JSON: {{"anlass": "<ein Satz oder leer>"}}
+
+anlass: Warum steht das gerade an? Ein kurzer Satz, höchstens 140 Zeichen,
+lieber kürzer. Nur wenn der Text einen Grund nennt, z.B. Sparzwang, weniger
+Kinder, ein Gerichtsurteil, eine auslaufende Förderung, ein Gesetzentwurf.
+
+Neutral: Nenne die Tatsache, nicht die Bewertung der Initiatoren. Keine
+wertenden Wörter wie "drohen", "gefährden", "drastisch", "Elend".
+- nicht "Drohende Kürzungen gefährden die Pflege", sondern "Ein
+  Gesetzentwurf sieht Kürzungen bei der Pflege vor."
+- nicht "Partei X plant Maßnahmen, die Geflüchteten schaden", sondern
+  "Die Initiatoren befürchten Verschärfungen nach der Landtagswahl."
+
+Ein Schritt im Verfahren ist kein Grund, dann leer:
+- "Der Entwurf der Haushaltssatzung liegt vor." -> ""
+- "Der Stadtrat entscheidet darüber." -> ""
+- "Der Plan wird regelmäßig fortgeschrieben." -> ""
+
+Keine Zahlen, die nicht im Text stehen. Nicht die Zusammenfassung
+wiederholen.
+
+Eintrag:
+Titel: {enrichment.title}
+Kurz: {enrichment.summary}
+Original: {listing.title}
+
+Text von der Quelle:
+{detail_text or "(kein Text)"}
+"""
+
+
+def parse_anlass(raw: Mapping[str, Any]) -> str:
+    """The anlass call's answer as one short line. A line the model makes
+    too long ends at the last full word before the limit, never mid-word."""
+    anlass = _text(raw.get("anlass"))
+    if len(anlass) <= _MAX_ANLASS_CHARS:
+        return anlass
+    cut = anlass[: _MAX_ANLASS_CHARS - 1].rsplit(" ", 1)[0]
+    return cut.rstrip(" ,;:-") + "…"
+
+
 def parse_enrichment(raw: Mapping[str, Any]) -> Enrichment:
     """Validates and normalizes the model's JSON into an `Enrichment`."""
     if not isinstance(raw.get("is_participation"), bool):
@@ -448,7 +495,6 @@ def parse_enrichment(raw: Mapping[str, Any]) -> Enrichment:
         lebenslagen_gruende=lebenslagen,
         lebenslage_frei=_text(raw.get("lebenslage_frei")),
         geld=_geld(raw.get("geld")),
-        anlass=_text(raw.get("anlass"))[:_MAX_ANLASS_CHARS],
         pro_argumente=_strings(raw.get("pro_argumente"))[:_MAX_ARGUMENTS],
         contra_argumente=_strings(raw.get("contra_argumente"))[:_MAX_ARGUMENTS],
         personal_impact_snippets={
@@ -551,10 +597,15 @@ class ListingEnricher:
         if not enrichment.is_relevant:
             return enrichment
 
-        werte = await self._completer.complete_json(
-            build_werte_prompt(listing, enrichment)
+        werte, anlass = await asyncio.gather(
+            self._completer.complete_json(build_werte_prompt(listing, enrichment)),
+            self._completer.complete_json(
+                build_anlass_prompt(listing, detail, enrichment)
+            ),
         )
-        enrichment = replace(enrichment, werte_relevanz=parse_werte(werte))
+        enrichment = replace(
+            enrichment, werte_relevanz=parse_werte(werte), anlass=parse_anlass(anlass)
+        )
 
         matcher = (
             self._district_matchers.get(enrichment.region)
