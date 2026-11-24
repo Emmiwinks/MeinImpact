@@ -11,15 +11,19 @@ import pkgutil
 from collections.abc import Iterable
 
 from meinimpact.places import defs
-from meinimpact.places.model import Level, Place
+from meinimpact.places.model import Level, Place, Status
 
 __all__ = [
     "ALL",
+    "LIVE",
+    "LIVE_KEYS",
     "Level",
     "Place",
     "PlaceConfigError",
+    "Status",
     "ags_of",
     "by_key",
+    "chain",
     "depth_of",
     "validate",
 ]
@@ -60,15 +64,31 @@ def validate(places: Iterable[Place]) -> None:
             raise PlaceConfigError(f"{place.key}: AGS outside {parent.key}'s")
         if place.oparl and place.oparl.region != place.key:
             raise PlaceConfigError(f"{place.key}: OParl body is for another place")
+        if place.is_live and not parent.is_live:
+            raise PlaceConfigError(f"{place.key}: live, but {parent.key} is a draft")
 
 
 ALL: tuple[Place, ...] = _discover()
 validate(ALL)
 _BY_KEY = {place.key: place for place in ALL}
+# What the app serves and counts as coverage
+LIVE: tuple[Place, ...] = tuple(place for place in ALL if place.is_live)
+LIVE_KEYS: tuple[str, ...] = tuple(place.key for place in LIVE)
 
 
 def by_key(key: str) -> Place | None:
     return _BY_KEY.get(key)
+
+
+def chain(key: str | None) -> tuple[Place, ...]:
+    """The place and every wider one it belongs to, most specific first;
+    empty for none or an unknown key."""
+    found: list[Place] = []
+    place = _BY_KEY.get(key) if key else None
+    while place is not None:
+        found.append(place)
+        place = _BY_KEY.get(place.parent) if place.parent else None
+    return tuple(found)
 
 
 def ags_of(key: str) -> str | None:

@@ -114,6 +114,28 @@ def test_prompt_without_detail_says_so() -> None:
     assert "(kein weiterer Text)" in build_prompt(make_listing(), None)
 
 
+def test_city_prompt_offers_only_the_city_and_the_places_above_it() -> None:
+    prompt = build_prompt(make_listing(region="dresden"), None)
+
+    assert (
+        '"scope": "dresden" | "sachsen" | "bund" | "eu" | "andere_kommune" '
+        '| "andere_region"'
+    ) in prompt
+    assert "Menschen in Dresden, Sachsen und Deutschland" in prompt
+    assert "in Dresden/Sachsen berührt" in prompt
+    assert "andere Stadt/Gemeinde/einen Landkreis in Sachsen" in prompt
+    assert "Braucht Dresden" not in prompt
+
+
+def test_nationwide_prompt_offers_every_covered_place() -> None:
+    prompt = build_prompt(make_listing(region="bund"), None)
+
+    for key in ("dresden", "sachsen", "bund", "eu"):
+        assert f'"{key}" |' in prompt
+    assert "Menschen in Deutschland konkrete" in prompt
+    assert "Stadt Dresden" in prompt
+
+
 def test_relevant_listing_is_parsed() -> None:
     enrichment = parse_enrichment(_relevant())
 

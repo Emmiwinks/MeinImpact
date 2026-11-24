@@ -4,7 +4,7 @@ Checked and not used: Bundestag ePetitionen (list needs a JS session
 token), Bundestag agendas (PDF only; DIP API is the other route).
 """
 
-from meinimpact.places.model import Level, Place
+from meinimpact.places.model import Level, Place, Status
 
 PLACE = Place(
     key="bund",
@@ -12,5 +12,6 @@ PLACE = Place(
     level=Level.BUND,
     ags="",
     parent="eu",
+    status=Status.LIVE,
     openpetition_path="/region/petition/Deutschland",
 )

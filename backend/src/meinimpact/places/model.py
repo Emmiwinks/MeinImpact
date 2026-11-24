@@ -26,6 +26,14 @@ class Level(StrEnum):
         return list(Level).index(self)
 
 
+class Status(StrEnum):
+    """A draft place is ingested and shows in /admin, but the app never
+    serves its opportunities or counts it as coverage."""
+
+    DRAFT = "draft"
+    LIVE = "live"
+
+
 @dataclass(frozen=True, slots=True)
 class Place:
     key: str
@@ -37,6 +45,8 @@ class Place:
     ags: str
     # The next wider place this one belongs to; None only for the EU
     parent: str | None
+    # Flipped to LIVE by hand after reviewing the place's coverage report
+    status: Status = Status.DRAFT
     # Districts: synced from Wikidata (`scripts/sync_districts.py <key>`)
     wikidata_id: str | None = None
     district_types: tuple[str, ...] = ()
@@ -57,3 +67,7 @@ class Place:
     @property
     def authority_names(self) -> tuple[str, ...]:
         return self.portal_names or (self.name,)
+
+    @property
+    def is_live(self) -> bool:
+        return self.status is Status.LIVE

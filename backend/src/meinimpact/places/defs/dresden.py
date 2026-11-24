@@ -7,7 +7,7 @@ official route instead. Letters: Fraktion offices in council/offices.py
 """
 
 from meinimpact.infrastructure.listings.sources.oparl import OParlBody
-from meinimpact.places.model import Level, Place
+from meinimpact.places.model import Level, Place, Status
 
 ORTSTEIL = "Q253019"
 
@@ -38,6 +38,7 @@ PLACE = Place(
     level=Level.KOMMUNE,
     ags="14612",
     parent="sachsen",
+    status=Status.LIVE,
     wikidata_id="Q1731",
     district_types=(ORTSTEIL,),
     openpetition_path="/region/petition/Dresden",

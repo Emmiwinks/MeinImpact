@@ -25,6 +25,7 @@ from datetime import date, datetime
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from meinimpact import places as covered
 from meinimpact.domain.entities import Opportunity, OpportunityBundle
 from meinimpact.infrastructure.ai.bundler import Bundle, BundleItem
 from meinimpact.infrastructure.ai.listing_enricher import (
@@ -199,7 +200,8 @@ class PostgresOpportunityRepository:
             .where(
                 OpportunityRecord.active.is_(True),
                 OpportunityRecord.is_relevant.is_(True),
-                OpportunityRecord.region.is_not(None),
+                # Draft places are ingested but never served
+                OpportunityRecord.region.in_(covered.LIVE_KEYS),
                 or_(
                     OpportunityRecord.everyday_relevance
                     > EXPERT_ONLY_MAX_EVERYDAY_RELEVANCE,

@@ -48,7 +48,7 @@ public_router = APIRouter(prefix="/v1/opportunities", tags=["opportunities"])
 PREVIEW_SIZE = 12
 # Most local first: the page is for people who live in a covered city.
 _PREVIEW_REGIONS = tuple(
-    place.key for place in sorted(covered.ALL, key=lambda p: (-p.depth, p.key))
+    place.key for place in sorted(covered.LIVE, key=lambda p: (-p.depth, p.key))
 )
 _TOPICS = list(TAGS)
 

@@ -160,6 +160,7 @@ async def test_list_open_serves_relevant_active_unexpired_except_expert_only(
         make_listing("niche"),
         make_listing("expert-only"),
         make_listing("unenriched"),
+        make_listing("draft-place"),
     ]
     synced = await repository.sync(
         listings, complete_source_ids={"src"}, observed_at=NOW
@@ -172,6 +173,8 @@ async def test_list_open_serves_relevant_active_unexpired_except_expert_only(
             everyday_relevance=EXPERT_ONLY_MAX_EVERYDAY_RELEVANCE,
             accessibility=EXPERT_ONLY_MAX_ACCESSIBILITY,
         ),
+        # A place not (yet) live: ingested and enriched, never served
+        "draft-place": _relevant(region="wittenberg"),
     }
     for pending in synced.pending:
         if pending.listing.external_id == "unenriched":

@@ -142,7 +142,69 @@ def enrichment_input_hash(listing: Listing) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
 
 
+def _scope_places(listing: Listing) -> tuple[covered.Place, ...]:
+    """The places a listing may be scoped to, most specific first: its own
+    place and the wider ones it belongs to. A nationwide registry's entry
+    may concern any covered place, so it gets all of them."""
+    own = covered.chain(listing.region)
+    if own and own[0].depth > covered.Level.BUND.depth:
+        return own
+    return tuple(sorted(covered.ALL, key=lambda p: (-p.depth, p.key)))
+
+
+def _scope_label(place: covered.Place) -> str:
+    match place.level:
+        case covered.Level.KOMMUNE:
+            return f'"{place.key}" (Stadt {place.name})'
+        case covered.Level.KREIS:
+            return f'"{place.key}" (Landkreis {place.name} oder kreisweit)'
+        case covered.Level.LAND:
+            return f'"{place.key}" (Land {place.name} oder ganz {place.name})'
+        case covered.Level.BUND:
+            return (
+                f'"{place.key}" (bundesweit relevant, auch wenn es anderswo '
+                "angestoßen wurde)"
+            )
+        case _:
+            return f'"{place.key}"'
+
+
+def _scope_text(listing: Listing) -> tuple[str, str, str, str]:
+    """The scope options, their explanation, and the place names the
+    prompt's intro and everyday line address, all from the place files."""
+    scopes = _scope_places(listing)
+    options = " | ".join(
+        f'"{key}"'
+        for key in (*(p.key for p in scopes), "andere_kommune", "andere_region")
+    )
+    lands = [p for p in scopes if p.level is covered.Level.LAND]
+    land = lands[0].name if len(lands) == 1 else None
+    other_local = (
+        f"nur eine andere Stadt/Gemeinde/einen Landkreis in {land}"
+        if land
+        else "nur eine Stadt/Gemeinde/einen Landkreis, die hier nicht genannt ist"
+    )
+    other_region = (
+        f"nur ein anderes Bundesland oder eine Stadt außerhalb von {land}"
+        if land
+        else "nur ein Bundesland oder eine Stadt, die hier nicht genannt ist"
+    )
+    explained = ", ".join(_scope_label(p) for p in scopes)
+    explanation = (
+        f'{explained}, "andere_kommune" ({other_local}), '
+        f'"andere_region" ({other_region}).'
+    )
+    names = [p.name for p in covered.chain(listing.region) if p.depth > 0]
+    audience = (
+        ", ".join(names[:-1]) + " und " + names[-1] if len(names) > 1 else "Deutschland"
+    )
+    local = [p.name for p in covered.chain(listing.region) if p.depth > 1]
+    everyday = "/".join(local) if local else "Deutschland"
+    return options, explanation, audience, everyday
+
+
 def build_prompt(listing: Listing, detail: str | None) -> str:
+    scope_options, scope_explanation, audience, everyday_place = _scope_text(listing)
     tag_list = "\n".join(
         f"- {tag}" + (f" ({TAG_HINTS[tag]})" if tag in TAG_HINTS else "")
         for tag in TAGS
@@ -172,7 +234,7 @@ def build_prompt(listing: Listing, detail: str | None) -> str:
     detail_text = (detail or "")[:_MAX_DETAIL_CHARS] or "(kein weiterer Text)"
 
     return f"""Du arbeitest für eine neutrale deutsche Civic-Tech-App. Sie zeigt
-Menschen in Dresden, Sachsen und Deutschland konkrete Möglichkeiten, auf
+Menschen in {audience} konkrete Möglichkeiten, auf
 öffentliche Entscheidungen Einfluss zu nehmen. Die App soll sich leicht und
 motivierend anfühlen, nicht wie Behördenpost: jede Karte muss in wenigen
 Sekunden verständlich sein und Lust machen, mitzumachen. Bewerte den
@@ -181,7 +243,7 @@ Eintrag unten und antworte NUR mit JSON in genau dieser Struktur:
 {{
   "is_participation": <bool>,
   "reason": "<ein kurzer Satz, warum (nicht)>",
-  "scope": "eu" | "bund" | "sachsen" | "dresden" | "andere_kommune" | "andere_region",
+  "scope": {scope_options},
   "reichweite": "nachbarschaft" | "ort" | "stadt" | "umland" | "",
   "orte": ["<Gemeinde, Stadt, Landkreis oder Stadtteil>", ...],
   "alltagsbezug": <1-5>,
@@ -234,11 +296,7 @@ reine Informationsvorlagen, Zuschüsse an einzelne Vereine für deren
 interne Zwecke.
 Wenn false: alle Felder außer is_participation, reason und scope leer lassen.
 
-scope = wo das Thema für Menschen zählt: "dresden" (Stadt Dresden),
-"sachsen" (Freistaat Sachsen oder sachsenweit), "bund" (bundesweit
-relevant, auch wenn es anderswo angestoßen wurde), "eu", "andere_kommune"
-(nur eine andere sächsische Stadt/Gemeinde/einen Landkreis), "andere_region"
-(nur ein anderes Bundesland oder eine Stadt außerhalb Sachsens). Bei
+scope = wo das Thema für Menschen zählt: {scope_explanation} Bei
 Ratsvorlagen ist scope immer die Stadt, deren Rat entscheidet, auch wenn
 die Folgen ins Umland reichen.
 
@@ -268,7 +326,7 @@ städtische Klinikum), dann "stadt": Wer berät, macht eine Vorlage nicht
 zur Sache des Stadtteils.
 
 alltagsbezug = wie direkt das den Alltag eines durchschnittlichen Menschen
-in Dresden/Sachsen berührt:
+in {everyday_place} berührt:
 5 = trifft viele Menschen spürbar (Miete, Kita/Schule, Bus und Bahn,
     Rente, Gesundheit, Löhne, die eigene Straße oder das eigene Viertel)
 3 = spürbar für eine klar erkennbare Gruppe (z.B. Eltern, Studierende,
@@ -286,7 +344,7 @@ bei 1-2.
 title: eine kurze Frage (höchstens 90 Zeichen), neutral und ohne die
 Position der Initiatoren, aber neugierig machend und alltagsnah. Wähle die
 Frageform, die am natürlichsten klingt, und variiere sie, z.B.:
-"Wie geht es weiter mit ...?", "Braucht Dresden ...?", "Was passiert mit
+"Wie geht es weiter mit ...?", "Braucht die Stadt ...?", "Was passiert mit
 ...?", "Mehr ... oder ...?", "Darf ...?", "Wer zahlt für ...?", "Bleibt
 ...?", "Soll ...?". Beginne NICHT standardmäßig mit "Soll". Keine
 Fachbegriffe, Aktenzeichen oder Plannummern im Titel.

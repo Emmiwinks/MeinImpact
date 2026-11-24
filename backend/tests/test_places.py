@@ -60,6 +60,42 @@ def test_validate_rejects_a_parent_that_is_missing() -> None:
         validate([eu, orphan])
 
 
+def test_chain_runs_from_the_place_up_to_the_eu() -> None:
+    assert [p.key for p in places.chain("dresden")] == [
+        "dresden",
+        "sachsen",
+        "bund",
+        "eu",
+    ]
+    assert places.chain("nowhere") == ()
+    assert places.chain(None) == ()
+
+
+def test_a_new_place_is_a_draft_until_flipped() -> None:
+    place = Place(key="x", name="X", level=Level.LAND, ags="99", parent="bund")
+
+    assert place.status is places.Status.DRAFT
+    assert not place.is_live
+
+
+def test_validate_rejects_a_live_place_under_a_draft() -> None:
+    eu = places.by_key("eu")
+    bund = places.by_key("bund")
+    assert eu and bund
+    land = Place(key="land", name="L", level=Level.LAND, ags="15", parent="bund")
+    town = Place(
+        key="town",
+        name="T",
+        level=Level.KOMMUNE,
+        ags="15091375",
+        parent="land",
+        status=places.Status.LIVE,
+    )
+
+    with pytest.raises(PlaceConfigError, match="draft"):
+        validate([eu, bund, land, town])
+
+
 def test_validate_rejects_an_ags_outside_the_parent() -> None:
     sachsen = places.by_key("sachsen")
     bund = places.by_key("bund")

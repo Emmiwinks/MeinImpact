@@ -100,9 +100,9 @@ class Coverage(StrEnum):
 
 
 def coverage_of(kreis: str) -> Coverage:
-    """From the covered places, so a new place file changes it with no
-    data of its own."""
-    gebiete = [place.ags for place in covered.ALL if place.ags]
+    """From the live places, so a new place file changes it with no data
+    of its own once it goes live."""
+    gebiete = [place.ags for place in covered.LIVE if place.ags]
     if any(len(g) >= 5 and kreis.startswith(g) for g in gebiete):
         return Coverage.LOCAL
     if kreis[:2] in gebiete:
