@@ -542,14 +542,6 @@ class _RucksackScreenState extends State<RucksackScreen>
                   ),
                   decoration: InputDecoration(
                     counterText: '',
-                    hintText: '01067',
-                    hintStyle: TextStyle(
-                      fontFamily: MiFonts.display,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 30,
-                      letterSpacing: 3.6,
-                      color: ink.withValues(alpha: 0.18),
-                    ),
                     filled: true,
                     fillColor: const Color(0xFFFFFCF8),
                     contentPadding: const EdgeInsets.symmetric(
