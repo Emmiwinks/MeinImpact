@@ -8,7 +8,6 @@ from meinimpact.infrastructure.listings.model import (
     ActionKind,
     Listing,
     ListingStatus,
-    Region,
     Support,
 )
 from meinimpact.infrastructure.listings.source import ListingSource
@@ -18,6 +17,5 @@ __all__ = [
     "Listing",
     "ListingSource",
     "ListingStatus",
-    "Region",
     "Support",
 ]

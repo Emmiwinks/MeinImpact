@@ -1,13 +1,16 @@
 """The configured listing sources and detail readers: the one place they
 are assembled.
 
-Adding a registry means writing its module under `sources/` and adding it
-here; nothing else changes.
+Which registries cover which place is declared in the place files
+(`meinimpact.places`); this module turns those declarations into sources.
+Adding a registry means writing its module under `sources/`, a field for
+it on `Place` if it is per place, and its assembly here.
 """
 
 import re
 from collections.abc import Mapping
 
+from meinimpact import places as covered
 from meinimpact.infrastructure.geo.districts import (
     CITIES,
     DistrictMatcher,
@@ -17,11 +20,9 @@ from meinimpact.infrastructure.geo.locality import LocalityResolver, Neighbourho
 from meinimpact.infrastructure.geo.places import PlaceIndex
 from meinimpact.infrastructure.geo.plz import PlzIndex
 from meinimpact.infrastructure.listings.http import PoliteHttpClient
-from meinimpact.infrastructure.listings.model import Region
 from meinimpact.infrastructure.listings.source import DetailReader, ListingSource
 from meinimpact.infrastructure.listings.sources import (
     eu_have_your_say,
-    oparl,
     openpetition,
     sachsen_beteiligung,
     weact,
@@ -31,6 +32,7 @@ from meinimpact.infrastructure.listings.sources.eu_have_your_say import (
     EuHaveYourSaySource,
 )
 from meinimpact.infrastructure.listings.sources.oparl import (
+    OParlBody,
     OParlDetailReader,
     OParlSource,
 )
@@ -40,6 +42,7 @@ from meinimpact.infrastructure.listings.sources.openpetition import (
     OpenPetitionSource,
 )
 from meinimpact.infrastructure.listings.sources.sachsen_beteiligung import (
+    PortalCoverage,
     SachsenBeteiligungSource,
 )
 from meinimpact.infrastructure.listings.sources.weact import (
@@ -47,12 +50,14 @@ from meinimpact.infrastructure.listings.sources.weact import (
     WeActSource,
 )
 
-OPARL_BODIES = (oparl.DRESDEN,)
+OPARL_BODIES: tuple[OParlBody, ...] = tuple(
+    place.oparl for place in covered.ALL if place.oparl
+)
 
-OPENPETITION_SCOPES = (
-    OpenPetitionScope(Region.BUND, "/region/petition/Deutschland"),
-    OpenPetitionScope(Region.SACHSEN, "/region/petition/Sachsen"),
-    OpenPetitionScope(Region.DRESDEN, "/region/petition/Dresden"),
+OPENPETITION_SCOPES = tuple(
+    OpenPetitionScope(place.key, place.openpetition_path)
+    for place in covered.ALL
+    if place.openpetition_path
 )
 
 # Display names shown with every opportunity in the app.
@@ -61,18 +66,45 @@ SOURCE_NAMES: Mapping[str, str] = {
     sachsen_beteiligung.SOURCE_ID: "Beteiligungsportal Sachsen",
     eu_have_your_say.SOURCE_ID: "EU-Kommission: Ihre Meinung zählt",
     weact.SOURCE_ID: "WeAct",
-    oparl.DRESDEN.source_id: "Ratsinformationssystem Dresden",
+    **{
+        body.source_id: f"Ratsinformationssystem {body.locality}"
+        for body in OPARL_BODIES
+    },
 }
 
 
+def portal_coverage(land: covered.Place) -> PortalCoverage:
+    """The Land's portal, with every covered place inside the Land matched
+    by its authority names, most specific first."""
+    inside = sorted(
+        (p for p in covered.ALL if p.depth > land.depth and p.ags.startswith(land.ags)),
+        key=lambda p: -p.depth,
+    )
+    return PortalCoverage(
+        land=land.key,
+        land_markers=land.portal_land_markers,
+        local=tuple((p.key, p.authority_names) for p in inside),
+    )
+
+
 def default_sources(http: PoliteHttpClient) -> list[ListingSource]:
+    sachsen = covered.by_key("sachsen")
     return [
         *(OpenPetitionSource(http, scope) for scope in OPENPETITION_SCOPES),
-        SachsenBeteiligungSource(http),
+        *(
+            [SachsenBeteiligungSource(http, portal_coverage(sachsen))]
+            if sachsen
+            else []
+        ),
         EuHaveYourSaySource(http),
         WeActSource(http),
         *(OParlSource(http, body) for body in OPARL_BODIES),
     ]
+
+
+def default_district_matchers() -> dict[str, DistrictMatcher]:
+    """Each place with synced districts, by its key."""
+    return {key: DistrictMatcher.for_city(city) for key, city in CITIES.items()}
 
 
 def default_locality_resolver(plz: PlzIndex) -> LocalityResolver:
@@ -80,11 +112,11 @@ def default_locality_resolver(plz: PlzIndex) -> LocalityResolver:
     city's synced districts and the PLZ and place tables."""
     neighbourhoods = {}
     for body in OPARL_BODIES:
-        city = CITIES.get(body.region.value)
+        city = CITIES.get(body.region)
         if city is None or not body.neighbourhoods:
             continue
         districts = load_districts(city)
-        neighbourhoods[body.region.value] = Neighbourhoods(
+        neighbourhoods[body.region] = Neighbourhoods(
             bodies=tuple(re.compile(pattern) for pattern in body.neighbourhoods),
             districts=tuple(districts),
             matcher=DistrictMatcher(city.name, districts),
@@ -102,5 +134,5 @@ def default_detail_readers(http: PoliteHttpClient) -> dict[str, DetailReader]:
         openpetition.SOURCE_ID: OpenPetitionDetailReader(http),
         eu_have_your_say.SOURCE_ID: EuHaveYourSayDetailReader(http),
         weact.SOURCE_ID: WeActDetailReader(http),
-        oparl.DRESDEN.source_id: OParlDetailReader(http, oparl.DRESDEN),
+        **{body.source_id: OParlDetailReader(http, body) for body in OPARL_BODIES},
     }

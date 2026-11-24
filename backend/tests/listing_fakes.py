@@ -7,7 +7,6 @@ from meinimpact.infrastructure.listings.model import (
     ActionKind,
     Listing,
     ListingStatus,
-    Region,
     Support,
 )
 
@@ -17,7 +16,7 @@ NOW = datetime(2026, 11, 1, 12, 0, tzinfo=UTC)
 def make_listing(
     external_id: str = "a",
     *,
-    region: Region | None = Region.BUND,
+    region: str | None = "bund",
     status: ListingStatus = ListingStatus.OPEN,
     source_id: str = "src",
     title: str | None = None,

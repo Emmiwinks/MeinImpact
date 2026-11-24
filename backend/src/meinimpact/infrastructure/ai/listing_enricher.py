@@ -46,6 +46,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from typing import Any
 
+from meinimpact import places as covered
 from meinimpact.infrastructure.ai.lebenslagen import LEBENSLAGEN, LEBENSLAGEN_BY_ID
 from meinimpact.infrastructure.ai.mistral_json import JsonCompleter
 from meinimpact.infrastructure.ai.taxonomy import (
@@ -58,7 +59,7 @@ from meinimpact.infrastructure.ai.taxonomy import (
 )
 from meinimpact.infrastructure.geo.districts import DistrictMatcher
 from meinimpact.infrastructure.geo.locality import Reach
-from meinimpact.infrastructure.listings.model import Listing, Region
+from meinimpact.infrastructure.listings.model import Listing
 
 # Not bumped when anlass moved to its own call (2026-11-23): the user chose
 # not to re-enrich the whole pool for it, so only new or changed listings
@@ -79,11 +80,9 @@ _AUSSAGE_KEYS = tuple(WERTE_AUSSAGEN)
 _SIDES = {"links": -1.0, "rechts": 1.0}
 _DIRECTIONS = {"mehr": 1, "weniger": -1}
 
-_SCOPES: Mapping[str, Region | None] = {
-    "eu": Region.EU,
-    "bund": Region.BUND,
-    "sachsen": Region.SACHSEN,
-    "dresden": Region.DRESDEN,
+# The model answers with a covered place's key, or says it lies elsewhere
+_SCOPES: Mapping[str, str | None] = {
+    **{place.key: place.key for place in covered.ALL},
     "andere_kommune": None,
     "andere_region": None,
 }
@@ -97,7 +96,7 @@ class EnrichmentError(ValueError):
 class Enrichment:
     is_relevant: bool
     reason: str
-    region: Region | None = None
+    region: str | None = None
     # 1-5: how directly it touches an average person's everyday life
     everyday_relevance: int | None = None
     # 1-5: how quickly a layperson grasps what it is about
@@ -578,13 +577,13 @@ def _mapping(value: object) -> Mapping[str, object]:
 
 
 class ListingEnricher:
-    """`district_matchers` maps a region to its city's districts (Dresden
-    today); regions without one never get districts."""
+    """`district_matchers` maps a place key to its city's districts; places
+    without one never get districts."""
 
     def __init__(
         self,
         completer: JsonCompleter,
-        district_matchers: Mapping[Region, DistrictMatcher] | None = None,
+        district_matchers: Mapping[str, DistrictMatcher] | None = None,
     ) -> None:
         self._completer = completer
         self._district_matchers = district_matchers or {}

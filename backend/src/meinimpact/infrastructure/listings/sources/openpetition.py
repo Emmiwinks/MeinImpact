@@ -17,7 +17,6 @@ from meinimpact.infrastructure.listings.model import (
     ActionKind,
     Listing,
     ListingStatus,
-    Region,
     Support,
 )
 from meinimpact.infrastructure.listings.parsing import (
@@ -35,14 +34,14 @@ _PETITION_PATH = "/petition/online/"
 
 @dataclass(frozen=True, slots=True)
 class OpenPetitionScope:
-    """One openPetition region page mapped onto an app coverage region."""
+    """One openPetition region page mapped onto a covered place's key."""
 
-    region: Region
+    region: str
     path: str
 
 
 def parse_listing_page(
-    html: str, *, region: Region, observed_at: datetime
+    html: str, *, region: str, observed_at: datetime
 ) -> list[Listing]:
     soup = BeautifulSoup(html, "html.parser")
     listings = (
@@ -52,7 +51,7 @@ def parse_listing_page(
     return [listing for listing in listings if listing is not None]
 
 
-def _parse_card(card: Tag, *, region: Region, observed_at: datetime) -> Listing | None:
+def _parse_card(card: Tag, *, region: str, observed_at: datetime) -> Listing | None:
     link = card.select_one(f'h3 a[href^="{_PETITION_PATH}"]')
     href = attr_of(link, "href")
     title = text_of(link)

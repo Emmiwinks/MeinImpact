@@ -11,9 +11,8 @@ from typing import Any
 import httpx
 
 from meinimpact.infrastructure.listings.http import CrawlPolicy, PoliteHttpClient
-from meinimpact.infrastructure.listings.model import ActionKind, Region
+from meinimpact.infrastructure.listings.model import ActionKind
 from meinimpact.infrastructure.listings.sources.oparl import (
-    DRESDEN,
     AgendaItem,
     Candidate,
     Consultation,
@@ -26,6 +25,7 @@ from meinimpact.infrastructure.listings.sources.oparl import (
     parse_agenda_page,
     pdf_text,
 )
+from meinimpact.places.defs.dresden import COUNCIL as DRESDEN
 from tests.listing_fakes import make_listing
 
 NOW = datetime(2026, 11, 8, 12, 0, tzinfo=UTC)
@@ -177,7 +177,7 @@ async def test_one_listing_per_upcoming_paper_with_the_deciding_meeting() -> Non
     assert set(by_id) == {"vo/30796", "vo/31000"}
     windrad = by_id["vo/30796"]
     assert windrad.kind is ActionKind.DECISION
-    assert windrad.region is Region.DRESDEN
+    assert windrad.region == "dresden"
     assert windrad.url == "https://ratsinfo.dresden.de/vo0050.asp?__kvonr=30796"
     assert windrad.organizer == "Stadtrat"
     assert windrad.closes_on == date(2026, 11, 26)

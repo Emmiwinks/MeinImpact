@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Dry run: upcoming Dresden council decisions through the real enrichment.
+"""Dry run: one city's upcoming council decisions through the real enrichment.
 
-Reads the OParl source and each paper's PDF exactly like an ingestion run,
-sends every listing through the production enrichment prompt and model, and
-reports what would be shown and what is filtered out (with the model's
-reason). Nothing is written to the DB; costs one Mistral call per listing.
+Reads the place's OParl source and each paper's PDF exactly like an
+ingestion run, sends every listing through the production enrichment prompt
+and model, and reports what would be shown and what is filtered out (with
+the model's reason). Nothing is written to the DB; costs up to three
+Mistral calls per listing.
 
-  docker compose exec api python scripts/dryrun_decisions.py
+  docker compose exec api python scripts/dryrun_decisions.py [place key]
 """
 
 import asyncio
@@ -20,14 +21,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+from meinimpact import places
 from meinimpact.core.config import get_settings
 from meinimpact.infrastructure.ai.listing_enricher import ListingEnricher
 from meinimpact.infrastructure.ai.mistral_json import MistralJsonCompleter
-from meinimpact.infrastructure.geo.districts import CITIES, DistrictMatcher
+from meinimpact.infrastructure.listings.catalog import default_district_matchers
 from meinimpact.infrastructure.listings.http import PoliteHttpClient
-from meinimpact.infrastructure.listings.model import Listing, Region
+from meinimpact.infrastructure.listings.model import Listing
 from meinimpact.infrastructure.listings.sources.oparl import (
-    DRESDEN,
     OParlDetailReader,
     OParlSource,
 )
@@ -46,28 +47,33 @@ def _json_default(value: object) -> object:
     raise TypeError(f"not JSON serializable: {type(value).__name__}")
 
 
-async def main() -> None:
+async def main(place_key: str) -> None:
+    place = places.by_key(place_key)
+    if place is None or place.oparl is None:
+        raise SystemExit(f"no place {place_key!r} with an OParl body")
+    body = place.oparl
     settings = get_settings()
+    if not settings.mistral_api_key:
+        raise SystemExit("MEINIMPACT_MISTRAL_API_KEY is not set")
     observed_at = datetime.now(UTC)
     completer = MistralJsonCompleter(
         api_key=settings.mistral_api_key,
         base_url=settings.mistral_base_url,
         model=settings.mistral_extraction_model,
     )
-    enricher = ListingEnricher(
-        completer, {Region.DRESDEN: DistrictMatcher.for_city(CITIES["dresden"])}
-    )
+    enricher = ListingEnricher(completer, default_district_matchers())
     gate = asyncio.Semaphore(_CONCURRENCY)
     rows: list[dict[str, object]] = []
 
     try:
         async with PoliteHttpClient() as http:
             print("reading agendas ...", flush=True)
-            listings = await OParlSource(http, DRESDEN).fetch(observed_at=observed_at)
+            listings = await OParlSource(http, body).fetch(observed_at=observed_at)
             print(
-                f"{len(listings)} upcoming papers; reading PDFs + enriching", flush=True
+                f"{len(listings)} upcoming papers in {place.name}; reading PDFs + enriching",
+                flush=True,
             )
-            reader = OParlDetailReader(http, DRESDEN)
+            reader = OParlDetailReader(http, body)
 
             async def one(listing: Listing) -> None:
                 async with gate:
@@ -110,4 +116,4 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main(sys.argv[1] if len(sys.argv) > 1 else "dresden"))

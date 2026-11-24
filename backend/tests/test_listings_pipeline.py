@@ -12,10 +12,11 @@ from meinimpact.infrastructure.listings.catalog import (
     SOURCE_NAMES,
     default_detail_readers,
     default_sources,
+    portal_coverage,
 )
 from meinimpact.infrastructure.listings.collector import collect
 from meinimpact.infrastructure.listings.http import CrawlPolicy, PoliteHttpClient
-from meinimpact.infrastructure.listings.model import ListingStatus, Region
+from meinimpact.infrastructure.listings.model import ListingStatus
 from meinimpact.infrastructure.listings.source import ListingSource
 from meinimpact.infrastructure.listings.sources.eu_have_your_say import (
     EuHaveYourSaySource,
@@ -28,6 +29,7 @@ from meinimpact.infrastructure.listings.sources.sachsen_beteiligung import (
     SachsenBeteiligungSource,
 )
 from meinimpact.infrastructure.listings.sources.weact import WeActSource
+from meinimpact.places.defs import sachsen
 from tests.listing_fakes import NOW, BrokenSource, StaticSource
 from tests.listing_fakes import make_listing as _listing
 
@@ -114,10 +116,10 @@ def test_not_expired_drops_past_end_dates_but_keeps_undated() -> None:
 
 def test_dedupe_keeps_most_specific_region() -> None:
     listings = [
-        _listing("p", region=Region.SACHSEN),
-        _listing("p", region=Region.DRESDEN),
-        _listing("p", region=Region.BUND),
-        _listing("p", region=Region.BUND, source_id="other"),
+        _listing("p", region="sachsen"),
+        _listing("p", region="dresden"),
+        _listing("p", region="bund"),
+        _listing("p", region="bund", source_id="other"),
     ]
 
     kept = steps.dedupe(listings)
@@ -133,12 +135,12 @@ def test_apply_runs_steps_in_order() -> None:
         _listing("a", region=None),
         _listing("b", status=ListingStatus.CLOSED),
         _listing("c"),
-        _listing("c", region=Region.DRESDEN),
+        _listing("c", region="dresden"),
     ]
 
     kept = steps.apply(listings, (steps.in_coverage, steps.actionable, steps.dedupe))
 
-    assert [(i.external_id, i.region) for i in kept] == [("c", Region.DRESDEN)]
+    assert [(i.external_id, i.region) for i in kept] == [("c", "dresden")]
 
 
 # --- sources over a mocked transport ----------------------------------------
@@ -156,7 +158,7 @@ async def test_openpetition_pages_until_no_new_petitions() -> None:
 
     source = OpenPetitionSource(
         _http(httpx.MockTransport(handler)),
-        OpenPetitionScope(Region.DRESDEN, "/region/petition/Dresden"),
+        OpenPetitionScope("dresden", "/region/petition/Dresden"),
         max_pages=5,
     )
 
@@ -181,7 +183,9 @@ async def test_sachsen_follows_ajax_pagination_with_view_state() -> None:
         body = second if len(posts) == 1 else "<partial-response/>"
         return httpx.Response(200, text=body)
 
-    source = SachsenBeteiligungSource(_http(httpx.MockTransport(handler)))
+    source = SachsenBeteiligungSource(
+        _http(httpx.MockTransport(handler)), portal_coverage(sachsen.PLACE)
+    )
 
     listings = await source.fetch(observed_at=NOW)
 
@@ -206,7 +210,9 @@ async def test_sachsen_rejected_pagination_fails_the_source_loudly() -> None:
             return httpx.Response(404)
         return httpx.Response(200, text=first if request.method == "GET" else redirect)
 
-    source = SachsenBeteiligungSource(_http(httpx.MockTransport(handler)))
+    source = SachsenBeteiligungSource(
+        _http(httpx.MockTransport(handler)), portal_coverage(sachsen.PLACE)
+    )
 
     report = await collect([source], observed_at=NOW)
 
@@ -280,10 +286,10 @@ def test_default_steps_apply_the_full_policy() -> None:
         _listing("out", region=None),
         _listing("closed", status=ListingStatus.CLOSED),
         replace(_listing("expired"), closes_on=date(2026, 10, 1)),
-        _listing("dup", region=Region.SACHSEN),
-        _listing("dup", region=Region.DRESDEN),
+        _listing("dup", region="sachsen"),
+        _listing("dup", region="dresden"),
     ]
 
     kept = steps.apply(listings, steps.default_steps(today))
 
-    assert [(i.external_id, i.region) for i in kept] == [("dup", Region.DRESDEN)]
+    assert [(i.external_id, i.region) for i in kept] == [("dup", "dresden")]

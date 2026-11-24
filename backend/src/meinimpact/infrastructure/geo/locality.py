@@ -22,6 +22,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 
+from meinimpact import places as covered
 from meinimpact.infrastructure.geo.districts import District, DistrictMatcher
 from meinimpact.infrastructure.geo.places import PlaceIndex
 from meinimpact.infrastructure.geo.plz import (
@@ -31,7 +32,6 @@ from meinimpact.infrastructure.geo.plz import (
     centroid,
     distance_km,
 )
-from meinimpact.infrastructure.listings.model import REGION_AGS, Region
 
 # Radius around a neighbourhood's centre(s) that still counts as it: about
 # a Stadtbezirk or Ortschaft, whose district names locate only its core.
@@ -100,9 +100,9 @@ class Coverage(StrEnum):
 
 
 def coverage_of(kreis: str) -> Coverage:
-    """From the regions the sources cover, so a new city's source changes
-    it with no data of its own."""
-    gebiete = [ags for ags in REGION_AGS.values() if ags]
+    """From the covered places, so a new place file changes it with no
+    data of its own."""
+    gebiete = [place.ags for place in covered.ALL if place.ags]
     if any(len(g) >= 5 and kreis.startswith(g) for g in gebiete):
         return Coverage.LOCAL
     if kreis[:2] in gebiete:
@@ -132,9 +132,8 @@ class LocalityResolver:
     ) -> Locality:
         """`reach` and `places` are enrichment's reading of the text; both
         are missing for opportunities enriched before it read them."""
-        try:
-            gebiet = REGION_AGS[Region(region)]
-        except ValueError:
+        gebiet = covered.ags_of(region)
+        if gebiet is None:
             return Locality(gebiet="")
         if len(gebiet) >= 5:
             return self._in_city(region, gebiet, organizer, reach, places)

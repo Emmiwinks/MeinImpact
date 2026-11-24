@@ -16,7 +16,6 @@ from meinimpact.infrastructure.listings.model import (
     ActionKind,
     Listing,
     ListingStatus,
-    Region,
 )
 from meinimpact.infrastructure.listings.parsing import clean_text, text_of
 
@@ -51,7 +50,7 @@ def _parse_initiative(item: Mapping[str, Any], *, observed_at: datetime) -> List
         title=_german_title(item),
         kind=ActionKind.CONSULTATION,
         status=_status(current.get("receivingFeedbackStatus")),
-        region=Region.EU,
+        region="eu",
         observed_at=observed_at,
         organizer="Europäische Kommission",
         opens_on=_date(current.get("feedbackStartDate")),

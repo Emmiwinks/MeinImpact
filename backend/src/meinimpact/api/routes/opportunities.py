@@ -13,6 +13,7 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
+from meinimpact import places as covered
 from meinimpact.api import schemas
 from meinimpact.api.dependencies import (
     get_council_repository,
@@ -45,8 +46,10 @@ router = APIRouter(
 public_router = APIRouter(prefix="/v1/opportunities", tags=["opportunities"])
 
 PREVIEW_SIZE = 12
-# Dresden first: the page is for people who live there.
-_PREVIEW_REGIONS = ("dresden", "sachsen", "bund", "eu")
+# Most local first: the page is for people who live in a covered city.
+_PREVIEW_REGIONS = tuple(
+    place.key for place in sorted(covered.ALL, key=lambda p: (-p.depth, p.key))
+)
 _TOPICS = list(TAGS)
 
 

@@ -28,7 +28,6 @@ from meinimpact.infrastructure.ai.taxonomy import (
 )
 from meinimpact.infrastructure.geo.districts import District, DistrictMatcher
 from meinimpact.infrastructure.geo.locality import Reach
-from meinimpact.infrastructure.listings.model import Region
 from tests.listing_fakes import make_listing
 
 
@@ -119,7 +118,7 @@ def test_relevant_listing_is_parsed() -> None:
     enrichment = parse_enrichment(_relevant())
 
     assert enrichment.is_relevant
-    assert enrichment.region is Region.DRESDEN
+    assert enrichment.region == "dresden"
     assert (enrichment.everyday_relevance, enrichment.accessibility) == (4, 5)
     assert enrichment.title.startswith("Soll am Alten")
     assert enrichment.affected_tags == ("Wohnen/Miete",)
@@ -384,10 +383,8 @@ _DRESDEN = DistrictMatcher(
 async def test_districts_come_only_from_the_registry_text() -> None:
     # A model answer naming districts is ignored: only text matches count.
     completer = FakeCompleter(_relevant(stadtteile=["Mockritz"]))
-    enricher = ListingEnricher(completer, {Region.DRESDEN: _DRESDEN})
-    listing = make_listing(
-        "bp", region=Region.DRESDEN, title="Bebauungsplan Dresden-Plauen"
-    )
+    enricher = ListingEnricher(completer, {"dresden": _DRESDEN})
+    listing = make_listing("bp", region="dresden", title="Bebauungsplan Dresden-Plauen")
 
     enrichment = await enricher.enrich(listing, "Zweiter Abschnitt in Plauen")
 
@@ -397,7 +394,7 @@ async def test_districts_come_only_from_the_registry_text() -> None:
 
 async def test_no_districts_outside_cities_with_district_data() -> None:
     completer = FakeCompleter(_relevant(scope="sachsen"))
-    enricher = ListingEnricher(completer, {Region.DRESDEN: _DRESDEN})
+    enricher = ListingEnricher(completer, {"dresden": _DRESDEN})
 
     enrichment = await enricher.enrich(make_listing("x"), "Dresden-Plauen")
 

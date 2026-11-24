@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Syncs a city's district list from Wikidata into its committed data file.
 
-Run when adding a city (add its `CityConfig` to `geo/districts.py` first)
+Run when adding a city (its place file under `meinimpact/places/defs/`
+needs `wikidata_id` and `district_types` first)
 or occasionally to pick up corrections, then review the diff and commit:
   docker compose exec api python scripts/sync_districts.py dresden
 """

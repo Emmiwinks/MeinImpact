@@ -168,6 +168,8 @@ async def main() -> None:
     args = parser.parse_args()
 
     settings = get_settings()
+    if not settings.mistral_api_key:
+        raise SystemExit("MEINIMPACT_MISTRAL_API_KEY is not set")
     started = datetime.now(UTC)
     sample = await _db_sample(args.open) + _decision_sample()
     print(f"{len(sample)} actions", flush=True)

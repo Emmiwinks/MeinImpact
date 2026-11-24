@@ -15,7 +15,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from meinimpact.infrastructure.ai.bundler import Bundle, BundleOption
 from meinimpact.infrastructure.ai.listing_enricher import Enrichment
 from meinimpact.infrastructure.geo.locality import Reach
-from meinimpact.infrastructure.listings.model import Region
 from meinimpact.infrastructure.models import OpportunityRecord, SupportSnapshotRecord
 from meinimpact.infrastructure.opportunities.postgres_opportunity_repository import (
     EXPERT_ONLY_MAX_ACCESSIBILITY,
@@ -29,7 +28,7 @@ TODAY = date(2026, 11, 1)
 
 
 def _relevant(
-    region: Region = Region.DRESDEN,
+    region: str = "dresden",
     *,
     everyday_relevance: int = 4,
     accessibility: int = 5,

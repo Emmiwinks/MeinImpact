@@ -9,6 +9,7 @@ ViewState). Which authority runs a procedure decides its coverage region.
 
 import re
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
 
 from bs4 import BeautifulSoup, Tag
@@ -18,7 +19,6 @@ from meinimpact.infrastructure.listings.model import (
     ActionKind,
     Listing,
     ListingStatus,
-    Region,
     Support,
 )
 from meinimpact.infrastructure.listings.parsing import (
@@ -42,7 +42,7 @@ _AJAX_HEADERS = {
     "X-Requested-With": "XMLHttpRequest",
 }
 
-RegionResolver = Callable[[str], Region | None]
+RegionResolver = Callable[[str], str | None]
 
 _MUNICIPAL_PREFIXES = (
     "Stadt ",
@@ -54,33 +54,37 @@ _MUNICIPAL_PREFIXES = (
     "Verwaltungsgemeinschaft",
     "Zweckverband",
 )
-_STATE_MARKERS = (
-    "Staatsministerium",
-    "Staatskanzlei",
-    "Landesdirektion",
-    "Landesamt",
-    "Sächsische Staats",
-    "Sächsisches",
-    "Freistaat Sachsen",
-)
 
 
-def region_for_authority(authority: str) -> Region | None:
-    """Maps the portal's authority ("Mandant") onto the app's coverage."""
-    if "Dresden" in authority:
-        return Region.DRESDEN
-    if authority.startswith(_MUNICIPAL_PREFIXES):
+@dataclass(frozen=True, slots=True)
+class PortalCoverage:
+    """Which authorities ("Mandanten") on the portal the app covers.
+
+    `local` pairs a covered place's key with the names its authority goes
+    by, most specific place first; other municipal authorities are out of
+    coverage. `land_markers` pick out the Land's own authorities.
+    """
+
+    land: str
+    land_markers: tuple[str, ...]
+    local: tuple[tuple[str, tuple[str, ...]], ...] = ()
+
+    def region_for(self, authority: str) -> str | None:
+        for key, names in self.local:
+            if any(name in authority for name in names):
+                return key
+        if authority.startswith(_MUNICIPAL_PREFIXES):
+            return None
+        if any(marker in authority for marker in self.land_markers):
+            return self.land
         return None
-    if any(marker in authority for marker in _STATE_MARKERS):
-        return Region.SACHSEN
-    return None
 
 
 def parse_teasers(
     html: str,
     *,
     observed_at: datetime,
-    resolve_region: RegionResolver = region_for_authority,
+    resolve_region: RegionResolver,
 ) -> list[Listing]:
     soup = BeautifulSoup(html, "html.parser")
     listings = (
@@ -210,16 +214,16 @@ class SachsenBeteiligungSource:
     def __init__(
         self,
         http: PoliteHttpClient,
+        coverage: PortalCoverage,
         *,
         portal: str = "sachsen",
         max_items: int = 1500,
-        resolve_region: RegionResolver = region_for_authority,
     ) -> None:
         self._http = http
         self._url = f"{BASE_URL}/portal/{portal}/beteiligung/themen"
         self._portal = portal
         self._max_items = max_items
-        self._resolve_region = resolve_region
+        self._resolve_region = coverage.region_for
 
     @property
     def source_id(self) -> str:

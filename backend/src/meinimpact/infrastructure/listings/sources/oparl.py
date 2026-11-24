@@ -36,7 +36,6 @@ from meinimpact.infrastructure.listings.model import (
     ActionKind,
     Listing,
     ListingStatus,
-    Region,
 )
 from meinimpact.infrastructure.listings.parsing import clean_text
 
@@ -61,35 +60,14 @@ class OParlBody:
 
     source_id: str
     body_url: str
-    region: Region
+    # The place key (`meinimpact.places`) of the council's city
+    region: str
     locality: str
     paper_web_url: str
     bodies: tuple[str, ...]
     council: str
     committees: tuple[str, ...]
     neighbourhoods: tuple[str, ...] = ()
-
-
-DRESDEN = OParlBody(
-    source_id="dresden-ratsinfo",
-    body_url="https://oparl.dresden.de/bodies/0001",
-    region=Region.DRESDEN,
-    locality="Dresden",
-    paper_web_url="https://ratsinfo.dresden.de/vo0050.asp?__kvonr={number}",
-    bodies=(
-        r"^Stadtrat$",
-        r"^Ausschuss ",
-        r"ausschuss$",
-        r"^Stadtbezirksbeirat ",
-        r"^Ortschaftsrat ",
-    ),
-    council="Stadtrat",
-    committees=(r"^Ausschuss ", r"ausschuss$"),
-    neighbourhoods=(
-        r"^Stadtbezirksbeirat (?P<area>.+)$",
-        r"^Ortschaftsrat (?P<area>.+)$",
-    ),
-)
 
 
 @dataclass(frozen=True, slots=True)

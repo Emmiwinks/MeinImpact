@@ -131,7 +131,7 @@ class PostgresOpportunityRepository:
         record.enriched_at = enriched_at
         record.is_relevant = enrichment.is_relevant
         record.relevance_reason = enrichment.reason
-        record.region = enrichment.region.value if enrichment.region else None
+        record.region = enrichment.region
         record.everyday_relevance = enrichment.everyday_relevance
         record.accessibility = enrichment.accessibility
         record.free_topic = enrichment.free_topic or None
@@ -262,7 +262,7 @@ def _apply_facts(
     record.source_url = listing.url
     record.kind = listing.kind.value
     record.status = listing.status.value
-    record.registry_region = listing.region.value if listing.region else None
+    record.registry_region = listing.region
     record.locality = listing.locality
     record.organizer = listing.organizer
     record.registry_title = listing.title

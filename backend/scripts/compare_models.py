@@ -24,7 +24,6 @@ from meinimpact.infrastructure.listings.model import (
     ActionKind,
     Listing,
     ListingStatus,
-    Region,
 )
 from meinimpact.infrastructure.models import OpportunityRecord
 
@@ -39,7 +38,7 @@ def _listing(record: OpportunityRecord) -> Listing:
         title=record.registry_title,
         kind=ActionKind(record.kind),
         status=ListingStatus(record.status),
-        region=Region(record.registry_region) if record.registry_region else None,
+        region=record.registry_region,
         observed_at=datetime.now(UTC),
         locality=record.locality,
         organizer=record.organizer,
@@ -52,6 +51,8 @@ def _listing(record: OpportunityRecord) -> Listing:
 
 async def _run(model: str, listings: list[Listing]) -> list[Enrichment | None]:
     settings = get_settings()
+    if not settings.mistral_api_key:
+        raise SystemExit("MEINIMPACT_MISTRAL_API_KEY is not set")
     completer = MistralJsonCompleter(
         api_key=settings.mistral_api_key,
         base_url=settings.mistral_base_url,

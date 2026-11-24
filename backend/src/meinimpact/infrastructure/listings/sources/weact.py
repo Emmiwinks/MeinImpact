@@ -21,7 +21,6 @@ from meinimpact.infrastructure.listings.model import (
     ActionKind,
     Listing,
     ListingStatus,
-    Region,
     Support,
 )
 from meinimpact.infrastructure.listings.parsing import (
@@ -72,7 +71,7 @@ def parse_petition(html: str, *, url: str, observed_at: datetime) -> Listing | N
         title=clean_text(title),
         kind=ActionKind.PETITION,
         status=ListingStatus.CLOSED if closed else ListingStatus.OPEN,
-        region=Region.BUND,
+        region="bund",
         observed_at=observed_at,
         organizer="WeAct",
         summary=clean_text(summary) if summary else None,

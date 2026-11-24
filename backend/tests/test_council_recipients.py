@@ -30,9 +30,9 @@ from meinimpact.infrastructure.council.postgres_council_repository import (
     PostgresCouncilRepository,
 )
 from meinimpact.infrastructure.listings.http import CrawlPolicy, PoliteHttpClient
-from meinimpact.infrastructure.listings.sources.oparl import DRESDEN
 from meinimpact.infrastructure.pipeline.ingestion import IngestionSummary
 from meinimpact.main import create_app
+from meinimpact.places.defs.dresden import COUNCIL as DRESDEN
 from meinimpact.services.ingestion import sync_council_members
 from meinimpact.services.recipients import Office, resolve_recipients
 from tests.test_draft_service import DECISION
@@ -260,6 +260,7 @@ async def test_member_sync_runs_at_most_weekly() -> None:
         repository,  # type: ignore[arg-type]
         summary,
         now=now,
+        body=DRESDEN,
     )
 
     assert repository.replaced is None
@@ -291,6 +292,7 @@ async def test_member_sync_reports_fraktionen_without_an_office(
         repository,  # type: ignore[arg-type]
         summary,
         now=datetime(2026, 11, 9, tzinfo=UTC),
+        body=DRESDEN,
     )
 
     assert repository.replaced == members
@@ -381,11 +383,12 @@ def test_recipients_endpoint_rejects_unknown_and_non_decisions() -> None:
     headers = _auth(client)
 
     def ask(opportunity_id: uuid.UUID) -> int:
-        return client.post(
+        status: int = client.post(
             "/v1/opportunities/recipients",
             json={"opportunity_id": str(opportunity_id)},
             headers=headers,
         ).status_code
+        return status
 
     assert ask(uuid.UUID(int=99)) == 404
     assert ask(_PETITION.id) == 400

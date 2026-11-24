@@ -1,8 +1,9 @@
 """District reference data and the matcher that finds districts in text.
 
-A city is one `CityConfig`; its districts are loaded from the committed
-data file. `DistrictMatcher` is deterministic and case-sensitive (district
-names are proper nouns): it finds "Dresden-Mockritz" and a bare "Mockritz",
+Every covered place with a Wikidata id and district types is a
+`CityConfig`; its districts are loaded from the committed data file.
+`DistrictMatcher` is deterministic and case-sensitive (district names are
+proper nouns): it finds "Dresden-Mockritz" and a bare "Mockritz",
 prefers the longest name ("Südvorstadt-Ost" over "Südvorstadt") and never
 guesses from inflected or embedded forms ("Plauener Straße").
 """
@@ -13,6 +14,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from meinimpact import places as covered
 from meinimpact.infrastructure.geo.plz import Point
 
 DATA_DIR = Path(__file__).parent / "data"
@@ -37,15 +39,15 @@ class District:
     point: Point | None = None
 
 
-ORTSTEIL = "Q253019"
-
 CITIES: dict[str, CityConfig] = {
-    "dresden": CityConfig(
-        key="dresden",
-        name="Dresden",
-        wikidata_id="Q1731",
-        district_types=(ORTSTEIL,),
-    ),
+    place.key: CityConfig(
+        key=place.key,
+        name=place.name,
+        wikidata_id=place.wikidata_id,
+        district_types=place.district_types,
+    )
+    for place in covered.ALL
+    if place.wikidata_id and place.district_types
 }
 
 

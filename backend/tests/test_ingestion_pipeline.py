@@ -16,7 +16,7 @@ from meinimpact.infrastructure.ai.listing_enricher import (
     Enrichment,
     enrichment_input_hash,
 )
-from meinimpact.infrastructure.listings.model import Listing, Region
+from meinimpact.infrastructure.listings.model import Listing
 from meinimpact.infrastructure.opportunities.postgres_opportunity_repository import (
     PendingEnrichment,
     SyncResult,
@@ -76,7 +76,7 @@ class FakeEnricher:
         return Enrichment(
             is_relevant=relevant,
             reason="ok",
-            region=Region.BUND if relevant else None,
+            region="bund" if relevant else None,
             title="Frage?" if relevant else "",
             summary="Text." if relevant else "",
         )

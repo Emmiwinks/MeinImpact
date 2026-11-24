@@ -9,14 +9,10 @@ and reordered on its own.
 from collections.abc import Callable, Sequence
 from datetime import date
 
-from meinimpact.infrastructure.listings.model import Listing, ListingStatus, Region
+from meinimpact import places
+from meinimpact.infrastructure.listings.model import Listing, ListingStatus
 
 Step = Callable[[Sequence[Listing]], list[Listing]]
-
-# Most specific first: when the same listing appears under several regions
-# (openPetition lists Dresden petitions on the Sachsen page too), keep the
-# most local one.
-_SPECIFICITY = {Region.DRESDEN: 3, Region.SACHSEN: 2, Region.BUND: 1, Region.EU: 0}
 
 
 def in_coverage(listings: Sequence[Listing]) -> list[Listing]:
@@ -53,11 +49,14 @@ def not_expired(today: date) -> Step:
 
 
 def dedupe(listings: Sequence[Listing]) -> list[Listing]:
-    """One listing per registry entry, keeping its most specific region."""
+    """One listing per registry entry, keeping its most specific region
+    (openPetition lists Dresden petitions on the Sachsen page too)."""
     best: dict[tuple[str, str], Listing] = {}
     for listing in listings:
         current = best.get(listing.key)
-        if current is None or _specificity(listing) > _specificity(current):
+        if current is None or places.depth_of(listing.region) > places.depth_of(
+            current.region
+        ):
             best[listing.key] = listing
     return list(best.values())
 
@@ -72,7 +71,3 @@ def apply(listings: Sequence[Listing], steps: Sequence[Step]) -> list[Listing]:
     for step in steps:
         result = step(result)
     return result
-
-
-def _specificity(listing: Listing) -> int:
-    return _SPECIFICITY[listing.region] if listing.region else -1

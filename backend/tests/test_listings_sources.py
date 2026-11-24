@@ -9,10 +9,10 @@ import json
 from datetime import UTC, date, datetime
 from pathlib import Path
 
+from meinimpact.infrastructure.listings.catalog import portal_coverage
 from meinimpact.infrastructure.listings.model import (
     ActionKind,
     ListingStatus,
-    Region,
 )
 from meinimpact.infrastructure.listings.sources import (
     eu_have_your_say,
@@ -20,9 +20,14 @@ from meinimpact.infrastructure.listings.sources import (
     sachsen_beteiligung,
     weact,
 )
+from meinimpact.infrastructure.listings.sources.sachsen_beteiligung import (
+    PortalCoverage,
+)
+from meinimpact.places.defs import sachsen
 
 FIXTURES = Path(__file__).parent / "fixtures" / "listings"
 NOW = datetime(2026, 11, 1, 12, 0, tzinfo=UTC)
+SACHSEN = portal_coverage(sachsen.PLACE).region_for
 
 
 def _fixture(name: str) -> str:
@@ -34,7 +39,7 @@ def _fixture(name: str) -> str:
 
 def test_openpetition_parses_every_card() -> None:
     listings = openpetition.parse_listing_page(
-        _fixture("openpetition_listing.html"), region=Region.BUND, observed_at=NOW
+        _fixture("openpetition_listing.html"), region="bund", observed_at=NOW
     )
 
     assert len(listings) == 3
@@ -47,7 +52,7 @@ def test_openpetition_parses_every_card() -> None:
     )
     assert first.kind is ActionKind.PETITION
     assert first.status is ListingStatus.OPEN
-    assert first.region is Region.BUND
+    assert first.region == "bund"
     assert first.locality == "Deutschland"
     assert first.closes_on == date(2026, 11, 30)
     assert first.support.count == 548_769
@@ -56,7 +61,7 @@ def test_openpetition_parses_every_card() -> None:
 
 def test_openpetition_reads_partner_signatures_separately() -> None:
     listings = openpetition.parse_listing_page(
-        _fixture("openpetition_listing.html"), region=Region.BUND, observed_at=NOW
+        _fixture("openpetition_listing.html"), region="bund", observed_at=NOW
     )
 
     veto = listings[1]
@@ -68,9 +73,7 @@ def test_openpetition_reads_partner_signatures_separately() -> None:
 def test_openpetition_card_without_days_left_is_not_assumed_open() -> None:
     html = _fixture("openpetition_listing.html").replace("petition-days-left", "x")
 
-    listings = openpetition.parse_listing_page(
-        html, region=Region.BUND, observed_at=NOW
-    )
+    listings = openpetition.parse_listing_page(html, region="bund", observed_at=NOW)
 
     assert all(item.status is ListingStatus.UNKNOWN for item in listings)
     assert all(item.closes_on is None for item in listings)
@@ -84,9 +87,7 @@ def test_openpetition_card_past_collection_is_closed() -> None:
         .replace("29 Tage", "346 Tage")
     )
 
-    first = openpetition.parse_listing_page(
-        html, region=Region.DRESDEN, observed_at=NOW
-    )[0]
+    first = openpetition.parse_listing_page(html, region="dresden", observed_at=NOW)[0]
 
     assert first.status is ListingStatus.CLOSED
     assert first.closes_on is None
@@ -97,13 +98,13 @@ def test_openpetition_card_past_collection_is_closed() -> None:
 
 def test_sachsen_parses_teasers_with_authority_region_and_dates() -> None:
     listings = sachsen_beteiligung.parse_teasers(
-        _fixture("sachsen_listing.html"), observed_at=NOW
+        _fixture("sachsen_listing.html"), observed_at=NOW, resolve_region=SACHSEN
     )
 
     assert len(listings) == 3
     event, _, survey = listings
     assert event.organizer == "Landeshauptstadt Dresden"
-    assert event.region is Region.DRESDEN
+    assert event.region == "dresden"
     assert event.kind is ActionKind.EVENT
     assert event.status is ListingStatus.ANNOUNCED
     assert event.opens_on == event.closes_on == date(2026, 12, 4)
@@ -123,7 +124,7 @@ def test_sachsen_parses_teasers_with_authority_region_and_dates() -> None:
 
 def test_sachsen_event_free_seats_are_not_counted_as_participants() -> None:
     event = sachsen_beteiligung.parse_teasers(
-        _fixture("sachsen_listing.html"), observed_at=NOW
+        _fixture("sachsen_listing.html"), observed_at=NOW, resolve_region=SACHSEN
     )[0]
 
     assert event.support.count is None
@@ -139,7 +140,9 @@ def test_sachsen_reads_total_and_view_state_for_pagination() -> None:
 def test_sachsen_partial_response_yields_the_next_page() -> None:
     fragment = sachsen_beteiligung.parse_partial_response(_fixture("sachsen_page2.xml"))
 
-    listings = sachsen_beteiligung.parse_teasers(fragment, observed_at=NOW)
+    listings = sachsen_beteiligung.parse_teasers(
+        fragment, observed_at=NOW, resolve_region=SACHSEN
+    )
 
     assert len(listings) == 2
     assert listings[0].title.startswith("Besichtigungstermin")
@@ -150,13 +153,25 @@ def test_sachsen_partial_response_without_list_update_is_empty() -> None:
 
 
 def test_sachsen_region_for_authority() -> None:
-    resolve = sachsen_beteiligung.region_for_authority
+    assert SACHSEN("Landeshauptstadt Dresden") == "dresden"
+    assert SACHSEN("Landesdirektion Sachsen") == "sachsen"
+    assert SACHSEN("Sächsisches Staatsministerium für Kultus") == "sachsen"
+    assert SACHSEN("Landratsamt Sächsische Schweiz-Osterzgebirge") is None
+    assert SACHSEN("Stadt Leipzig") is None
 
-    assert resolve("Landeshauptstadt Dresden") is Region.DRESDEN
-    assert resolve("Landesdirektion Sachsen") is Region.SACHSEN
-    assert resolve("Sächsisches Staatsministerium für Kultus") is Region.SACHSEN
-    assert resolve("Landratsamt Sächsische Schweiz-Osterzgebirge") is None
-    assert resolve("Stadt Leipzig") is None
+
+def test_portal_coverage_prefers_the_most_specific_place() -> None:
+    """A Kreis town is matched before its Landkreis, whose name it shares."""
+    coverage = PortalCoverage(
+        land="anhalt",
+        land_markers=("Ministerium",),
+        local=(("town", ("Lutherstadt Wittenberg",)), ("kreis", ("Wittenberg",))),
+    )
+
+    assert coverage.region_for("Lutherstadt Wittenberg") == "town"
+    assert coverage.region_for("Landkreis Wittenberg") == "kreis"
+    assert coverage.region_for("Stadt Gräfenhainichen") is None
+    assert coverage.region_for("Ministerium für Infrastruktur") == "anhalt"
 
 
 # --- EU Have your say -------------------------------------------------------
@@ -175,7 +190,7 @@ def test_eu_parses_open_initiatives_with_german_titles() -> None:
     assert first.url.endswith("/initiatives/16240_de")
     assert first.kind is ActionKind.CONSULTATION
     assert first.status is ListingStatus.OPEN
-    assert first.region is Region.EU
+    assert first.region == "eu"
     assert (first.opens_on, first.closes_on) == (date(2026, 10, 30), date(2026, 11, 27))
     assert first.source_labels == ("Climate action",)
 

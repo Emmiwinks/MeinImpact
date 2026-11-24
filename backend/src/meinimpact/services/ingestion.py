@@ -18,14 +18,13 @@ from meinimpact.infrastructure.council.postgres_council_repository import (
     PostgresCouncilRepository,
 )
 from meinimpact.infrastructure.database import Database
-from meinimpact.infrastructure.geo.districts import CITIES, DistrictMatcher
 from meinimpact.infrastructure.listings.catalog import (
+    OPARL_BODIES,
     default_detail_readers,
+    default_district_matchers,
     default_sources,
 )
 from meinimpact.infrastructure.listings.http import PoliteHttpClient
-from meinimpact.infrastructure.listings.model import Region
-from meinimpact.infrastructure.listings.sources import oparl
 from meinimpact.infrastructure.listings.sources.oparl import OParlBody
 from meinimpact.infrastructure.opportunities.postgres_opportunity_repository import (
     PostgresOpportunityRepository,
@@ -71,23 +70,24 @@ async def run_configured_ingestion(settings: Settings) -> IngestionSummary:
             summary = await run_ingestion(
                 sources=default_sources(http),
                 detail_readers=default_detail_readers(http),
-                enricher=ListingEnricher(
-                    completer,
-                    {Region.DRESDEN: DistrictMatcher.for_city(CITIES["dresden"])},
-                ),
+                enricher=ListingEnricher(completer, default_district_matchers()),
                 store=PostgresOpportunityRepository(session),
                 bundler=Bundler(bundle_completer),
             )
-            try:
-                await sync_council_members(
-                    http,
-                    PostgresCouncilRepository(session),
-                    summary,
-                    now=datetime.now(UTC),
-                )
-            except Exception as exc:  # letters fall back to stale members
-                logger.exception("Council member sync failed")
-                summary.errors.append(f"Ratsmitglieder: {type(exc).__name__}: {exc}")
+            for body in OPARL_BODIES:
+                try:
+                    await sync_council_members(
+                        http,
+                        PostgresCouncilRepository(session),
+                        summary,
+                        now=datetime.now(UTC),
+                        body=body,
+                    )
+                except Exception as exc:  # letters fall back to stale members
+                    logger.exception("Council member sync failed: %s", body.source_id)
+                    summary.errors.append(
+                        f"Ratsmitglieder {body.locality}: {type(exc).__name__}: {exc}"
+                    )
             return summary
     finally:
         await completer.aclose()
@@ -101,7 +101,7 @@ async def sync_council_members(
     summary: IngestionSummary,
     *,
     now: datetime,
-    body: OParlBody = oparl.DRESDEN,
+    body: OParlBody,
 ) -> None:
     """Refreshes the members letters go to, at most once a week (a full
     OParl walk takes about ten minutes). Fraktionen without a known office

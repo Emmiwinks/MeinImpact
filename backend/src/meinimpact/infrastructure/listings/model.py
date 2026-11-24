@@ -11,25 +11,6 @@ from datetime import date, datetime
 from enum import StrEnum
 
 
-class Region(StrEnum):
-    """Coverage areas of the app, from widest to most specific."""
-
-    EU = "eu"
-    BUND = "bund"
-    SACHSEN = "sachsen"
-    DRESDEN = "dresden"
-
-
-# Official area key (AGS) of each region: who a listing concerns is
-# everyone whose Kreis key starts with it. Empty for Bund and EU.
-REGION_AGS: dict[Region, str] = {
-    Region.EU: "",
-    Region.BUND: "",
-    Region.SACHSEN: "14",
-    Region.DRESDEN: "14612",
-}
-
-
 class ActionKind(StrEnum):
     """What a citizen actually does with a listing."""
 
@@ -68,9 +49,10 @@ class Support:
 class Listing:
     """One open (or announced) way to participate, as listed by a registry.
 
-    `region` is the coverage bucket this listing belongs to, or None when the
-    registry lists it but it lies outside the app's coverage (e.g. another
-    Saxon municipality). `locality` keeps the registry's own, finer label.
+    `region` is the key of the covered place (`meinimpact.places`) that
+    decides on it, or None when the registry lists it but it lies outside
+    the app's coverage (e.g. another Saxon municipality). `locality` keeps
+    the registry's own, finer label.
     """
 
     source_id: str
@@ -79,7 +61,7 @@ class Listing:
     title: str
     kind: ActionKind
     status: ListingStatus
-    region: Region | None
+    region: str | None
     observed_at: datetime
     locality: str | None = None
     organizer: str | None = None

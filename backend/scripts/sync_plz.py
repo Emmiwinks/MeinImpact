@@ -10,6 +10,7 @@ occasionally to pick up new PLZs, then review the diff and commit:
 
 import asyncio
 import json
+from collections.abc import Mapping
 from datetime import UTC, datetime
 
 from meinimpact.infrastructure.geo import places, plz
@@ -22,7 +23,7 @@ from meinimpact.infrastructure.geo.geonames import (
 )
 
 
-def _lines(entries: dict[str, object]) -> str:
+def _lines(entries: Mapping[str, object]) -> str:
     """One entry per line: small, reviewable diffs."""
     return ",\n".join(
         f"    {json.dumps(key, ensure_ascii=False)}: "
