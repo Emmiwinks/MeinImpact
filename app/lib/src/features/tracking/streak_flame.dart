@@ -312,8 +312,10 @@ class _StreakDetailsState extends State<_StreakDetails>
     return '$weeks ${weeks == 1 ? 'Woche' : 'Wochen'} in Folge';
   }
 
-  String get _status => switch (widget.streak.state) {
-        StreakState.active => 'Diese Woche bist du dabei.',
+  // Nothing to add while the flame burns this week: the title and the
+  // trail already say it.
+  String? get _status => switch (widget.streak.state) {
+        StreakState.active => null,
         StreakState.open => 'Diese Woche ist noch offen.',
         StreakState.paused =>
           'Pausiert. Eine Aktion diese Woche, und deine Flamme brennt wieder.',
@@ -366,14 +368,21 @@ class _StreakDetailsState extends State<_StreakDetails>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(_title, style: text.titleLarge),
-                              const SizedBox(height: MiSpace.xs),
+                              // The card's step-down size: a status, not a
+                              // screen heading.
                               Text(
-                                _status,
-                                style: text.bodyMedium?.copyWith(
-                                  color: colors.onTableMuted,
-                                ),
+                                _title,
+                                style: text.titleLarge?.copyWith(fontSize: 18),
                               ),
+                              if (_status case final status?) ...[
+                                const SizedBox(height: MiSpace.xs),
+                                Text(
+                                  status,
+                                  style: text.bodyMedium?.copyWith(
+                                    color: colors.onTableMuted,
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),

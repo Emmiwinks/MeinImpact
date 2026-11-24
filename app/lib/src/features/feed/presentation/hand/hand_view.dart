@@ -7,7 +7,6 @@ import 'package:flutter/services.dart';
 
 import '../../../../app/theme/mi_theme.dart';
 import '../../data/opportunity_relevance_ranker.dart';
-import '../../domain/interest_weights.dart';
 import '../../domain/opportunity.dart';
 import 'action_card.dart';
 import 'all_actions_screen.dart';
@@ -30,7 +29,6 @@ class HandView extends StatefulWidget {
     required this.onPlay,
     required this.onPlayed,
     this.onOpened,
-    this.onVote,
     this.onThrow,
     this.throwHint = false,
     this.turnHint = false,
@@ -49,8 +47,6 @@ class HandView extends StatefulWidget {
   final Future<bool> Function(RankedOpportunity ranked) onPlay;
   final void Function(RankedOpportunity ranked) onPlayed;
   final void Function(RankedOpportunity ranked)? onOpened;
-  // "öfter" / "seltener" on a card's back, for one topic.
-  final void Function(String tag, InterestSignal signal)? onVote;
   // A card was dropped in the trash at [position] (0 = first); resolves to
   // false when the user kept it after all, and it comes back.
   final Future<bool> Function(RankedOpportunity ranked, int position)? onThrow;
@@ -265,7 +261,6 @@ class _HandViewState extends State<HandView> with TickerProviderStateMixin {
         onOption: isFront ? _playOption : null,
         doneIds: widget.doneIds,
         onOpened: () => widget.onOpened?.call(ranked),
-        onVote: widget.onVote,
         peek: isFront && _peek,
         onPeeked: _peeked,
       );

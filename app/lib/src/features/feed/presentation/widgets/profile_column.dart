@@ -30,10 +30,14 @@ class ProfileColumn extends StatelessWidget {
     this.onEditPrioritaeten,
     this.onFillIn,
     this.progress,
+    this.onFeedback,
     super.key,
   });
 
   final UserProfile? profile;
+
+  /// Opens the beta feedback sheet; no feedback row without it.
+  final VoidCallback? onFeedback;
 
   /// For the badges; none without it.
   final Progress? progress;
@@ -103,6 +107,14 @@ class ProfileColumn extends StatelessWidget {
         ),
         if (Notifications.current.available)
           const _Section(child: _NotificationsSection()),
+        if (onFeedback case final onFeedback?)
+          _Section(
+            child: _Heading(
+              'Dein Feedback',
+              action: 'Schreiben',
+              onAction: onFeedback,
+            ),
+          ),
       ];
 }
 
@@ -948,8 +960,8 @@ class _MiniTag extends StatelessWidget {
 // ── Deine Themen ────────────────────────────────────────────────────────
 
 /// A mirror of what the cards taught: the topics the feed shows more often,
-/// strongest first. Steering happens on the cards ("öfter" / "seltener");
-/// here a topic can only be forgotten.
+/// strongest first. The cards steer it by what the user opens, does and
+/// throws away; here a topic can only be forgotten.
 class _TopicsSection extends StatelessWidget {
   const _TopicsSection({required this.interests, required this.onChanged});
 
@@ -970,8 +982,8 @@ class _TopicsSection extends StatelessWidget {
         const SizedBox(height: MiSpace.sm),
         if (favourites.isEmpty)
           Text(
-            'Was du auf den Karten öffnest, erledigst oder auf „öfter“ '
-            'stellst, zeigen wir dir häufiger. Diese Themen stehen dann hier.',
+            'Was du auf den Karten öffnest und erledigst, zeigen wir dir '
+            'häufiger. Diese Themen stehen dann hier.',
             style: text.bodyMedium?.copyWith(color: colors.onTableMuted),
           )
         else
@@ -1014,9 +1026,12 @@ class _ForgettableChip extends StatelessWidget {
       deleteButtonTooltipMessage: '$label vergessen',
       deleteIconColor: colors.onTableMuted,
       visualDensity: VisualDensity.compact,
-      backgroundColor: Colors.transparent,
+      // Filled, not outlined: a soft tint of the on-table colour reads on
+      // both tables without a line around it.
+      backgroundColor: colors.onTable.withValues(alpha: 0.07),
       surfaceTintColor: Colors.transparent,
-      shape: StadiumBorder(side: BorderSide(color: colors.onTableMuted)),
+      side: BorderSide.none,
+      shape: const StadiumBorder(),
       labelStyle: TextStyle(
         fontFamily: MiFonts.text,
         fontSize: 14,

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/theme/mi_theme.dart';
 import '../../data/opportunity_relevance_ranker.dart';
-import '../../domain/interest_weights.dart';
 import '../../domain/lebenslage.dart';
 import '../../domain/opportunity.dart';
 import '../widgets/ai_mark.dart';
@@ -21,7 +20,6 @@ class ActionCard extends StatefulWidget {
     this.onOption,
     this.doneIds = const {},
     this.onOpened,
-    this.onVote,
     this.isFront = true,
     this.contentOpacity = 1,
     this.drift = 0,
@@ -42,8 +40,6 @@ class ActionCard extends StatefulWidget {
   final Set<String> doneIds;
   // The card was turned over to its back.
   final VoidCallback? onOpened;
-  // "öfter" / "seltener" on the back, for [voteTopic].
-  final void Function(String tag, InterestSignal signal)? onVote;
   // Only the front card of the hand reacts to taps.
   final bool isFront;
   // How far the card is from the front of the fan, -1 to 1; the art slides
@@ -68,8 +64,6 @@ const _peekHold = Duration(milliseconds: 900);
 class _ActionCardState extends State<ActionCard>
     with SingleTickerProviderStateMixin {
   late final AnimationController _turn;
-  // What the user said about this card's topic, once said.
-  InterestSignal? _vote;
   // A finger is on the card; it gives a little under it.
   bool _pressed = false;
 
@@ -79,11 +73,6 @@ class _ActionCardState extends State<ActionCard>
   }
 
   bool get _showsBack => _turn.value > 0.5;
-
-  void _castVote(String tag, InterestSignal signal) {
-    setState(() => _vote = signal);
-    widget.onVote?.call(tag, signal);
-  }
 
   @override
   void initState() {
@@ -160,8 +149,6 @@ class _ActionCardState extends State<ActionCard>
                 onOption: widget.onOption,
                 doneIds: widget.doneIds,
                 onTurn: _toggle,
-                vote: _vote,
-                onVote: widget.onVote == null ? null : _castVote,
               )
             : _CardFront(
                 ranked: widget.ranked,
@@ -355,8 +342,6 @@ class _CardBack extends StatelessWidget {
     required this.onOption,
     required this.doneIds,
     required this.onTurn,
-    required this.vote,
-    required this.onVote,
   });
 
   final RankedOpportunity ranked;
@@ -365,8 +350,6 @@ class _CardBack extends StatelessWidget {
   final ValueChanged<RankedOpportunity>? onOption;
   final Set<String> doneIds;
   final VoidCallback onTurn;
-  final InterestSignal? vote;
-  final void Function(String tag, InterestSignal signal)? onVote;
 
   @override
   Widget build(BuildContext context) {
@@ -376,9 +359,6 @@ class _CardBack extends StatelessWidget {
     final bundle = ranked.isBundle ? opportunity.bundle : null;
     final look = TopicLook.of(opportunity);
     final facts = factChips(opportunity, DateTime.now());
-    final topic = voteTopic(ranked);
-    final cast = onVote;
-    final voting = topic != null && cast != null;
     // A tap anywhere that is not a button turns the card back over.
     return InkWell(
       onTap: onTurn,
@@ -437,153 +417,18 @@ class _CardBack extends StatelessWidget {
           // A bundle's options carry their own way in.
           if (bundle == null)
             Padding(
-              padding: EdgeInsets.fromLTRB(
+              padding: const EdgeInsets.fromLTRB(
                 MiSpace.lg - 4,
                 MiSpace.sm,
                 MiSpace.lg - 4,
-                voting ? 0 : MiSpace.lg - 4,
+                MiSpace.lg - 4,
               ),
               child:
                   FilledButton(onPressed: onAction, child: Text(actionLabel)),
             )
-          else if (!voting)
+          else
             const SizedBox(height: MiSpace.base),
-          if (voting)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                MiSpace.base,
-                0,
-                MiSpace.base,
-                MiSpace.xs,
-              ),
-              child: _TopicVote(
-                topic: topic,
-                vote: vote,
-                onVote: (signal) => cast(topic, signal),
-              ),
-            ),
         ],
-      ),
-    );
-  }
-}
-
-/// The topic a card vote is about: the one the card was ranked up for, or
-/// else the card's main topic (the one its art shows).
-String? voteTopic(RankedOpportunity ranked) =>
-    ranked.interestTag ?? ranked.opportunity.affectedTags.firstOrNull;
-
-/// One quiet line under the action button that names the topic and what a
-/// tap changes: "Karten zu Verkehr: öfter · seltener". Once said, the line
-/// answers in words; the feed picks the vote up on its next load.
-class _TopicVote extends StatelessWidget {
-  const _TopicVote({
-    required this.topic,
-    required this.vote,
-    required this.onVote,
-  });
-
-  final String topic;
-  final InterestSignal? vote;
-  final ValueChanged<InterestSignal> onVote;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.mi;
-    final style = Theme.of(context)
-        .textTheme
-        .labelSmall
-        ?.copyWith(color: colors.onCardMuted);
-    final said = vote;
-    return SizedBox(
-      height: 40,
-      child: AnimatedSwitcher(
-        duration: MiMotion.reduced(context) ? Duration.zero : MiMotion.flip,
-        child: said != null
-            ? Row(
-                key: const ValueKey('voted'),
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.check_rounded,
-                    size: 14,
-                    color: colors.onCardMuted,
-                  ),
-                  const SizedBox(width: MiSpace.xs),
-                  Flexible(
-                    child: Text(
-                      said == InterestSignal.more
-                          ? 'Karten zu $topic kommen öfter.'
-                          : 'Karten zu $topic kommen seltener.',
-                      style: style,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              )
-            : Row(
-                key: const ValueKey('ask'),
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Flexible(
-                    child: Text(
-                      'Karten zu $topic:',
-                      style: style,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  _VoteLink(
-                    key: const ValueKey('vote-more'),
-                    label: 'öfter',
-                    style: style,
-                    onPressed: () => onVote(InterestSignal.more),
-                  ),
-                  Text('·', style: style),
-                  _VoteLink(
-                    key: const ValueKey('vote-less'),
-                    label: 'seltener',
-                    style: style,
-                    onPressed: () => onVote(InterestSignal.less),
-                  ),
-                ],
-              ),
-      ),
-    );
-  }
-}
-
-/// A word in the vote line that reads as a link, not a button.
-class _VoteLink extends StatelessWidget {
-  const _VoteLink({
-    required this.label,
-    required this.style,
-    required this.onPressed,
-    super.key,
-  });
-
-  final String label;
-  final TextStyle? style;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextButton(
-      onPressed: onPressed,
-      style: TextButton.styleFrom(
-        foregroundColor: context.mi.onCardMuted,
-        minimumSize: const Size(0, 40),
-        padding: const EdgeInsets.symmetric(horizontal: MiSpace.xs + 2),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
-      child: Text(
-        label,
-        style: style?.copyWith(
-          fontWeight: FontWeight.w700,
-          decoration: TextDecoration.underline,
-          decorationColor: style?.color,
-        ),
       ),
     );
   }

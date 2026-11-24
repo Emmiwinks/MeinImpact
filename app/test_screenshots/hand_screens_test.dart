@@ -318,7 +318,7 @@ void main() {
         'phone-feedback-sheet-${brightness.name}',
         brightness: brightness,
         act: (t) async {
-          await t.tap(find.text('Dein Feedback'));
+          await t.tap(find.text('Feedback'));
           await t.pumpAndSettle();
           await t.tap(find.text('Fehler'));
           await t.enterText(

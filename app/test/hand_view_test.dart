@@ -165,21 +165,10 @@ void main() {
     });
   });
 
-  group('card vote', () {
-    test('is about the reason topic, else the main topic', () {
-      RankedOpportunity ranked({String? reason}) => RankedOpportunity(
-            opportunity: _o('v', tags: ['Wohnen/Miete', 'Sicherheit']),
-            matchedSnippet: null,
-            interestTag: reason,
-          );
-      expect(voteTopic(ranked()), 'Wohnen/Miete');
-      expect(voteTopic(ranked(reason: 'Sicherheit')), 'Sicherheit');
-    });
-
-    testWidgets('the back asks once and then answers in words', (
+  group('card back', () {
+    testWidgets('asks nothing about topics and turns back on a tap', (
       tester,
     ) async {
-      final votes = <(String, InterestSignal)>[];
       await tester.pumpWidget(
         MaterialApp(
           theme: miTheme(Brightness.dark),
@@ -194,28 +183,18 @@ void main() {
                 ),
                 actionLabel: 'Unterschreiben',
                 onAction: () {},
-                onVote: (tag, signal) => votes.add((tag, signal)),
               ),
             ),
           ),
         ),
       );
-      expect(findText('öfter'), findsNothing);
 
       await tester.tap(find.byType(ActionCard));
       await tester.pumpAndSettle();
-      expect(findText('Karten zu Wohnen/Miete:'), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('vote-less')));
-      await tester.pumpAndSettle();
-
-      expect(votes, [('Wohnen/Miete', InterestSignal.less)]);
-      expect(
-        findText('Karten zu Wohnen/Miete kommen seltener.'),
-        findsOneWidget,
-      );
-      expect(find.byKey(const ValueKey('vote-more')), findsNothing);
-      // The vote does not turn the card; a tap on the back does.
       expect(findText('Zusammenfassung'), findsOneWidget);
+      // Topics are learnt from what the user does, not voted on.
+      expect(find.textContaining('öfter'), findsNothing);
+      expect(find.textContaining('seltener'), findsNothing);
       await tester.tap(findText('Zusammenfassung'));
       await tester.pumpAndSettle();
       expect(findText('Zusammenfassung'), findsNothing);
@@ -719,10 +698,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(findText('Mein Impact'));
-    await tester.pumpAndSettle();
-
-    await tester.tap(findText('Dein Feedback'));
+    // Not a tab any more: a button top right of the hand.
+    expect(findText('Dein Feedback'), findsNothing);
+    await tester.tap(findText('Feedback'));
     await tester.pumpAndSettle();
     final send = find.widgetWithText(FilledButton, 'Senden');
     // Kind and words first.
@@ -743,11 +721,11 @@ void main() {
     expect(path, '/v1/feedback');
     expect(body['kind'], 'idea');
     expect(body['message'], 'Mehr Karten zu Kultur');
-    expect(body['screen'], 'impact');
+    expect(body['screen'], 'aktionen');
     expect(body['platform'], 'android');
     // The sheet left the tab where it was.
     final bar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-    expect(bar.selectedIndex, 2);
+    expect(bar.selectedIndex, 1);
   });
 
   testWidgets('Wirkung counts the actions done since it was last opened', (

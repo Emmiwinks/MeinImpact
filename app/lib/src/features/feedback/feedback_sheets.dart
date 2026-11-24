@@ -282,10 +282,11 @@ class _Pill extends StatelessWidget {
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
           foregroundColor: selected ? colors.table : colors.onTable,
-          backgroundColor: selected ? colors.onTable : Colors.transparent,
-          side: BorderSide(
-            color: selected ? colors.onTable : colors.onTableMuted,
-          ),
+          // Filled, not outlined: a soft tint until picked, then inverted.
+          backgroundColor: selected
+              ? colors.onTable
+              : colors.onTable.withValues(alpha: 0.07),
+          side: BorderSide.none,
           minimumSize: const Size(0, 44),
           padding: const EdgeInsets.symmetric(horizontal: MiSpace.base),
           shape: const StadiumBorder(),

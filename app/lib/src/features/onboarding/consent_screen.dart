@@ -215,9 +215,8 @@ class _Fact extends StatelessWidget {
               width: 52,
               height: 52,
               decoration: BoxDecoration(
-                color: colors.tableRaised,
+                color: colors.onTable.withValues(alpha: 0.07),
                 borderRadius: BorderRadius.circular(MiRadius.tile),
-                border: Border.all(color: colors.keyline),
               ),
               child: Icon(icon, size: 26, color: colors.onTable),
             ),

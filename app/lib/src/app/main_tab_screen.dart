@@ -100,10 +100,11 @@ class _MainTabScreenState extends State<MainTabScreen> {
     super.dispose();
   }
 
-  static const _feedback = 3;
   // The tab a message was written on, for /admin/feedback.
   static const _screens = ['profil', 'aktionen', 'impact'];
 
+  // Beta feedback opens as a sheet over the tab, from the button top right
+  // of the hand or the row at the end of the profile.
   Future<void> _giveFeedback(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
     final sent = await showFeedbackSheet(context, screen: _screens[_tabIndex]);
@@ -138,6 +139,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
         onFillIn: widget.onFillIn,
         onLebenslagenChanged: widget.onLebenslagenChanged,
         onInterestsChanged: widget.onInterestsChanged,
+        onFeedback: _giveFeedback,
       ),
       AktionenTab(
         opportunityRepository: widget.opportunityRepository,
@@ -150,6 +152,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
         dismissedIds: widget.dismissedIds,
         onDismissed: widget.onCardsDismissed,
         interestConfig: widget.interestConfig,
+        onFeedback: _giveFeedback,
       ),
       // Scrolls itself, for pull-to-refresh.
       WirkungTab(
@@ -175,10 +178,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
             ),
             bottomNavigationBar: NavigationBar(
               selectedIndex: _tabIndex,
-              // The last one is beta feedback: it opens a sheet over the
-              // tab, it is no tab of its own.
-              onDestinationSelected: (index) =>
-                  index == _feedback ? _giveFeedback(context) : _select(index),
+              onDestinationSelected: _select,
               destinations: [
                 NavigationDestination(
                   icon: const Icon(Icons.person_outline),
@@ -207,13 +207,6 @@ class _MainTabScreenState extends State<MainTabScreen> {
                   selectedIcon: const Icon(Icons.timeline),
                   label: l10n.tabImpact,
                 ),
-                const NavigationDestination(
-                  // A bubble fills its square, unlike the thin glyphs next
-                  // to it: a size smaller to look the same.
-                  icon: Icon(Icons.chat_bubble_outline_rounded, size: 20),
-                  // As long as its neighbours, so the gaps look even.
-                  label: 'Dein Feedback',
-                ),
               ],
             ),
           ),
@@ -233,6 +226,7 @@ class _ProfileTab extends StatelessWidget {
     required this.onFillIn,
     required this.onLebenslagenChanged,
     required this.onInterestsChanged,
+    required this.onFeedback,
   });
 
   final UserProfile profile;
@@ -243,6 +237,7 @@ class _ProfileTab extends StatelessWidget {
   final VoidCallback? onFillIn;
   final ValueChanged<Set<String>>? onLebenslagenChanged;
   final ValueChanged<InterestWeights>? onInterestsChanged;
+  final void Function(BuildContext context) onFeedback;
 
   @override
   Widget build(BuildContext context) {
@@ -257,6 +252,7 @@ class _ProfileTab extends StatelessWidget {
         onFillIn: onFillIn,
         onLebenslagenChanged: onLebenslagenChanged ?? (_) {},
         onInterestsChanged: onInterestsChanged ?? (_) {},
+        onFeedback: () => onFeedback(context),
       ),
     );
   }
