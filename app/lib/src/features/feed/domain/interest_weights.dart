@@ -9,18 +9,16 @@ enum InterestSignal {
   opened,
   // Followed the call to action to the registry.
   acted,
-  // "Mehr davon" on the card, for its topic.
-  more,
-  // "Weniger davon" on the card, for its topic.
-  less,
+  // Threw the card away with "Thema interessiert mich nicht".
+  notInterested,
 }
 
 /// On-device interest per topic tag (the backend's fixed taxonomy).
 /// -maxWeight..+maxWeight, 0 = neutral. Never leaves the device and only
 /// reorders the feed, never hides anything.
 ///
-/// One number per topic: what the user opens, does and says on the card all
-/// add to it, so the profile can show exactly what the ranking uses.
+/// One number per topic: what the user opens, does and throws away all add
+/// to it, so the profile can show exactly what the ranking uses.
 ///
 /// This holds data only; every tuning number comes from the [InterestConfig]
 /// passed to each call. Weights drift back to neutral with the config's
@@ -33,32 +31,11 @@ class InterestWeights {
     final raw = json['weights'] as Map<String, Object?>? ?? {};
     final asOf = json['as_of'] as String?;
     final weights = raw.map((k, v) => MapEntry(k, (v as num).toDouble()));
-    var since = asOf == null ? null : DateTime.tryParse(asOf);
-    // Before 2026-11-14 "mehr"/"weniger" was a separate, permanent level.
-    // It is folded in as one card vote, current as of loading.
-    final legacy = json['manual'] as Map<String, Object?>? ?? {};
-    if (legacy.isNotEmpty) {
-      final now = DateTime.now();
-      if (since != null) {
-        final factor = _decayFactor(since, now, _legacyHalfLife);
-        weights.updateAll((_, w) => w * factor);
-      }
-      since = now;
-      for (final MapEntry(:key, :value) in legacy.entries) {
-        final vote = switch (value) {
-          'more' => _legacyVote,
-          'less' => -_legacyVote,
-          _ => 0.0,
-        };
-        weights[key] = ((weights[key] ?? 0) + vote).clamp(-1.0, 1.0);
-      }
-    }
-    return InterestWeights(weights: weights, asOf: since);
+    return InterestWeights(
+      weights: weights,
+      asOf: asOf == null ? null : DateTime.tryParse(asOf),
+    );
   }
-
-  // The defaults when the legacy levels were folded in.
-  static const _legacyHalfLife = Duration(days: 14);
-  static const _legacyVote = 0.5;
 
   final Map<String, double> weights;
   final DateTime? asOf;
@@ -134,7 +111,7 @@ class InterestWeights {
 
   /// Weights after [signal] on [tags]. The signal is shared across the tags
   /// (divided by sqrt of their count) so a card with many tags does not
-  /// inflate all of them; a card vote names one tag and counts in full.
+  /// inflate all of them.
   InterestWeights record(
     Iterable<String> tags,
     InterestSignal signal,

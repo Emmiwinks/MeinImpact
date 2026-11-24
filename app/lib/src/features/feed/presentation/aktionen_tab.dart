@@ -218,7 +218,7 @@ class _AktionenTabState extends State<AktionenTab> with WidgetsBindingObserver {
     );
     if (reason == CardReason.notInterested) {
       widget.onInterestSignal
-          ?.call(opportunity.affectedTags, InterestSignal.less);
+          ?.call(opportunity.affectedTags, InterestSignal.notInterested);
     }
     return true;
   }

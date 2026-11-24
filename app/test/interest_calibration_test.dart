@@ -290,13 +290,14 @@ void main() {
       return newLeads;
     }
 
-    // Behaviour alone, and with one "Weniger davon" on the old favourite.
+    // Behaviour alone, and with one old-favourite card thrown away as
+    // "Thema interessiert mich nicht".
     final silent = daysUntilLeads(first);
     final voted = daysUntilLeads(
       first.copyWith(
         interests: first.interests.record(
           ['Umwelt/Natur'],
-          InterestSignal.less,
+          InterestSignal.notInterested,
           switchDay,
           config,
         ),
@@ -304,10 +305,10 @@ void main() {
     );
     // ignore: avoid_print
     print('taste change: new favourite leads after $silent days, '
-        '$voted with one "Weniger davon"');
+        '$voted with one "Thema interessiert mich nicht"');
 
-    // A 30-day half-life (chosen 2026-11-14, so a vote lasts) follows a
-    // silent change in ~25 days; the card vote is the fast way.
+    // A 30-day half-life (chosen 2026-11-14) follows a silent change in
+    // ~25 days; throwing the old topic away is the fast way.
     expect(silent, isNotNull);
     expect(silent, lessThan(30));
     expect(voted, isNotNull);

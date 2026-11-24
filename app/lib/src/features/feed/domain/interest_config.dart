@@ -10,8 +10,7 @@ class InterestConfig {
   const InterestConfig({
     this.openedDelta = 0.1,
     this.actedDelta = 0.3,
-    this.moreDelta = 0.5,
-    this.lessDelta = -0.5,
+    this.notInterestedDelta = -0.5,
     this.maxWeight = 1.0,
     this.halfLife = const Duration(days: 30),
     this.neutralBand = 0.05,
@@ -26,15 +25,15 @@ class InterestConfig {
   // Weight gained by a topic when its card is opened / acted on.
   final double openedDelta;
   final double actedDelta;
-  // Weight a "Mehr davon" / "Weniger davon" on a card gives its topic.
-  final double moreDelta;
-  final double lessDelta;
+  // Weight a card's topics get when it is thrown away with "Thema
+  // interessiert mich nicht".
+  final double notInterestedDelta;
   // Weights are clamped to -maxWeight..+maxWeight.
   final double maxWeight;
-  // Time for a weight to fall to half its value. 30 days keeps a "Weniger
-  // davon" for about two months; behaviour alone then follows a change of
-  // taste in ~25 days instead of ~12 at 14 days (calibration test), and a
-  // card vote speeds that up.
+  // Time for a weight to fall to half its value. 30 days keeps a "Thema
+  // interessiert mich nicht" for about two months; behaviour alone then
+  // follows a change of taste in ~25 days instead of ~12 at 14 days
+  // (calibration test), and throwing the old topic away speeds that up.
   final Duration halfLife;
   // Below this magnitude a topic counts as "no opinion" (unexplored).
   final double neutralBand;
@@ -64,7 +63,6 @@ class InterestConfig {
   double deltaFor(InterestSignal signal) => switch (signal) {
         InterestSignal.opened => openedDelta,
         InterestSignal.acted => actedDelta,
-        InterestSignal.more => moreDelta,
-        InterestSignal.less => lessDelta,
+        InterestSignal.notInterested => notInterestedDelta,
       };
 }

@@ -652,7 +652,7 @@ void main() {
       expect(findText('Schon erledigt'), findsNothing);
       await tester.tap(findText('Thema interessiert mich nicht'));
       await tester.pumpAndSettle();
-      expect(tab.signals.single.$2, InterestSignal.less);
+      expect(tab.signals.single.$2, InterestSignal.notInterested);
       expect(tab.signals.single.$1, _pool(3).first.affectedTags);
     });
 
