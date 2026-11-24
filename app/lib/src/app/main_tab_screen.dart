@@ -103,8 +103,8 @@ class _MainTabScreenState extends State<MainTabScreen> {
   // The tab a message was written on, for /admin/feedback.
   static const _screens = ['profil', 'aktionen', 'impact'];
 
-  // Beta feedback opens as a sheet over the tab, from the button top right
-  // of the hand or the row at the end of the profile.
+  // Beta feedback opens as a sheet over the tab, from the row at the end of
+  // the profile.
   Future<void> _giveFeedback(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
     final sent = await showFeedbackSheet(context, screen: _screens[_tabIndex]);
@@ -152,7 +152,6 @@ class _MainTabScreenState extends State<MainTabScreen> {
         dismissedIds: widget.dismissedIds,
         onDismissed: widget.onCardsDismissed,
         interestConfig: widget.interestConfig,
-        onFeedback: _giveFeedback,
       ),
       // Scrolls itself, for pull-to-refresh.
       WirkungTab(

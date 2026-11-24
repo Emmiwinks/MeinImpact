@@ -62,12 +62,8 @@ class AktionenTab extends StatefulWidget {
     this.dismissedIds = const {},
     this.onDismissed,
     this.isWeb = kIsWeb,
-    this.onFeedback,
     super.key,
   });
-
-  // Beta feedback, top right; no button without it.
-  final void Function(BuildContext context)? onFeedback;
 
   final OpportunityRepository opportunityRepository;
   final UserProfile profile;
@@ -230,13 +226,7 @@ class _AktionenTabState extends State<AktionenTab> with WidgetsBindingObserver {
       children: [
         // Cold wood before the first action says nothing yet: the flame
         // shows once there is something to keep burning.
-        _TopLine(
-          streak: widget.doneIds.isEmpty ? null : widget.streak,
-          // The web teaser has no feedback to collect.
-          onFeedback: widget.isWeb || widget.onFeedback == null
-              ? null
-              : () => widget.onFeedback!(context),
-        ),
+        _TopLine(streak: widget.doneIds.isEmpty ? null : widget.streak),
         Expanded(child: _buildHand()),
       ],
     );
@@ -319,46 +309,27 @@ class _AktionenTabState extends State<AktionenTab> with WidgetsBindingObserver {
   }
 }
 
-/// Above the hand: the streak on the left, beta feedback on the right. The
-/// row keeps its height either way, so the hand does not move when the
-/// flame first appears.
+/// Above the hand: the streak, top right. The row keeps its height without
+/// it, so the hand does not move when the flame first appears.
 class _TopLine extends StatelessWidget {
-  const _TopLine({required this.streak, required this.onFeedback});
+  const _TopLine({required this.streak});
 
   final Streak? streak;
-  final VoidCallback? onFeedback;
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.mi;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-        MiSpace.base,
-        MiSpace.sm,
         MiSpace.lg,
+        MiSpace.sm,
+        MiSpace.base,
         0,
       ),
       child: SizedBox(
         height: 48,
-        child: Row(
-          children: [
-            if (streak case final streak?) StreakFlame(streak: streak),
-            const Spacer(),
-            if (onFeedback case final onFeedback?)
-              // A word next to the icon: a bubble alone reads as "chat".
-              TextButton.icon(
-                onPressed: onFeedback,
-                icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
-                label: const Text('Feedback'),
-                style: TextButton.styleFrom(
-                  foregroundColor: colors.onTable,
-                  backgroundColor: colors.onTable.withValues(alpha: 0.07),
-                  minimumSize: const Size(0, 40),
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  shape: const StadiumBorder(),
-                ),
-              ),
-          ],
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: streak == null ? null : StreakFlame(streak: streak!),
         ),
       ),
     );

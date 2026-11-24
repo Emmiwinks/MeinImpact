@@ -318,7 +318,11 @@ void main() {
         'phone-feedback-sheet-${brightness.name}',
         brightness: brightness,
         act: (t) async {
-          await t.tap(find.text('Feedback'));
+          await t.tap(find.byIcon(Icons.person_outline));
+          await t.pumpAndSettle();
+          await t.ensureVisible(find.byKey(const ValueKey('row-feedback')));
+          await t.pumpAndSettle();
+          await t.tap(find.byKey(const ValueKey('row-feedback')));
           await t.pumpAndSettle();
           await t.tap(find.text('Fehler'));
           await t.enterText(

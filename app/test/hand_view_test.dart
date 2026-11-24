@@ -677,7 +677,7 @@ void main() {
     });
   });
 
-  testWidgets('Feedback in the tab bar sends kind, words and the open tab', (
+  testWidgets('Feedback from the profile sends kind, words and the open tab', (
     tester,
   ) async {
     final posts = <(String, Map<String, Object?>)>[];
@@ -698,9 +698,13 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    // Not a tab any more: a button top right of the hand.
-    expect(findText('Dein Feedback'), findsNothing);
-    await tester.tap(findText('Feedback'));
+    // Not on the hand: a row at the end of the profile.
+    expect(findText('Feedback'), findsNothing);
+    await tester.tap(find.byIcon(Icons.person_outline));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const ValueKey('row-feedback')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('row-feedback')));
     await tester.pumpAndSettle();
     final send = find.widgetWithText(FilledButton, 'Senden');
     // Kind and words first.
@@ -721,11 +725,11 @@ void main() {
     expect(path, '/v1/feedback');
     expect(body['kind'], 'idea');
     expect(body['message'], 'Mehr Karten zu Kultur');
-    expect(body['screen'], 'aktionen');
+    expect(body['screen'], 'profil');
     expect(body['platform'], 'android');
     // The sheet left the tab where it was.
     final bar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-    expect(bar.selectedIndex, 1);
+    expect(bar.selectedIndex, 0);
   });
 
   testWidgets('Wirkung counts the actions done since it was last opened', (
