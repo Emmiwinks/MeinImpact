@@ -145,124 +145,6 @@ class _SealPainter extends CustomPainter {
   bool shouldRepaint(_SealPainter old) => old.tier != tier;
 }
 
-/// The Abzeichen section of the profile: the album, closed. The last three
-/// stickers earned lie stuck over each other beside the count; the album
-/// itself, with every sticker, opens from here.
-class ProfileBadges extends StatelessWidget {
-  const ProfileBadges({required this.progress, super.key});
-
-  final Progress progress;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.mi;
-    final text = Theme.of(context).textTheme;
-    final earned = progress.earned;
-    void open() => _showAllBadges(context, progress);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: MiSpace.lg, right: MiSpace.sm),
-          child: Row(
-            children: [
-              Expanded(child: Text('Abzeichen', style: text.titleLarge)),
-              TextButton(onPressed: open, child: const Text('Album öffnen')),
-            ],
-          ),
-        ),
-        if (earned.isEmpty)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              MiSpace.lg,
-              MiSpace.xs,
-              MiSpace.lg,
-              0,
-            ),
-            child: Text(
-              'Noch keine Abzeichen. Schau in deinen Aktionen, ob etwas '
-              'Passendes für dich dabei ist.',
-              style: text.bodyMedium?.copyWith(color: colors.onTableMuted),
-            ),
-          )
-        else
-          InkWell(
-            onTap: open,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                MiSpace.lg,
-                MiSpace.sm,
-                MiSpace.lg,
-                MiSpace.sm,
-              ),
-              child: Row(
-                children: [
-                  _StickerStack(stickers: earned.reversed.take(3).toList()),
-                  const SizedBox(width: MiSpace.base),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          earned.length == 1
-                              ? '1 Abzeichen'
-                              : '${earned.length} Abzeichen',
-                          style: text.titleMedium,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Zuletzt: ${earned.last.title}',
-                          style: text.bodyMedium?.copyWith(
-                            color: colors.onTableMuted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-/// Up to three stickers stuck half over each other, the newest on top at the
-/// left.
-class _StickerStack extends StatelessWidget {
-  const _StickerStack({required this.stickers});
-
-  // Newest first.
-  final List<EarnedSticker> stickers;
-
-  static const _size = 68.0;
-  static const _step = 30.0;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: _size + _step * 2,
-      height: _size + 8,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          for (var i = stickers.length - 1; i >= 0; i--)
-            Positioned(
-              left: i * _step,
-              top: i.isEven ? 0 : 8,
-              child: BadgeSticker(
-                asset: stickers[i].asset,
-                size: _size,
-                tier: stickers[i].tier,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
 // Room for two lines of label under a medal as the user's text size grows.
 double _textGrowth(BuildContext context) =>
     MediaQuery.textScalerOf(context).scale(1).clamp(1, 1.5).toDouble();
@@ -352,7 +234,8 @@ class _Tile extends StatelessWidget {
   }
 }
 
-Future<void> _showAllBadges(BuildContext context, Progress progress) {
+/// The album with every sticker, earned or not; opened from the profile.
+Future<void> showBadgeAlbum(BuildContext context, Progress progress) {
   final theme = Theme.of(context);
   Widget heading(BuildContext context, String title, String detail) =>
       SliverPadding(

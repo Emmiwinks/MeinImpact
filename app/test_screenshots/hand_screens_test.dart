@@ -727,14 +727,9 @@ void main() {
         act: (t) async {
           await t.tap(find.text('Mein Profil'));
           await t.pumpAndSettle();
-          await t.scrollUntilVisible(
-            find.text('Abzeichen'),
-            300,
-            scrollable: find.byType(Scrollable).first,
-          );
           await t.drag(
             find.byType(Scrollable).first,
-            const Offset(0, -200),
+            const Offset(0, -400),
           );
         },
       ),
@@ -749,14 +744,9 @@ void main() {
         act: (t) async {
           await t.tap(find.text('Mein Profil'));
           await t.pumpAndSettle();
-          await t.scrollUntilVisible(
-            find.text('Abzeichen'),
-            300,
-            scrollable: find.byType(Scrollable).first,
-          );
           await t.drag(
             find.byType(Scrollable).first,
-            const Offset(0, -200),
+            const Offset(0, -400),
           );
         },
       ),
@@ -773,11 +763,11 @@ void main() {
           await t.tap(find.text('Mein Profil'));
           await t.pumpAndSettle();
           await t.scrollUntilVisible(
-            find.text('Album öffnen'),
+            find.byKey(const ValueKey('row-badges')),
             300,
             scrollable: find.byType(Scrollable).first,
           );
-          await t.tap(find.text('Album öffnen'));
+          await t.tap(find.byKey(const ValueKey('row-badges')));
         },
       ),
     );
@@ -836,6 +826,25 @@ void main() {
         brightness: brightness,
         profile: _pitchProfile,
         act: (t) => t.tap(find.text('Mein Profil')),
+      ),
+    );
+    testWidgets(
+      'profile topics sheet, ${brightness.name}',
+      (t) => shoot(
+        t,
+        'phone-profile-themen-${brightness.name}',
+        brightness: brightness,
+        profile: _pitchProfile,
+        act: (t) async {
+          await t.tap(find.text('Mein Profil'));
+          await t.pumpAndSettle();
+          await t.scrollUntilVisible(
+            find.byKey(const ValueKey('row-themen')),
+            300,
+            scrollable: find.byType(Scrollable).first,
+          );
+          await t.tap(find.byKey(const ValueKey('row-themen')));
+        },
       ),
     );
     testWidgets(

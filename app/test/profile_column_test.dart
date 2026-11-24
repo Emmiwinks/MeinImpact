@@ -46,7 +46,7 @@ void main() {
     expect(find.text('Umverteilung'), findsNothing);
   });
 
-  testWidgets('only favoured topics show, and one can be forgotten',
+  testWidgets('the topics row opens the topics to forget',
       (tester) async {
     InterestWeights? changed;
     await _pump(
@@ -64,42 +64,52 @@ void main() {
       onInterestsChanged: (w) => changed = w,
     );
 
+    // No summary on the row: the topics are in the sheet.
+    expect(find.text('Wohnen/Miete'), findsNothing);
+    expect(find.byKey(const ValueKey('topic-Wohnen/Miete')), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('row-themen')));
+    await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('topic-Wohnen/Miete')), findsOneWidget);
     expect(find.byKey(const ValueKey('topic-Umwelt/Natur')), findsNothing);
     expect(find.byKey(const ValueKey('topic-Sicherheit')), findsNothing);
 
     await tester.tap(find.byTooltip('Wohnen/Miete vergessen'));
+    await tester.pumpAndSettle();
 
     expect(changed?.weights.containsKey('Wohnen/Miete'), isFalse);
     expect(changed?.weights['Sicherheit'], closeTo(-0.5, 1e-3));
+    // The sheet follows at once.
+    expect(find.byKey(const ValueKey('topic-Wohnen/Miete')), findsNothing);
   });
 
   testWidgets('without favoured topics it says where they come from',
       (tester) async {
     await _pump(tester, const UserProfile());
 
+    await tester.tap(find.byKey(const ValueKey('row-themen')));
+    await tester.pumpAndSettle();
     expect(find.textContaining('öffnest und erledigst'), findsOneWidget);
   });
 
-  testWidgets('the Rucksack shows public Lebenslagen and the Wahlkreis',
-      (tester) async {
+  testWidgets('rows carry only their names', (tester) async {
     await _pump(
       tester,
       const UserProfile(
         plz: '01067',
         mdbWahlkreis: 'Dresden I',
-        mdbName: 'Jana Beispiel',
-        mdbParty: 'Partei',
         lebenslagen: {'mieter', 'eltern'},
       ),
     );
 
-    expect(find.text('Dresden I'), findsWidgets);
-    expect(find.text('Im Bundestag: Jana Beispiel, Partei'), findsOneWidget);
-    expect(find.text('Mieter:in'), findsOneWidget);
+    expect(find.text('Was zu dir gehört'), findsOneWidget);
+    expect(find.text('Dein Stadthaushalt'), findsOneWidget);
+    expect(find.text('Deine Themen'), findsOneWidget);
+    expect(find.textContaining('01067'), findsNothing);
+    expect(find.text('Noch nicht verteilt'), findsNothing);
   });
 
-  testWidgets('without a Rucksack screen, Umpacken opens the picker',
+  testWidgets('without a Rucksack screen, the row opens the picker',
       (tester) async {
     Set<String>? changed;
     await _pump(
@@ -108,7 +118,7 @@ void main() {
       onLebenslagenChanged: (ids) => changed = ids,
     );
 
-    await tester.tap(find.text('Umpacken'));
+    await tester.tap(find.byKey(const ValueKey('row-rucksack')));
     await tester.pumpAndSettle();
     expect(find.text('Was ist dir wichtig?'), findsOneWidget);
 
