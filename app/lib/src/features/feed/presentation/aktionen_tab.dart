@@ -151,8 +151,10 @@ class _AktionenTabState extends State<AktionenTab> with WidgetsBindingObserver {
   }
 
   List<RankedOpportunity> _rank(List<Opportunity> pool) =>
-      OpportunityRelevanceRanker(interestConfig: widget.interestConfig)
-          .rank(pool, widget.profile);
+      widget.profile.browsing
+          ? shuffledPool(pool)
+          : OpportunityRelevanceRanker(interestConfig: widget.interestConfig)
+              .rank(pool, widget.profile);
 
   // Opens the action; true once the user marked it done. Logging it waits
   // for [_complete], after the card has landed on the Wirkung pile.
@@ -261,6 +263,7 @@ class _AktionenTabState extends State<AktionenTab> with WidgetsBindingObserver {
             doneIds: widget.doneIds,
           ),
           handSize: kHandSize,
+          anyLocal: widget.profile.browsing,
         );
         if (opportunities.isEmpty) {
           return pool.isEmpty

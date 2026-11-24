@@ -29,7 +29,23 @@ class UserProfile {
     this.interests = const InterestWeights(),
     this.prioritaeten = const {},
     this.einwilligung,
+    this.browsing = false,
   });
+
+  /// Someone who agreed to the consent but put the questionnaire off: only
+  /// looking at actions for now.
+  const UserProfile.browsing({required DateTime this.einwilligung})
+      : werte = const {},
+        region = null,
+        plz = null,
+        mdbName = null,
+        mdbParty = null,
+        mdbWahlkreis = null,
+        home = null,
+        lebenslagen = const {},
+        interests = const InterestWeights(),
+        prioritaeten = const {},
+        browsing = true;
 
   factory UserProfile.fromJson(Map<String, Object?> json) {
     final werteRaw = json['werte'] as Map<String, Object?>? ?? {};
@@ -38,6 +54,20 @@ class UserProfile {
     final interestsRaw = json['interests'] as Map<String, Object?>?;
     final homeRaw = json['home'] as Map<String, Object?>?;
     final prioritaetenRaw = json['prioritaeten'] as Map<String, Object?>?;
+    final interests = interestsRaw != null
+        ? InterestWeights.fromJson(interestsRaw)
+        : const InterestWeights();
+    final einwilligung =
+        DateTime.tryParse(json['einwilligung'] as String? ?? '');
+    // The old "Beispielprofil" (no Werte, its fixed PLZ and Lebenslagen)
+    // becomes what replaced it: only looking, nothing made up.
+    if (einwilligung != null &&
+        werteRaw.isEmpty &&
+        json['plz'] == '01067' &&
+        _isOldExample(lebenslagenRaw)) {
+      return UserProfile.browsing(einwilligung: einwilligung)
+          .copyWith(interests: interests);
+    }
     return UserProfile(
       // Saved as whole steps before the slider went continuous.
       werte: werteRaw.map((k, v) => MapEntry(k, (v as num).toDouble())),
@@ -57,16 +87,20 @@ class UserProfile {
           : legacyRaw != null
               ? lebenslagenFromLegacy(legacyRaw)
               : const {},
-      interests: interestsRaw != null
-          ? InterestWeights.fromJson(interestsRaw)
-          : const InterestWeights(),
+      interests: interests,
       prioritaeten: prioritaetenRaw?.map(
             (k, v) => MapEntry(k, (v as num).toInt()),
           ) ??
           const {},
-      einwilligung: DateTime.tryParse(json['einwilligung'] as String? ?? ''),
+      einwilligung: einwilligung,
+      browsing: json['nur_schauen'] == true,
     );
   }
+
+  static bool _isOldExample(List<Object?>? lebenslagen) =>
+      lebenslagen != null &&
+      lebenslagen.length == 3 &&
+      lebenslagen.toSet().containsAll(const ['mieter', 'oepnv', 'angestellt']);
 
   UserProfile copyWith({
     Map<String, double>? werte,
@@ -88,6 +122,7 @@ class UserProfile {
       interests: interests ?? this.interests,
       prioritaeten: prioritaeten ?? this.prioritaeten,
       einwilligung: einwilligung ?? this.einwilligung,
+      browsing: browsing,
     );
   }
 
@@ -125,6 +160,10 @@ class UserProfile {
   // Null for profiles made before it existed: they see it once on start.
   final DateTime? einwilligung;
 
+  // The questionnaire was put off ("Lieber später"): the hand is dealt at
+  // random and the profile offers the questionnaire instead of its answers.
+  final bool browsing;
+
   // Derived axes (-2.0 to +2.0) for the profile's scales. Ranking matches
   // per question instead (an opportunity's werteRelevanz is keyed by
   // werteQuestionKeys), since the two questions of an axis can disagree.
@@ -154,6 +193,7 @@ class UserProfile {
       'interests': interests.toJson(),
       'prioritaeten': prioritaeten,
       'einwilligung': einwilligung?.toIso8601String(),
+      if (browsing) 'nur_schauen': true,
     };
   }
 }

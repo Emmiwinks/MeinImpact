@@ -140,32 +140,57 @@ void main() {
     testWidgets('intro, then the consent, then the questions', (tester) async {
       await start(tester);
 
-      await tester.tap(find.text("Los geht's · ca. 3 Minuten"));
+      await tester.tap(find.text("Los geht's · ca. 5 Minuten"));
       await tester.pumpAndSettle();
       expect(find.text('Kurz zu deinen Daten'), findsOneWidget);
 
       // Back from the consent is the intro again.
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
-      expect(find.text("Los geht's · ca. 3 Minuten"), findsOneWidget);
+      expect(find.text("Los geht's · ca. 5 Minuten"), findsOneWidget);
 
-      await tester.tap(find.text("Los geht's · ca. 3 Minuten"));
+      await tester.tap(find.text("Los geht's · ca. 5 Minuten"));
       await tester.pumpAndSettle();
       await agree(tester);
       expect(find.text('Was passt eher zu dir?'), findsOneWidget);
     });
 
-    testWidgets('the example profile passes the consent too', (tester) async {
+    testWidgets('"Lieber später" passes the consent and makes nothing up', (
+      tester,
+    ) async {
       final profiles = await start(tester);
 
-      await tester.tap(find.textContaining('Nimm das Beispielprofil'));
+      await tester.tap(find.textContaining('Erst mal nur Aktionen ansehen'));
       await tester.pumpAndSettle();
       await agree(tester);
 
       final saved = profiles.saved!;
       expect(saved.einwilligung, isNotNull);
-      expect(saved.prioritaeten.values.fold(0, (a, b) => a + b), 20);
-      expect(saved.lebenslagen, isNotEmpty);
+      expect(saved.browsing, isTrue);
+      expect(saved.plz, isNull);
+      expect(saved.lebenslagen, isEmpty);
+      expect(saved.prioritaeten, isEmpty);
+      // No Stadthaushalt to catch up on: straight to the hand.
+      expect(find.text('Wohin mit dem Geld deiner Stadt?'), findsNothing);
+    });
+
+    testWidgets('the profile starts the whole questionnaire later', (
+      tester,
+    ) async {
+      final agreed = DateTime(2026, 11, 24);
+      await start(tester, UserProfile.browsing(einwilligung: agreed));
+
+      await tester.tap(find.text('Mein Profil'));
+      await tester.pumpAndSettle();
+      expect(find.text('Dein Wertebild'), findsNothing);
+      await tester.tap(find.text('Fragebogen ausfüllen · ca. 5 Minuten'));
+      await tester.pumpAndSettle();
+      expect(find.text('Was passt eher zu dir?'), findsOneWidget);
+
+      // Back from the first question is the profile again.
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('Fragebogen ausfüllen · ca. 5 Minuten'), findsOneWidget);
     });
 
     testWidgets('a profile from before catches up on consent and Taler', (
@@ -190,6 +215,29 @@ void main() {
     );
     expect(profile.einwilligung, DateTime(2026, 11, 24, 9, 30));
     expect(UserProfile.fromJson(const {}).einwilligung, isNull);
+  });
+
+  test('only looking is kept with the profile', () {
+    final profile = UserProfile.fromJson(
+      UserProfile.browsing(einwilligung: DateTime(2026, 11, 24)).toJson(),
+    );
+    expect(profile.browsing, isTrue);
+    expect(UserProfile.fromJson(const {}).browsing, isFalse);
+  });
+
+  test('the old Beispielprofil becomes only looking', () {
+    final profile = UserProfile.fromJson(const {
+      'werte': <String, Object?>{},
+      'plz': '01067',
+      'lebenslagen': ['mieter', 'oepnv', 'angestellt'],
+      'prioritaeten': {'kultur': 20},
+      'einwilligung': '2026-11-24T09:30:00.000',
+    });
+    expect(profile.browsing, isTrue);
+    expect(profile.plz, isNull);
+    expect(profile.lebenslagen, isEmpty);
+    expect(profile.prioritaeten, isEmpty);
+    expect(profile.einwilligung, DateTime(2026, 11, 24, 9, 30));
   });
 }
 

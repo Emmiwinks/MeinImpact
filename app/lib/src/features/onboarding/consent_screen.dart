@@ -7,8 +7,8 @@ import '../../app/theme/mi_theme.dart';
 /// the app; the profile links it too).
 final kPrivacyPolicyUrl = Uri.parse('https://meinimpact.de/datenschutz.html');
 
-/// The consent, after the intro and before any data is entered; the
-/// Beispielprofil passes through it too. The key facts stand on the screen
+/// The consent, after the intro and before any data is entered; putting
+/// the questionnaire off ("Lieber später") passes through it too. The key facts stand on the screen
 /// itself (explicit consent needs them visible), the full policy is one
 /// tap away, and "Einverstanden" waits for the age confirmation.
 class ConsentScreen extends StatefulWidget {

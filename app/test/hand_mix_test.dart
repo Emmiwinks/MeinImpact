@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meinimpact/src/features/feed/data/hand_mix.dart';
 import 'package:meinimpact/src/features/feed/data/opportunity_relevance_ranker.dart';
@@ -104,6 +106,33 @@ void main() {
       'land1',
       'land2',
     ]);
+  });
+
+  test('without a profile, any local card takes the last slot', () {
+    final cards = [
+      for (var i = 1; i <= 3; i++) _card('bund$i', ''),
+      _card('land1', '14'),
+      _card('land2', '14'),
+      _card('stadt-fern', '14612'),
+    ];
+
+    expect(_ids(mixHand(cards, handSize: 5, anyLocal: true)).take(5), [
+      'bund1',
+      'bund2',
+      'bund3',
+      'land1',
+      'stadt-fern',
+    ]);
+  });
+
+  test('the random deal keeps every card', () {
+    final pool = [
+      for (var i = 0; i < 6; i++) _card('karte$i', '').opportunity,
+    ];
+
+    final dealt = shuffledPool(pool, random: Random(1));
+
+    expect(_ids(dealt).toSet(), {for (final o in pool) o.id});
   });
 
   test('a short pool is left as it is', () {

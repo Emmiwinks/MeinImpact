@@ -96,7 +96,7 @@ void main() {
       (t) => screen(
         t,
         'phone-intro-$b',
-        IntroScreen(onStart: () {}, onExample: () {}),
+        IntroScreen(onStart: () {}, onLater: () {}),
         brightness: brightness,
       ),
     );

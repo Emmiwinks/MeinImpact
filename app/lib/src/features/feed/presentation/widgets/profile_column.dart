@@ -28,6 +28,7 @@ class ProfileColumn extends StatelessWidget {
     required this.onInterestsChanged,
     this.onEditLebenslagen,
     this.onEditPrioritaeten,
+    this.onFillIn,
     this.progress,
     super.key,
   });
@@ -43,12 +44,25 @@ class ProfileColumn extends StatelessWidget {
 
   /// Opens the Stadthaushalt again ("Neu verteilen").
   final VoidCallback? onEditPrioritaeten;
+
+  /// Starts the whole questionnaire, for a profile that put it off.
+  final VoidCallback? onFillIn;
   final ValueChanged<Set<String>> onLebenslagenChanged;
   final ValueChanged<InterestWeights> onInterestsChanged;
 
   @override
   Widget build(BuildContext context) {
     final p = profile;
+    // Put off: the questionnaire stands in for its three answers.
+    if (p != null && p.browsing) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _Section(first: true, child: _FillInSection(onStart: onFillIn)),
+          ..._rest(p),
+        ],
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -70,18 +84,55 @@ class ProfileColumn extends StatelessWidget {
               onEdit: onEditPrioritaeten,
             ),
           ),
-          if (progress case final progress?)
-            // The medals scroll to the screen's edges.
-            _Section(flush: true, child: ProfileBadges(progress: progress)),
-          _Section(
-            child: _TopicsSection(
-              interests: p.interests,
-              onChanged: onInterestsChanged,
-            ),
-          ),
-          if (Notifications.current.available)
-            const _Section(child: _NotificationsSection()),
+          ..._rest(p),
         ],
+      ],
+    );
+  }
+
+  // Below the answers: badges, learned topics, notifications.
+  List<Widget> _rest(UserProfile p) => [
+        if (progress case final progress?)
+          // The medals scroll to the screen's edges.
+          _Section(flush: true, child: ProfileBadges(progress: progress)),
+        _Section(
+          child: _TopicsSection(
+            interests: p.interests,
+            onChanged: onInterestsChanged,
+          ),
+        ),
+        if (Notifications.current.available)
+          const _Section(child: _NotificationsSection()),
+      ];
+}
+
+/// For someone who put the questionnaire off: why the hand is random, and
+/// the way to the whole questionnaire.
+class _FillInSection extends StatelessWidget {
+  const _FillInSection({required this.onStart});
+
+  final VoidCallback? onStart;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.mi;
+    final text = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _Heading('Dein Profil'),
+        const SizedBox(height: MiSpace.sm),
+        Text(
+          'Noch nicht ausgefüllt. Bis dahin bekommst du Aktionen bunt '
+          'gemischt, nicht die, die zu dir passen.',
+          style: text.bodyMedium?.copyWith(color: colors.onTableMuted),
+        ),
+        const SizedBox(height: MiSpace.base),
+        FilledButton(
+          onPressed: onStart,
+          style: colors.tableButton,
+          child: const Text('Fragebogen ausfüllen · ca. 5 Minuten'),
+        ),
       ],
     );
   }

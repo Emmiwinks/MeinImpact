@@ -14,14 +14,14 @@ import 'stadthaushalt/stadthaushalt.dart';
 class IntroScreen extends StatelessWidget {
   const IntroScreen({
     required this.onStart,
-    required this.onExample,
+    required this.onLater,
     super.key,
   });
 
   final VoidCallback onStart;
 
-  /// "Nimm das Beispielprofil": skips the questions.
-  final VoidCallback onExample;
+  /// "Lieber später": skips the questions, the actions come at random.
+  final VoidCallback onLater;
 
   @override
   Widget build(BuildContext context) {
@@ -93,22 +93,24 @@ class IntroScreen extends StatelessWidget {
                   FilledButton(
                     onPressed: onStart,
                     style: colors.tableButton,
-                    child: const Text("Los geht's · ca. 3 Minuten"),
+                    child: const Text("Los geht's · ca. 5 Minuten"),
                   ),
                   const SizedBox(height: MiSpace.xs),
                   TextButton(
-                    onPressed: onExample,
+                    onPressed: onLater,
                     child: Text.rich(
                       TextSpan(
                         children: [
                           TextSpan(
-                            text: 'Nur mal reinschnuppern?\n',
+                            text: 'Lieber später?\n',
                             style: TextStyle(
                               color: colors.onTableMuted,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          const TextSpan(text: 'Nimm das Beispielprofil.'),
+                          const TextSpan(
+                            text: 'Erst mal nur Aktionen ansehen.',
+                          ),
                         ],
                       ),
                       textAlign: TextAlign.center,

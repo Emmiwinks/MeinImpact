@@ -27,24 +27,6 @@ import '../features/tracking/progress_widgets.dart';
 import 'main_tab_screen.dart';
 import 'theme/mi_theme.dart';
 
-/// Hardcoded stand-in Lebenslagen, used by the intro's "Nimm das
-/// Beispielprofil" shortcut. Deliberately not configurable: it exists to
-/// skip setup, not to represent a real answer.
-const _kExampleLebenslagen = {'mieter', 'oepnv', 'angestellt'};
-// Its PLZ is located like any other once the app is running.
-const _kExamplePlz = '01067';
-// Spread almost evenly, so no pot tilts the example's feed.
-const _kExamplePrioritaeten = {
-  'kinder_bildung': 3,
-  'soziales': 3,
-  'oepnv_rad': 3,
-  'strassen': 2,
-  'kultur': 2,
-  'sport_freizeit': 2,
-  'sicherheit': 2,
-  'gruen_klima': 3,
-};
-
 class MeinImpactApp extends StatefulWidget {
   /// Direct constructor — bypasses onboarding (used in tests and demos).
   const MeinImpactApp({
@@ -98,8 +80,11 @@ class _MeinImpactAppState extends State<MeinImpactApp>
   UserProfile? _profile;
   // Onboarding steps (only used before a profile exists), see _Step.
   _Step _onboardingStep = _Step.intro;
-  // The consent was reached through "Nimm das Beispielprofil".
-  bool _example = false;
+  // The consent was reached through "Lieber später".
+  bool _later = false;
+  // True while someone who put the questionnaire off fills it in from
+  // "Mein Profil": the onboarding steps run again, the consent is had.
+  bool _fillIn = false;
   DateTime? _consentAt;
   Map<String, double>? _pendingWerte;
   // PLZ and Lebenslagen from the Rucksack, kept for the Stadthaushalt step
@@ -264,17 +249,11 @@ class _MeinImpactAppState extends State<MeinImpactApp>
       setState(() => _profile = updated);
       return;
     }
-    if (_example) {
-      final profile = UserProfile(
-        plz: _kExamplePlz,
-        lebenslagen: _kExampleLebenslagen,
-        prioritaeten: _kExamplePrioritaeten,
-        einwilligung: now,
-      );
-      Usage.current.count(UsageEvent.onboardingDone);
+    // Onboarding counts as done once the questionnaire is.
+    if (_later) {
+      final profile = UserProfile.browsing(einwilligung: now);
       await widget._profileStore?.save(profile);
       setState(() => _profile = profile);
-      unawaited(_locateHomeIfMissing());
       return;
     }
     setState(() {
@@ -297,8 +276,19 @@ class _MeinImpactAppState extends State<MeinImpactApp>
     });
   }
 
+  // From "Mein Profil": the questionnaire, after only looking so far.
+  void _startFillIn() => setState(() {
+        _fillIn = true;
+        _consentAt = _profile?.einwilligung;
+        _pendingWerte = null;
+        _pendingRucksack = null;
+        _onboardingStep = _Step.werte;
+      });
+
   Future<void> _onStadthaushaltComplete(Map<String, int> taler) async {
     final patch = _pendingRucksack!;
+    // What the cards taught while only looking is kept.
+    final learned = _profile?.interests ?? const InterestWeights();
     final profile = UserProfile(
       werte: _pendingWerte!,
       plz: patch.plz,
@@ -307,12 +297,18 @@ class _MeinImpactAppState extends State<MeinImpactApp>
       mdbWahlkreis: patch.mdbWahlkreis,
       home: patch.home,
       lebenslagen: patch.lebenslagen,
+      interests: learned,
       prioritaeten: taler,
       einwilligung: _consentAt,
     );
     Usage.current.count(UsageEvent.onboardingDone);
     await widget._profileStore?.save(profile);
-    setState(() => _profile = profile);
+    setState(() {
+      _profile = profile;
+      _fillIn = false;
+      _homeTab = 1;
+      _profileRevision++;
+    });
     unawaited(_locateHomeIfMissing());
   }
 
@@ -464,7 +460,10 @@ class _MeinImpactAppState extends State<MeinImpactApp>
     if (_profile != null && _profile!.einwilligung == null) {
       return ConsentScreen(onAgree: _onConsent);
     }
-    if (_profile != null && (_redistribute || _profile!.prioritaeten.isEmpty)) {
+    if (_profile != null &&
+        !_fillIn &&
+        (_redistribute ||
+            (_profile!.prioritaeten.isEmpty && !_profile!.browsing))) {
       return StadthaushaltScreen(
         initial: _profile!.prioritaeten,
         onComplete: _onRedistributeComplete,
@@ -477,7 +476,7 @@ class _MeinImpactAppState extends State<MeinImpactApp>
       );
     }
 
-    if (_profile != null && !_requizWerte) {
+    if (_profile != null && !_requizWerte && !_fillIn) {
       return MainTabScreen(
         opportunityRepository: widget._opportunityRepository,
         profile: _profile,
@@ -487,6 +486,7 @@ class _MeinImpactAppState extends State<MeinImpactApp>
         onEditProfile: () => setState(() => _requizWerte = true),
         onEditLebenslagen: () => setState(() => _repack = true),
         onEditPrioritaeten: () => setState(() => _redistribute = true),
+        onFillIn: _startFillIn,
         onLebenslagenChanged: _onLebenslagenChanged,
         onInterestsChanged: _onInterestsChanged,
         onInterestSignal: _onInterestSignal,
@@ -516,11 +516,11 @@ class _MeinImpactAppState extends State<MeinImpactApp>
       case _Step.intro:
         return IntroScreen(
           onStart: () => setState(() {
-            _example = false;
+            _later = false;
             _onboardingStep = _Step.consent;
           }),
-          onExample: () => setState(() {
-            _example = true;
+          onLater: () => setState(() {
+            _later = true;
             _onboardingStep = _Step.consent;
           }),
         );
@@ -533,7 +533,15 @@ class _MeinImpactAppState extends State<MeinImpactApp>
         return ValueProfileScreen(
           initial: _pendingWerte ?? const {},
           onComplete: _onWerteComplete,
-          onCancel: () => setState(() => _onboardingStep = _Step.consent),
+          // Filling in from the profile, back leads there again.
+          onCancel: () => setState(() {
+            if (_fillIn) {
+              _fillIn = false;
+              _homeTab = 0;
+            } else {
+              _onboardingStep = _Step.consent;
+            }
+          }),
         );
       case _Step.rucksack:
         final back = _pendingRucksack;
