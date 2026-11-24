@@ -15,7 +15,10 @@ import '../features/feed/domain/opportunity_repository.dart';
 import '../features/feed/domain/user_profile.dart';
 import '../features/notifications/domain/notification_state.dart';
 import '../features/notifications/notifications.dart';
+import '../features/onboarding/consent_screen.dart';
+import '../features/onboarding/intro_screen.dart';
 import '../features/onboarding/rucksack/rucksack_screen.dart';
+import '../features/onboarding/stadthaushalt/stadthaushalt_screen.dart';
 import '../features/onboarding/value_profile_screen.dart';
 import '../features/tracking/data/action_log_store.dart';
 import '../features/tracking/domain/action_log.dart';
@@ -24,12 +27,23 @@ import '../features/tracking/progress_widgets.dart';
 import 'main_tab_screen.dart';
 import 'theme/mi_theme.dart';
 
-/// Hardcoded stand-in Lebenslagen, used by the "Beispiel-Profil übernehmen"
-/// onboarding shortcut. Deliberately not configurable: it exists to skip
-/// setup, not to represent a real answer.
+/// Hardcoded stand-in Lebenslagen, used by the intro's "Nimm das
+/// Beispielprofil" shortcut. Deliberately not configurable: it exists to
+/// skip setup, not to represent a real answer.
 const _kExampleLebenslagen = {'mieter', 'oepnv', 'angestellt'};
 // Its PLZ is located like any other once the app is running.
 const _kExamplePlz = '01067';
+// Spread almost evenly, so no pot tilts the example's feed.
+const _kExamplePrioritaeten = {
+  'kinder_bildung': 3,
+  'soziales': 3,
+  'oepnv_rad': 3,
+  'strassen': 2,
+  'kultur': 2,
+  'sport_freizeit': 2,
+  'sicherheit': 2,
+  'gruen_klima': 3,
+};
 
 class MeinImpactApp extends StatefulWidget {
   /// Direct constructor — bypasses onboarding (used in tests and demos).
@@ -82,10 +96,18 @@ class MeinImpactApp extends StatefulWidget {
 class _MeinImpactAppState extends State<MeinImpactApp>
     with WidgetsBindingObserver {
   UserProfile? _profile;
-  // Onboarding steps (only used before a profile exists): 0 = value
-  // profile, 1 = demographics.
-  int _onboardingStep = 0;
+  // Onboarding steps (only used before a profile exists), see _Step.
+  _Step _onboardingStep = _Step.intro;
+  // The consent was reached through "Nimm das Beispielprofil".
+  bool _example = false;
+  DateTime? _consentAt;
   Map<String, double>? _pendingWerte;
+  // PLZ and Lebenslagen from the Rucksack, kept for the Stadthaushalt step
+  // and for going back to the Rucksack.
+  UserProfile? _pendingRucksack;
+  // True while the owner re-distributes the Stadthaushalt from "Mein
+  // Profil".
+  bool _redistribute = false;
   // True while an existing profile's owner is re-doing just the Werteprofil
   // quiz from "Mein Profil" — demographic data is left untouched, see
   // _onWerteRequizComplete.
@@ -163,6 +185,8 @@ class _MeinImpactAppState extends State<MeinImpactApp>
       home: found.home,
       lebenslagen: latest.lebenslagen,
       interests: latest.interests,
+      prioritaeten: latest.prioritaeten,
+      einwilligung: latest.einwilligung,
     );
     await widget._profileStore?.save(updated);
     if (mounted) setState(() => _profile = updated);
@@ -227,14 +251,51 @@ class _MeinImpactAppState extends State<MeinImpactApp>
     await widget._dismissedStore?.save(updated);
   }
 
-  Future<void> _onWerteComplete(Map<String, double> werte) async {
+  Future<void> _onConsent() async {
+    final now = DateTime.now();
+    final existing = _profile;
+    // A profile from before the consent screen agrees once, on start.
+    if (existing != null) {
+      final updated = existing.copyWith(einwilligung: now);
+      await widget._profileStore?.save(updated);
+      setState(() => _profile = updated);
+      return;
+    }
+    if (_example) {
+      final profile = UserProfile(
+        plz: _kExamplePlz,
+        lebenslagen: _kExampleLebenslagen,
+        prioritaeten: _kExamplePrioritaeten,
+        einwilligung: now,
+      );
+      Usage.current.count(UsageEvent.onboardingDone);
+      await widget._profileStore?.save(profile);
+      setState(() => _profile = profile);
+      unawaited(_locateHomeIfMissing());
+      return;
+    }
     setState(() {
-      _pendingWerte = werte;
-      _onboardingStep = 1;
+      _consentAt = now;
+      _onboardingStep = _Step.werte;
     });
   }
 
-  Future<void> _onDemographicComplete(UserProfile patch) async {
+  Future<void> _onWerteComplete(Map<String, double> werte) async {
+    setState(() {
+      _pendingWerte = werte;
+      _onboardingStep = _Step.rucksack;
+    });
+  }
+
+  void _onRucksackComplete(UserProfile patch) {
+    setState(() {
+      _pendingRucksack = patch;
+      _onboardingStep = _Step.stadthaushalt;
+    });
+  }
+
+  Future<void> _onStadthaushaltComplete(Map<String, int> taler) async {
+    final patch = _pendingRucksack!;
     final profile = UserProfile(
       werte: _pendingWerte!,
       plz: patch.plz,
@@ -243,6 +304,8 @@ class _MeinImpactAppState extends State<MeinImpactApp>
       mdbWahlkreis: patch.mdbWahlkreis,
       home: patch.home,
       lebenslagen: patch.lebenslagen,
+      prioritaeten: taler,
+      einwilligung: _consentAt,
     );
     Usage.current.count(UsageEvent.onboardingDone);
     await widget._profileStore?.save(profile);
@@ -250,15 +313,16 @@ class _MeinImpactAppState extends State<MeinImpactApp>
     unawaited(_locateHomeIfMissing());
   }
 
-  Future<void> _onUseExampleProfile() async {
-    const profile = UserProfile(
-      plz: _kExamplePlz,
-      lebenslagen: _kExampleLebenslagen,
-    );
-    Usage.current.count(UsageEvent.onboardingDone);
-    await widget._profileStore?.save(profile);
-    setState(() => _profile = profile);
-    unawaited(_locateHomeIfMissing());
+  // "Neu verteilen" from the profile, or the first distribution for a
+  // profile made before the step existed.
+  Future<void> _onRedistributeComplete(Map<String, int> taler) async {
+    final updated = _profile!.copyWith(prioritaeten: taler);
+    await widget._profileStore?.save(updated);
+    setState(() {
+      _profile = updated;
+      if (_redistribute) _homeTab = 0;
+      _redistribute = false;
+    });
   }
 
   Future<void> _onWerteRequizComplete(Map<String, double> werte) async {
@@ -287,6 +351,8 @@ class _MeinImpactAppState extends State<MeinImpactApp>
       home: patch.home ?? (samePlz ? current.home : null),
       lebenslagen: patch.lebenslagen,
       interests: current.interests,
+      prioritaeten: current.prioritaeten,
+      einwilligung: current.einwilligung,
     );
     await widget._profileStore?.save(updated);
     setState(() {
@@ -384,6 +450,24 @@ class _MeinImpactAppState extends State<MeinImpactApp>
       );
     }
 
+    // Profiles from before the consent screen and the Stadthaushalt step
+    // catch up on them once, before the tabs.
+    if (_profile != null && _profile!.einwilligung == null) {
+      return ConsentScreen(onAgree: _onConsent);
+    }
+    if (_profile != null && (_redistribute || _profile!.prioritaeten.isEmpty)) {
+      return StadthaushaltScreen(
+        initial: _profile!.prioritaeten,
+        onComplete: _onRedistributeComplete,
+        onBack: _redistribute
+            ? () => setState(() {
+                  _redistribute = false;
+                  _homeTab = 0;
+                })
+            : null,
+      );
+    }
+
     if (_profile != null && !_requizWerte) {
       return MainTabScreen(
         opportunityRepository: widget._opportunityRepository,
@@ -392,6 +476,7 @@ class _MeinImpactAppState extends State<MeinImpactApp>
         openTab: _openTab.stream,
         onEditProfile: () => setState(() => _requizWerte = true),
         onEditLebenslagen: () => setState(() => _repack = true),
+        onEditPrioritaeten: () => setState(() => _redistribute = true),
         onLebenslagenChanged: _onLebenslagenChanged,
         onInterestsChanged: _onInterestsChanged,
         onInterestSignal: _onInterestSignal,
@@ -415,23 +500,51 @@ class _MeinImpactAppState extends State<MeinImpactApp>
       );
     }
 
-    // Onboarding step 0: value profile
-    if (_onboardingStep == 0) {
-      return ValueProfileScreen(
-        // Back from the Rucksack keeps what was answered.
-        initial: _pendingWerte ?? const {},
-        onComplete: _onWerteComplete,
-        onUseExampleProfile: _onUseExampleProfile,
-      );
+    // Onboarding: what is asked, the consent, then the three parts. Back
+    // steps through them, keeping what was entered.
+    switch (_onboardingStep) {
+      case _Step.intro:
+        return IntroScreen(
+          onStart: () => setState(() {
+            _example = false;
+            _onboardingStep = _Step.consent;
+          }),
+          onExample: () => setState(() {
+            _example = true;
+            _onboardingStep = _Step.consent;
+          }),
+        );
+      case _Step.consent:
+        return ConsentScreen(
+          onAgree: _onConsent,
+          onBack: () => setState(() => _onboardingStep = _Step.intro),
+        );
+      case _Step.werte:
+        return ValueProfileScreen(
+          initial: _pendingWerte ?? const {},
+          onComplete: _onWerteComplete,
+          onCancel: () => setState(() => _onboardingStep = _Step.consent),
+        );
+      case _Step.rucksack:
+        final back = _pendingRucksack;
+        return RucksackScreen(
+          werte: _pendingWerte ?? const {},
+          // The picture falls in only the first time.
+          dropPicture: back == null,
+          initialPlz: back?.plz,
+          initialWahlkreis: back?.mdbWahlkreis,
+          initialLebenslagen: back?.lebenslagen ?? const {},
+          onComplete: _onRucksackComplete,
+          onLocate: widget._opportunityRepository.locate,
+          onBack: () => setState(() => _onboardingStep = _Step.werte),
+        );
+      case _Step.stadthaushalt:
+        return StadthaushaltScreen(
+          onComplete: _onStadthaushaltComplete,
+          onBack: () => setState(() => _onboardingStep = _Step.rucksack),
+        );
     }
-
-    // Onboarding step 1: the Rucksack (PLZ + MdB, then Lebenslagen) —
-    // optional
-    return RucksackScreen(
-      werte: _pendingWerte ?? const {},
-      onComplete: _onDemographicComplete,
-      onLocate: widget._opportunityRepository.locate,
-      onBack: () => setState(() => _onboardingStep = 0),
-    );
   }
 }
+
+enum _Step { intro, consent, werte, rucksack, stadthaushalt }

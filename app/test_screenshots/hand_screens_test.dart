@@ -458,7 +458,7 @@ void main() {
       (t) => screen(
         t,
         'phone-werte-${brightness.name}',
-        ValueProfileScreen(onComplete: (_) {}, onUseExampleProfile: () {}),
+        ValueProfileScreen(onComplete: (_) {}),
         brightness: brightness,
       ),
     );

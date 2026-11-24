@@ -73,23 +73,18 @@ const _kDeal = Duration(milliseconds: 460);
 class ValueProfileScreen extends StatefulWidget {
   const ValueProfileScreen({
     required this.onComplete,
-    this.onUseExampleProfile,
     this.initial = const {},
     this.onCancel,
     super.key,
   });
 
-  /// System Back on the first question, when re-doing the questionnaire
-  /// from the profile: leaves without saving. Null lets the route pop.
+  /// System Back on the first question: back to the consent in onboarding,
+  /// or, re-doing the questionnaire from the profile, out without saving.
+  /// Null lets the route pop.
   final VoidCallback? onCancel;
 
-  /// The answered questions only; skipped ones stay out (they count as 0).
+  /// Every question answered (there is no skipping).
   final void Function(Map<String, double> werte) onComplete;
-
-  /// Shortcut shown only during first-time setup (null when re-doing the
-  /// quiz from an existing profile) — fills every question neutral and
-  /// hands off to a hardcoded example set of Lebenslagen instead.
-  final VoidCallback? onUseExampleProfile;
 
   /// Earlier answers to start from when re-doing the questionnaire.
   final Map<String, double> initial;
@@ -138,8 +133,7 @@ class _ValueProfileScreenState extends State<ValueProfileScreen>
     setState(() => _answers[_step] = v);
   }
 
-  // Skipping and moving on without an answer are the same: the key stays
-  // absent (0 in the profile).
+  // Only reachable once the question is answered (see the "Weiter" button).
   void _next() {
     if (_step < _kStatements.length - 1) {
       setState(() {
@@ -244,23 +238,9 @@ class _ValueProfileScreenState extends State<ValueProfileScreen>
                         ),
                         child: SizedBox(
                           height: 48,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: _Progress(
-                                  count: _kStatements.length,
-                                  step: _step,
-                                ),
-                              ),
-                              if (!isLast)
-                                TextButton(
-                                  onPressed: _next,
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: colors.onTableMuted,
-                                  ),
-                                  child: const Text('Überspringen'),
-                                ),
-                            ],
+                          child: _Progress(
+                            count: _kStatements.length,
+                            step: _step,
                           ),
                         ),
                       ),
@@ -303,7 +283,9 @@ class _ValueProfileScreenState extends State<ValueProfileScreen>
                         : Opacity(
                             opacity: 1 - away,
                             child: FilledButton(
-                              onPressed: _next,
+                              // Every question gets an answer ("Beides
+                              // gleich" counts); nothing is skipped.
+                              onPressed: _answers[_step] == null ? null : _next,
                               style: colors.tableButton,
                               child: Text(isLast ? 'Fertig' : 'Weiter'),
                             ),
@@ -437,8 +419,8 @@ class _ValueProfileScreenState extends State<ValueProfileScreen>
           ),
           const SizedBox(height: MiSpace.xs),
           Text(
-            'Kein Richtig oder Falsch. Aus deinen Antworten entsteht dein '
-            'Bild.',
+            'Entscheide aus dem Bauch heraus. Du kannst deine Angaben '
+            'jederzeit ändern.',
             style: text.bodyMedium?.copyWith(color: colors.onTableMuted),
             textAlign: TextAlign.center,
           ),
@@ -492,19 +474,6 @@ class _ValueProfileScreenState extends State<ValueProfileScreen>
               onChanged: _answer,
             ),
           ),
-          if (_step == 0 && widget.onUseExampleProfile != null) ...[
-            const SizedBox(height: MiSpace.sm),
-            Center(
-              child: TextButton.icon(
-                onPressed: widget.onUseExampleProfile,
-                icon: const Icon(Icons.bolt, size: 18),
-                label: const Text('Beispiel-Profil übernehmen'),
-                style: TextButton.styleFrom(
-                  foregroundColor: colors.onTableMuted,
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );

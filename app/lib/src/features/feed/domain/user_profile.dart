@@ -28,6 +28,7 @@ class UserProfile {
     this.lebenslagen = const {},
     this.interests = const InterestWeights(),
     this.prioritaeten = const {},
+    this.einwilligung,
   });
 
   factory UserProfile.fromJson(Map<String, Object?> json) {
@@ -63,6 +64,7 @@ class UserProfile {
             (k, v) => MapEntry(k, (v as num).toInt()),
           ) ??
           const {},
+      einwilligung: DateTime.tryParse(json['einwilligung'] as String? ?? ''),
     );
   }
 
@@ -72,6 +74,7 @@ class UserProfile {
     Set<String>? lebenslagen,
     InterestWeights? interests,
     Map<String, int>? prioritaeten,
+    DateTime? einwilligung,
   }) {
     return UserProfile(
       werte: werte ?? this.werte,
@@ -84,6 +87,7 @@ class UserProfile {
       lebenslagen: lebenslagen ?? this.lebenslagen,
       interests: interests ?? this.interests,
       prioritaeten: prioritaeten ?? this.prioritaeten,
+      einwilligung: einwilligung ?? this.einwilligung,
     );
   }
 
@@ -117,6 +121,10 @@ class UserProfile {
   // keys); on-device only. Empty until the user has distributed them.
   final Map<String, int> prioritaeten;
 
+  // When the user agreed to the consent screen; kept on the device only.
+  // Null for profiles made before it existed: they see it once on start.
+  final DateTime? einwilligung;
+
   // Derived axes (-2.0 to +2.0) for the profile's scales. Ranking matches
   // per question instead (an opportunity's werteRelevanz is keyed by
   // werteQuestionKeys), since the two questions of an axis can disagree.
@@ -145,6 +153,7 @@ class UserProfile {
       'lebenslagen': lebenslagen.toList(),
       'interests': interests.toJson(),
       'prioritaeten': prioritaeten,
+      'einwilligung': einwilligung?.toIso8601String(),
     };
   }
 }

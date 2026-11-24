@@ -29,6 +29,7 @@ class MainTabScreen extends StatefulWidget {
     this.openTab,
     this.onEditProfile,
     this.onEditLebenslagen,
+    this.onEditPrioritaeten,
     this.onLebenslagenChanged,
     this.onInterestsChanged,
     this.onInterestSignal,
@@ -52,6 +53,8 @@ class MainTabScreen extends StatefulWidget {
   // Opens the Rucksack to re-pack PLZ and Lebenslagen; without it the
   // profile edits the Lebenslagen in a sheet.
   final VoidCallback? onEditLebenslagen;
+  // Opens the Stadthaushalt to distribute the Taler again.
+  final VoidCallback? onEditPrioritaeten;
   final ValueChanged<Set<String>>? onLebenslagenChanged;
   final ValueChanged<InterestWeights>? onInterestsChanged;
   final void Function(List<String> tags, InterestSignal signal)?
@@ -125,6 +128,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
         progress: progress,
         onEdit: widget.onEditProfile,
         onEditLebenslagen: widget.onEditLebenslagen,
+        onEditPrioritaeten: widget.onEditPrioritaeten,
         onLebenslagenChanged: widget.onLebenslagenChanged,
         onInterestsChanged: widget.onInterestsChanged,
       ),
@@ -218,6 +222,7 @@ class _ProfileTab extends StatelessWidget {
     required this.progress,
     required this.onEdit,
     required this.onEditLebenslagen,
+    required this.onEditPrioritaeten,
     required this.onLebenslagenChanged,
     required this.onInterestsChanged,
   });
@@ -226,6 +231,7 @@ class _ProfileTab extends StatelessWidget {
   final Progress progress;
   final VoidCallback? onEdit;
   final VoidCallback? onEditLebenslagen;
+  final VoidCallback? onEditPrioritaeten;
   final ValueChanged<Set<String>>? onLebenslagenChanged;
   final ValueChanged<InterestWeights>? onInterestsChanged;
 
@@ -238,6 +244,7 @@ class _ProfileTab extends StatelessWidget {
         progress: progress,
         onEdit: onEdit ?? () {},
         onEditLebenslagen: onEditLebenslagen,
+        onEditPrioritaeten: onEditPrioritaeten,
         onLebenslagenChanged: onLebenslagenChanged ?? (_) {},
         onInterestsChanged: onInterestsChanged ?? (_) {},
       ),

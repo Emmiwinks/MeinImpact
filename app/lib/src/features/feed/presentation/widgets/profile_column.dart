@@ -6,6 +6,7 @@ import '../../../../app/theme/mi_theme.dart';
 import '../../../notifications/notifications.dart';
 import '../../../onboarding/rucksack/hanging_tag.dart';
 import '../../../onboarding/rucksack/rucksack_bag.dart';
+import '../../../onboarding/stadthaushalt/stadthaushalt.dart';
 import '../../../tracking/domain/progress.dart';
 import '../../../tracking/progress_widgets.dart';
 import '../../domain/interest_config.dart';
@@ -26,6 +27,7 @@ class ProfileColumn extends StatelessWidget {
     required this.onLebenslagenChanged,
     required this.onInterestsChanged,
     this.onEditLebenslagen,
+    this.onEditPrioritaeten,
     this.progress,
     super.key,
   });
@@ -38,6 +40,9 @@ class ProfileColumn extends StatelessWidget {
 
   /// Opens the Rucksack instead of the sheet to edit the Lebenslagen.
   final VoidCallback? onEditLebenslagen;
+
+  /// Opens the Stadthaushalt again ("Neu verteilen").
+  final VoidCallback? onEditPrioritaeten;
   final ValueChanged<Set<String>> onLebenslagenChanged;
   final ValueChanged<InterestWeights> onInterestsChanged;
 
@@ -57,6 +62,12 @@ class ProfileColumn extends StatelessWidget {
               profile: p,
               onChanged: onLebenslagenChanged,
               onOpen: onEditLebenslagen,
+            ),
+          ),
+          _Section(
+            child: _StadthaushaltSection(
+              taler: p.prioritaeten,
+              onEdit: onEditPrioritaeten,
             ),
           ),
           if (progress case final progress?)
@@ -212,6 +223,80 @@ Future<void> _showTableSheet(BuildContext context, Widget child) {
       ),
     ),
   );
+}
+
+// ── Dein Stadthaushalt ──────────────────────────────────────────────────
+
+/// The Taler stacks from the Stadthaushalt step on a card like the
+/// Wertebild's; "Neu verteilen" opens the step again.
+class _StadthaushaltSection extends StatelessWidget {
+  const _StadthaushaltSection({required this.taler, required this.onEdit});
+
+  final Map<String, int> taler;
+  final VoidCallback? onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.mi;
+    final text = Theme.of(context).textTheme;
+    if (taler.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _Heading('Dein Stadthaushalt'),
+          const SizedBox(height: MiSpace.sm),
+          Text(
+            'Noch nicht verteilt.',
+            style: text.bodyMedium?.copyWith(color: colors.onTableMuted),
+          ),
+          if (onEdit case final onEdit?) ...[
+            const SizedBox(height: MiSpace.base),
+            _OutlinedPill(label: 'Taler verteilen', onPressed: onEdit),
+          ],
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _Heading(
+          'Dein Stadthaushalt',
+          action: onEdit == null ? null : 'Neu verteilen',
+          onAction: onEdit,
+        ),
+        const SizedBox(height: MiSpace.base),
+        Center(
+          child: Semantics(
+            image: true,
+            label: 'Dein Stadthaushalt: ${[
+              for (final t in haushaltToepfe) '${topfName(t)} ${taler[t.id] ?? 0}',
+            ].join(', ')}',
+            excludeSemantics: true,
+            child: Container(
+              width: 250,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: colors.cardStock,
+                borderRadius: BorderRadius.circular(MiRadius.card),
+                border: Border.all(color: colors.keyline),
+                boxShadow: [
+                  BoxShadow(
+                    color: colors.shadow,
+                    blurRadius: 30,
+                    offset: const Offset(0, 14),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: StadthaushaltBild(taler: taler),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 // ── Dein Wertebild ──────────────────────────────────────────────────────

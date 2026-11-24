@@ -114,7 +114,11 @@ void main() {
           opportunityRepository: repository,
           profileStore: profiles,
           actionLogStore: _ActionLogs(),
-          initialProfile: profile,
+          // Past the consent and the Stadthaushalt, straight to the tabs.
+          initialProfile: profile.copyWith(
+            einwilligung: DateTime(2026, 11, 24),
+            prioritaeten: const {'kultur': 20},
+          ),
         ),
       );
       await tester.pumpAndSettle();

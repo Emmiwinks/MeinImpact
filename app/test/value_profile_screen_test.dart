@@ -22,11 +22,23 @@ void main() {
   }
 
   Future<void> tapTrack(WidgetTester tester, double along) async {
+    // Long statements push the slider below the fold.
+    await tester.ensureVisible(find.byKey(const ValueKey('werte-track')));
+    await tester.pumpAndSettle();
     final track = tester.getRect(find.byKey(const ValueKey('werte-track')));
     await tester.tapAt(
       Offset(track.left + track.width * along, track.center.dy),
     );
     await tester.pumpAndSettle();
+  }
+
+  // Answers the remaining questions in the middle ("Beides gleich").
+  Future<void> answerRest(WidgetTester tester, {int from = 1}) async {
+    for (var i = from; i < werteQuestionKeys.length; i++) {
+      await tester.tap(find.text('Weiter'));
+      await tester.pumpAndSettle();
+      await tapTrack(tester, 0.5);
+    }
   }
 
   testWidgets('answers anywhere along the slider, not only whole steps',
@@ -35,10 +47,7 @@ void main() {
     await pump(tester, (w) => result = w);
 
     await tapTrack(tester, 0.3);
-    for (var i = 0; i < 7; i++) {
-      await tester.tap(find.text('Überspringen'));
-      await tester.pumpAndSettle();
-    }
+    await answerRest(tester);
     await tester.tap(find.text('Fertig'));
     await tester.pumpAndSettle();
 
@@ -51,8 +60,7 @@ void main() {
     expect(v, lessThan(-0.5));
     expect(v, greaterThan(-1.5));
     expect(v, isNot(v.roundToDouble()));
-    // Skipped questions stay out.
-    expect(result!.keys, ['wirtschaft_gleichheit']);
+    expect(result!.keys, werteQuestionKeys);
   });
 
   testWidgets('snaps to the centre close to it', (tester) async {
@@ -60,15 +68,12 @@ void main() {
     await pump(tester, (w) => result = w);
 
     await tapTrack(tester, 0.51);
-    for (var i = 0; i < 7; i++) {
-      await tester.tap(find.text('Überspringen'));
-      await tester.pumpAndSettle();
-    }
+    await answerRest(tester);
     await tester.tap(find.text('Fertig'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Weiter'));
 
-    expect(result, {'wirtschaft_gleichheit': 0.0});
+    expect(result!['wirtschaft_gleichheit'], 0.0);
   });
 
   testWidgets('tapping a statement leans towards it', (tester) async {
@@ -81,28 +86,24 @@ void main() {
     expect(find.byIcon(Icons.arrow_forward_rounded), findsOneWidget);
   });
 
-  testWidgets('nothing answered skips the picture', (tester) async {
-    Map<String, double>? result;
-    await pump(tester, (w) => result = w);
+  testWidgets('there is no skipping: Weiter waits for an answer',
+      (tester) async {
+    await pump(tester, (_) {});
 
-    for (var i = 0; i < 7; i++) {
-      await tester.tap(find.text('Überspringen'));
-      await tester.pumpAndSettle();
-    }
-    await tester.tap(find.text('Fertig'));
-    await tester.pumpAndSettle();
+    expect(find.text('Überspringen'), findsNothing);
+    final weiter = find.widgetWithText(FilledButton, 'Weiter');
+    expect(tester.widget<FilledButton>(weiter).onPressed, isNull);
 
-    expect(result, isEmpty);
-    expect(find.text('Dein Bild'), findsNothing);
+    await tapTrack(tester, 0.5);
+    expect(tester.widget<FilledButton>(weiter).onPressed, isNotNull);
   });
 
   testWidgets('re-doing starts from the earlier answers', (tester) async {
+    final earlier = {
+      for (final (i, key) in werteQuestionKeys.indexed) key: i / 4 - 1,
+    };
     Map<String, double>? result;
-    await pump(
-      tester,
-      (w) => result = w,
-      initial: const {'wirtschaft_staat': 1.25},
-    );
+    await pump(tester, (w) => result = w, initial: earlier);
 
     for (var i = 0; i < 7; i++) {
       await tester.tap(find.text('Weiter'));
@@ -112,7 +113,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Weiter'));
 
-    expect(result, {'wirtschaft_staat': 1.25});
+    expect(result, earlier);
   });
 
   testWidgets('Back steps through the questions, then cancels', (tester) async {
@@ -129,7 +130,8 @@ void main() {
         ),
       ),
     );
-    await tester.tap(find.text('Überspringen'));
+    await tapTrack(tester, 0.5);
+    await tester.tap(find.text('Weiter'));
     await tester.pumpAndSettle();
 
     await tester.binding.handlePopRoute();
