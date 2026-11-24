@@ -30,6 +30,9 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
+          # Same Flutter as on the dev machine; a floating "stable" broke
+          # analyze with new deprecations. Bump both together.
+          flutter-version: 3.44.1
           channel: stable
           cache: true
 
@@ -56,8 +59,9 @@ jobs:
         run: python ../tools/check_lcov.py coverage/lcov.info 35
 
   android:
-    # A signed app bundle for Google Play on every push to main (upload it in
-    # the Play Console); pull requests only check that it builds.
+    # A signed app bundle on every push to main, rolled out to Play internal
+    # testing once the Play key exists; pull requests only check that it
+    # builds.
     name: Build Android release
     needs: test
     runs-on: ubuntu-latest
@@ -66,6 +70,9 @@ jobs:
         working-directory: app
     env:
       PUBLISH: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
+      # The very first bundle has to be uploaded by hand in the Play Console;
+      # until the service account key is set, only the artifact is kept.
+      HAS_PLAY_KEY: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -79,6 +86,9 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
+          # Same Flutter as on the dev machine; a floating "stable" broke
+          # analyze with new deprecations. Bump both together.
+          flutter-version: 3.44.1
           channel: stable
           cache: true
 
@@ -94,9 +104,8 @@ jobs:
         if: env.PUBLISH == 'true'
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+          # A PKCS12 keystore has one password for the store and the key.
           STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_STORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
         run: |
           if [ -z "$KEYSTORE_BASE64" ]; then
             echo "::error::ANDROID_UPLOAD_KEYSTORE_BASE64 is not set"
@@ -106,8 +115,8 @@ jobs:
           {
             echo "storeFile=upload-keystore.jks"
             echo "storePassword=$STORE_PASSWORD"
-            echo "keyAlias=$KEY_ALIAS"
-            echo "keyPassword=$KEY_PASSWORD"
+            echo "keyAlias=upload"
+            echo "keyPassword=$STORE_PASSWORD"
           } > android/key.properties
 
       # The build number must grow with every upload to Play
@@ -124,6 +133,16 @@ jobs:
           name: meinimpact-android-${{ github.run_number }}
           path: app/build/app/outputs/bundle/release/app-release.aab
 
+      - name: Release to Play internal testing
+        if: env.PUBLISH == 'true' && env.HAS_PLAY_KEY == 'true'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: de.meinimpact.app
+          releaseFiles: app/build/app/outputs/bundle/release/app-release.aab
+          track: internal
+          status: completed
+
   web:
     name: Build web app
     needs: test
@@ -138,6 +157,9 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
+          # Same Flutter as on the dev machine; a floating "stable" broke
+          # analyze with new deprecations. Bump both together.
+          flutter-version: 3.44.1
           channel: stable
           cache: true
 
@@ -183,6 +205,9 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
+          # Same Flutter as on the dev machine; a floating "stable" broke
+          # analyze with new deprecations. Bump both together.
+          flutter-version: 3.44.1
           channel: stable
           cache: true
 
@@ -219,6 +244,9 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
+          # Same Flutter as on the dev machine; a floating "stable" broke
+          # analyze with new deprecations. Bump both together.
+          flutter-version: 3.44.1
           channel: stable
           cache: true
 
@@ -255,6 +283,9 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
+          # Same Flutter as on the dev machine; a floating "stable" broke
+          # analyze with new deprecations. Bump both together.
+          flutter-version: 3.44.1
           channel: stable
           cache: true
 

@@ -24,9 +24,15 @@ docker run --rm -it -v "${PWD}:/out" eclipse-temurin:17 keytool -genkeypair -v `
   -alias upload
 ```
 
+In cmd (one line, `%cd%` instead of `${PWD}`):
+
+```bat
+docker run --rm -it -v "%cd%:/out" eclipse-temurin:17 keytool -genkeypair -v -keystore /out/upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+```
+
 It asks for a keystore password and your name/organisation (any values
-work; they are not shown to users). Use the same password for the key when
-asked. Store the `.jks` file and the password in your password manager.
+work; they are not shown to users). The one password covers the keystore
+and the key inside it. Store the `.jks` file and the password in your password manager.
 Never commit it (`android/.gitignore` already blocks `*.jks` and
 `key.properties`).
 
@@ -38,15 +44,21 @@ Turn the keystore into text:
 [Convert]::ToBase64String([IO.File]::ReadAllBytes("upload-keystore.jks")) | Set-Clipboard
 ```
 
+In cmd:
+
+```bat
+powershell -NoProfile -Command "[Convert]::ToBase64String([IO.File]::ReadAllBytes('C:\Users\PCUser\keys\upload-keystore.jks')) | Set-Clipboard"
+```
+
 In GitHub: repository **Settings > Secrets and variables > Actions > New
-repository secret**, create four secrets:
+repository secret**, create two secrets:
 
 | Secret | Value |
 |---|---|
 | `ANDROID_UPLOAD_KEYSTORE_BASE64` | the clipboard content from above |
 | `ANDROID_UPLOAD_STORE_PASSWORD` | the keystore password |
-| `ANDROID_UPLOAD_KEY_ALIAS` | `upload` |
-| `ANDROID_UPLOAD_KEY_PASSWORD` | the key password (same as above) |
+
+The key alias `upload` is set in the workflow.
 
 Until these exist, the "Build Android release" job fails on `main` on
 purpose; a bundle signed with the debug key would be rejected by Play.
@@ -68,4 +80,25 @@ Push to `main`. In GitHub **Actions > App > the run > Artifacts**, download
    policy URL, app access, ads (none), content rating, target audience,
    data safety. The privacy policy has to be online first (meinimpact.de).
 
-Later releases: steps 3 and 4.2 only.
+## 5. Automatic releases (once)
+
+After the first manual release, CI can roll out every push to `main` to
+internal testing. Play needs a service account for that:
+
+1. [Google Cloud Console](https://console.cloud.google.com/): create (or
+   pick) a project, enable the **Google Play Android Developer API**.
+2. **IAM & Admin > Service accounts > Create**: name e.g. `play-upload`, no
+   roles. Open it, **Keys > Add key > JSON**, download the file.
+3. Play Console **Users and permissions > Invite new users**: the service
+   account's email, app permission for MeinImpact with **Release apps to
+   testing tracks**. No admin rights needed.
+4. GitHub secret `PLAY_SERVICE_ACCOUNT_JSON`: the whole content of the JSON
+   file. Then delete the downloaded file.
+
+From then on, each push to `main` that touches the app lands with the
+testers a few minutes later; they get it as a normal Play Store update.
+Without the secret, the upload step is skipped and the bundle stays an
+artifact (step 3).
+
+If Play answers "Only releases with status draft may be created on draft
+app", the app content forms from 4.4 are not done yet.
