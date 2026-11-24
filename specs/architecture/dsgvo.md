@@ -68,6 +68,7 @@ and anonymous counts.
 | Installation id + app version | `POST /v1/auth/anonymous-session` | session start/renewal | backend; carried inside the signed token, no table |
 | PLZ | `POST /v1/location` (body) | once when entered | backend; answers Kreis, point, Wahlkreise |
 | Kreis key | `GET /v1/opportunities/pool?kreis=` | feed load | backend, access log |
+| Opportunity id | `POST /v1/opportunities/recipients` (body) | letter pop-up opens | backend |
 | Opportunity id + letter notes | `POST /v1/letters/stream` (body) | user drafts a letter | backend, Mistral |
 | Opportunity id | `POST /v1/opportunities/tracked` (body) | first "Fertig" on a card | backend; only a date is kept (below) |
 
@@ -212,9 +213,6 @@ For every new feature:
 - ~~Legacy tables~~ dropped 2026-11-24 (migration 202611240026), incl.
   `user_profiles` and `action_tracking`, which held installation ids.
   `news_items` stays on purpose (shelved media pipeline).
-- The letter recipients request (`GET /v1/opportunities/{id}/recipients`)
-  puts the opportunity id in the URL, so the access log shows which
-  decision an IP drafted a letter for. Move it to a body like `tracked`.
 - Impressum and legal entity: unchanged from the earlier plan (sole
   trader/GbR now, gGmbH before public launch); confirm.
 

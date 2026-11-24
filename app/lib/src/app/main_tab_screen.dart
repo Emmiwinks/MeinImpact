@@ -169,9 +169,8 @@ class _MainTabScreenState extends State<MainTabScreen> {
               selectedIndex: _tabIndex,
               // The last one is beta feedback: it opens a sheet over the
               // tab, it is no tab of its own.
-              onDestinationSelected: (index) => index == _feedback
-                  ? _giveFeedback(context)
-                  : _select(index),
+              onDestinationSelected: (index) =>
+                  index == _feedback ? _giveFeedback(context) : _select(index),
               destinations: [
                 NavigationDestination(
                   icon: const Icon(Icons.person_outline),

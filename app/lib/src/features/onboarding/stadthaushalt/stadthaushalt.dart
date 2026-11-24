@@ -68,7 +68,11 @@ void paintTalerTop(Canvas canvas, Offset c, double r) {
         ..strokeWidth = r * 0.1
         ..color = _Taler.ink.withValues(alpha: 0.25),
     )
-    ..drawCircle(c, r * 0.2, Paint()..color = _Taler.ink.withValues(alpha: 0.3));
+    ..drawCircle(
+      c,
+      r * 0.2,
+      Paint()..color = _Taler.ink.withValues(alpha: 0.3),
+    );
 }
 
 /// A Taler seen from the side, lying in a stack: its top face at [y] and an
@@ -81,7 +85,8 @@ void paintTalerSide(
   double ry,
   double thick,
 ) {
-  final top = Rect.fromCenter(center: Offset(cx, y), width: rx * 2, height: ry * 2);
+  final top =
+      Rect.fromCenter(center: Offset(cx, y), width: rx * 2, height: ry * 2);
   canvas
     ..drawOval(top.shift(Offset(0, thick)), Paint()..color = _Taler.edge)
     ..drawRect(
@@ -213,7 +218,14 @@ class _GlasPainter extends CustomPainter {
       ..save()
       ..clipRRect(body);
     for (var k = 0; k < taler; k++) {
-      paintTalerSide(canvas, 36, TopfGlas._stackBase - k * TopfGlas._step, 25, 5, 2.4);
+      paintTalerSide(
+        canvas,
+        36,
+        TopfGlas._stackBase - k * TopfGlas._step,
+        25,
+        5,
+        2.4,
+      );
     }
     canvas
       ..restore()

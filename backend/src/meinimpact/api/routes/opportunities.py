@@ -10,7 +10,6 @@ serves what Mein Impact found on all tracked ones.
 
 from collections.abc import Sequence
 from datetime import UTC, datetime
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
@@ -211,16 +210,19 @@ async def get_impact_news(
     )
 
 
-@router.get("/{opportunity_id}/recipients")
+@router.post("/recipients")
 async def get_letter_recipients(
-    opportunity_id: UUID,
+    request: schemas.RecipientsRequest,
     opportunity_repository: repositories.OpportunityRepository = Depends(
         get_opportunity_repository
     ),
     council_repository: PostgresCouncilRepository = Depends(get_council_repository),
 ) -> schemas.RecipientsResponse:
-    """Who a letter about a council decision goes to (`services/recipients`)."""
-    opportunity = await opportunity_repository.get(opportunity_id)
+    """Who a letter about a council decision goes to (`services/recipients`).
+
+    A POST only so the id travels in the body, out of the access log.
+    """
+    opportunity = await opportunity_repository.get(request.opportunity_id)
     if opportunity is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Opportunity not found."

@@ -44,8 +44,7 @@ enum MessageKind {
 /// [current].
 class BetaFeedback {
   BetaFeedback({
-    required Future<void> Function(String path, Map<String, Object?> body)
-        post,
+    required Future<void> Function(String path, Map<String, Object?> body) post,
   }) : _post = post;
 
   BetaFeedback.off() : _post = null;

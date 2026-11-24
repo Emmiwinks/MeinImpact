@@ -40,7 +40,10 @@ void main() {
 
     final mixed = mixHand(cards, handSize: 5);
 
-    expect(_ids(mixed).take(5), ['stadt1', 'stadt2', 'stadt3', 'bund1', 'land1']);
+    expect(
+      _ids(mixed).take(5),
+      ['stadt1', 'stadt2', 'stadt3', 'bund1', 'land1'],
+    );
     // Held-back cards follow in ranked order; nothing is dropped
     expect(_ids(mixed).skip(5), ['stadt4', 'stadt5']);
   });

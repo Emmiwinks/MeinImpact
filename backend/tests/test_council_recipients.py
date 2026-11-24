@@ -355,8 +355,10 @@ def test_recipients_endpoint_returns_members_and_offices() -> None:
     )
     client = _client([green])
 
-    response = client.get(
-        f"/v1/opportunities/{_DECISION.id}/recipients", headers=_auth(client)
+    response = client.post(
+        "/v1/opportunities/recipients",
+        json={"opportunity_id": str(_DECISION.id)},
+        headers=_auth(client),
     )
 
     assert response.status_code == 200
@@ -378,12 +380,23 @@ def test_recipients_endpoint_rejects_unknown_and_non_decisions() -> None:
     client = _client([])
     headers = _auth(client)
 
-    unknown = client.get(
-        f"/v1/opportunities/{uuid.UUID(int=99)}/recipients", headers=headers
-    )
-    petition = client.get(
-        f"/v1/opportunities/{_PETITION.id}/recipients", headers=headers
+    def ask(opportunity_id: uuid.UUID) -> int:
+        return client.post(
+            "/v1/opportunities/recipients",
+            json={"opportunity_id": str(opportunity_id)},
+            headers=headers,
+        ).status_code
+
+    assert ask(uuid.UUID(int=99)) == 404
+    assert ask(_PETITION.id) == 400
+
+
+def test_recipients_id_never_travels_in_the_url() -> None:
+    client = _client([])
+    headers = _auth(client)
+
+    old_route = client.get(
+        f"/v1/opportunities/{_DECISION.id}/recipients", headers=headers
     )
 
-    assert unknown.status_code == 404
-    assert petition.status_code == 400
+    assert old_route.status_code in (404, 405)

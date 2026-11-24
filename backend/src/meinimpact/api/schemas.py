@@ -309,6 +309,18 @@ class TrackedRequest(BaseModel):
     opportunity_id: UUID
 
 
+class RecipientsRequest(BaseModel):
+    """Which council decision a letter is about.
+
+    In the body, like `TrackedRequest`: in the URL, the access log would
+    show which decision an IP drafted a letter on.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    opportunity_id: UUID
+
+
 class UsageRequest(BaseModel):
     """One anonymous usage event: only its name, counted per day."""
 

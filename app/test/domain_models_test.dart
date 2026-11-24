@@ -365,7 +365,8 @@ void main() {
       },
     );
 
-    test('a petition the user would likely sign ranks above one they would '
+    test(
+        'a petition the user would likely sign ranks above one they would '
         'not', () {
       final sign = _opportunity(
         id: 'sign',
@@ -560,7 +561,6 @@ void main() {
       expect(_opportunity(everyday: 5, accessible: 5).appeal, 1.0);
       expect(_opportunity(everyday: 1, accessible: 1).appeal, 0.0);
     });
-
   });
 }
 

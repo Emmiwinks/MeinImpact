@@ -41,8 +41,11 @@ class RemoteOpportunityRepository implements OpportunityRepository {
 
   @override
   Future<LetterRecipients> letterRecipients(String opportunityId) async {
-    final response =
-        await _apiClient.getJson('/v1/opportunities/$opportunityId/recipients');
+    // The id goes in the body: the server's access log never shows which
+    // decision someone drafts a letter on.
+    final response = await _apiClient.postJson('/v1/opportunities/recipients', {
+      'opportunity_id': opportunityId,
+    });
     return LetterRecipients.fromJson(response);
   }
 

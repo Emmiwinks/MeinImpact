@@ -101,7 +101,8 @@ Decided with the user for the MVP:
   (`infrastructure/council/offices.py`; a Fraktion without an address
   shows as "Adresse fehlt noch" and is reported on /admin).
   Stadtbezirksbeirat/Ortschaftsrat items: member names only, no addresses
-  yet. `GET /v1/opportunities/{id}/recipients`. The Wahlkreis option
+  yet. `POST /v1/opportunities/recipients` (id in the body, out of the
+  access log; was `GET .../{id}/recipients` until 2026-11-24). The Wahlkreis option
   below is not built.
 - **Decisions get an AI-drafted letter in a pop-up** (to the members of
   the deciding body), sent from the same in-app flow, then "Fertig". The

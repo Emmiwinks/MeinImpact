@@ -173,7 +173,8 @@ class _StadthaushaltScreenState extends State<StadthaushaltScreen>
         backgroundColor: colors.table,
         body: SafeArea(
           child: AnimatedSwitcher(
-            duration: MiMotion.reduced(context) ? Duration.zero : MiMotion.settle,
+            duration:
+                MiMotion.reduced(context) ? Duration.zero : MiMotion.settle,
             child: _revealing ? _result(context) : _distribute(context),
           ),
         ),
@@ -252,9 +253,8 @@ class _StadthaushaltScreenState extends State<StadthaushaltScreen>
                 MiSpace.base,
               ),
               child: FilledButton(
-                onPressed: _left == 0
-                    ? () => setState(() => _revealing = true)
-                    : null,
+                onPressed:
+                    _left == 0 ? () => setState(() => _revealing = true) : null,
                 style: colors.tableButton,
                 child: const Text('Fertig'),
               ),
@@ -384,7 +384,11 @@ class _StadthaushaltScreenState extends State<StadthaushaltScreen>
 
 /// The Stadtkasse: what is left to spend, and a place for every Taler.
 class _Kasse extends StatelessWidget {
-  const _Kasse({required this.paintKey, required this.shown, required this.left});
+  const _Kasse({
+    required this.paintKey,
+    required this.shown,
+    required this.left,
+  });
 
   final GlobalKey paintKey;
 
@@ -425,14 +429,15 @@ class _Kasse extends StatelessWidget {
                 ),
                 Text(
                   left > 0 ? 'Noch $left Taler' : 'Alles verteilt',
-                  style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                  style:
+                      text.titleMedium?.copyWith(fontWeight: FontWeight.w800),
                 ),
               ],
             ),
             const SizedBox(height: 10),
             AspectRatio(
-              aspectRatio: _KassePainter.perRow /
-                  (haushaltTaler / _KassePainter.perRow),
+              aspectRatio:
+                  _KassePainter.perRow / (haushaltTaler / _KassePainter.perRow),
               child: CustomPaint(
                 key: paintKey,
                 painter: _KassePainter(shown: shown, dent: colors.onTableMuted),

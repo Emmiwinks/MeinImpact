@@ -493,9 +493,7 @@ void main() {
       final gesture = await tester.startGesture(from);
       await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
       await tester.pump(MiMotion.quick);
-      final to = toTrash
-          ? tester.getCenter(trash)
-          : from - const Offset(0, 80);
+      final to = toTrash ? tester.getCenter(trash) : from - const Offset(0, 80);
       for (var i = 1; i <= 10; i++) {
         await gesture.moveTo(Offset.lerp(from, to, i / 10)!);
         await tester.pump(const Duration(milliseconds: 16));
@@ -643,8 +641,7 @@ void main() {
       await tester.pumpWidget(tab);
       await tester.pumpAndSettle();
 
-      final fan =
-          find.semantics.byLabel(RegExp('^Karte 1')).evaluate().single;
+      final fan = find.semantics.byLabel(RegExp('^Karte 1')).evaluate().single;
       final action = fan.getSemanticsData().customSemanticsActionIds!.single;
       fan.owner!.performAction(
         fan.id,

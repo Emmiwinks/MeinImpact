@@ -269,7 +269,8 @@ class _StadthaushaltSection extends StatelessWidget {
           child: Semantics(
             image: true,
             label: 'Dein Stadthaushalt: ${[
-              for (final t in haushaltToepfe) '${topfName(t)} ${taler[t.id] ?? 0}',
+              for (final t in haushaltToepfe)
+                '${topfName(t)} ${taler[t.id] ?? 0}',
             ].join(', ')}',
             excludeSemantics: true,
             child: Container(

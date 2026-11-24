@@ -224,7 +224,8 @@ class _Item extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     line,
-                    style: text.bodyMedium?.copyWith(color: colors.onTableMuted),
+                    style:
+                        text.bodyMedium?.copyWith(color: colors.onTableMuted),
                   ),
                 ],
               ),
