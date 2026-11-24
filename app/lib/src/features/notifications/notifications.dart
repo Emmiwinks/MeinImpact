@@ -11,6 +11,7 @@ import '../../core/network/api_client.dart';
 import '../../core/profile/user_profile_store.dart';
 import '../../core/security/installation_id_store.dart';
 import '../../core/security/token_store.dart';
+import '../feed/data/dismissed_cards_store.dart';
 import '../feed/data/remote_opportunity_repository.dart';
 import '../feed/domain/opportunity.dart';
 import '../feed/domain/opportunity_repository.dart';
@@ -332,6 +333,7 @@ Future<void> _check(
     state: state,
     log: await const ActionLogStore().load(),
     starred: await const StarredActionsStore().load(),
+    dismissed: await const DismissedCardsStore().load(),
     profile: profile,
     pool: pool,
     news: news,

@@ -3,7 +3,12 @@ import 'package:meinimpact/src/features/feed/data/hand_mix.dart';
 import 'package:meinimpact/src/features/feed/data/opportunity_relevance_ranker.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity.dart';
 
-RankedOpportunity _card(String id, String gebiet, {bool personal = false}) {
+RankedOpportunity _card(
+  String id,
+  String gebiet, {
+  bool personal = false,
+  bool exploration = false,
+}) {
   return RankedOpportunity(
     opportunity: Opportunity(
       id: id,
@@ -24,6 +29,7 @@ RankedOpportunity _card(String id, String gebiet, {bool personal = false}) {
     ),
     matchedSnippet: null,
     matchStrength: personal ? 0.5 : 0,
+    parts: ScoreParts(exploration: exploration),
   );
 }
 
@@ -64,6 +70,23 @@ void main() {
       ['bund1', 'bund2', 'bund3', 'land1', 'stadt-dich'],
     );
     expect(_ids(mixed)[5], 'land2');
+  });
+
+  test('the local card never pushes out an exploration slot', () {
+    final cards = [
+      for (var i = 1; i <= 3; i++) _card('bund$i', ''),
+      _card('land1', '14'),
+      _card('land-neu', '14', exploration: true),
+      _card('stadt-dich', '14612', personal: true),
+    ];
+
+    final mixed = mixHand(cards, handSize: 5);
+
+    expect(
+      _ids(mixed).take(5),
+      ['bund1', 'bund2', 'bund3', 'land-neu', 'stadt-dich'],
+    );
+    expect(_ids(mixed)[5], 'land1');
   });
 
   test('without a local card that concerns the user, the ranking stands', () {

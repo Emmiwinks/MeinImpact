@@ -91,6 +91,7 @@ async def run_configured_ingestion(settings: Settings) -> IngestionSummary:
             return summary
     finally:
         await completer.aclose()
+        await bundle_completer.aclose()
         await database.close()
 
 

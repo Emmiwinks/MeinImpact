@@ -217,6 +217,12 @@ void main() {
       );
     });
 
+    test('leaves out cards the user threw away', () {
+      final plan = _plan(pool: pool, dismissed: {'new'});
+
+      expect(plan.schedule, isEmpty);
+    });
+
     test('is skipped when the app was already open that Monday', () {
       final plan = _plan(
         // New in the week before the following Monday.
@@ -424,6 +430,7 @@ void main() {
 NotificationPlan _plan({
   ActionLog log = const ActionLog(),
   Set<String> starred = const {},
+  Set<String> dismissed = const {},
   NotificationState state = const NotificationState(),
   Set<NotificationChannel> off = const {},
   List<Opportunity>? pool,
@@ -436,6 +443,7 @@ NotificationPlan _plan({
       state: state,
       log: log,
       starred: starred,
+      dismissed: dismissed,
       profile: _profile,
       off: off,
       pool: pool,

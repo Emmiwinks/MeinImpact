@@ -30,7 +30,10 @@ List<RankedOpportunity> mixHand(
       (c) => c.opportunity.ebene == Ebene.kommune && c.isPersonal,
     );
     if (local >= 0) {
-      final dropped = hand.removeLast();
+      // The lowest card by score makes room, never an exploration slot.
+      var out = hand.lastIndexWhere((c) => !c.parts.exploration);
+      if (out < 0) out = hand.length - 1;
+      final dropped = hand.removeAt(out);
       hand.add(rest.removeAt(local));
       rest.insert(0, dropped);
     }

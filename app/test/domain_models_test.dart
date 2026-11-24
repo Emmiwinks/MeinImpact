@@ -453,6 +453,51 @@ void main() {
       expect(ranked.last.matchedSnippet, 'Miete.');
     });
 
+    test('of two matching snippets, the rarer one counts and is shown', () {
+      final pool = [
+        for (var i = 0; i < 9; i++)
+          _opportunity(
+            id: 'mieter$i',
+            personalImpactSnippets: const {'wohnsituation:mieter': 'Miete.'},
+          ),
+        _opportunity(
+          id: 'both',
+          personalImpactSnippets: const {
+            'wohnsituation:mieter': 'Miete.',
+            'erwerbsstatus:rentner': 'Rente.',
+          },
+        ),
+      ];
+      // "mieter" first, so the profile's own key order would pick it
+      const profile = UserProfile(lebenslagen: {'mieter', 'rentner'});
+
+      final both = ranker
+          .rank(pool, profile)
+          .singleWhere((r) => r.opportunity.id == 'both');
+
+      expect(both.matchedSnippet, 'Rente.');
+      expect(both.matchStrength, 1.0);
+    });
+
+    test('an exploration slot never goes to a card without topics', () {
+      final now = DateTime(2026, 11, 23);
+      final pool = [
+        for (var i = 0; i < 5; i++)
+          _opportunity(id: 'liked-$i', affectedTags: const ['Verkehr']),
+        _opportunity(id: 'untagged', everyday: 5, accessible: 5),
+      ];
+      final profile = UserProfile(
+        interests: InterestWeights(
+          weights: const {'Verkehr': 0.8},
+          asOf: now,
+        ),
+      );
+
+      final ranked = ranker.rank(pool, profile, now: now);
+
+      expect(ranked.where((r) => r.parts.exploration), isEmpty);
+    });
+
     test('a match outweighs a small appeal gap but not a large one', () {
       final niche = _opportunity(id: 'niche', everyday: 1, accessible: 3);
       final everyday = _opportunity(id: 'everyday', everyday: 5, accessible: 5);

@@ -117,6 +117,9 @@ class _MeinImpactAppState extends State<MeinImpactApp>
   bool _repack = false;
   // The tab the shell opens on: back from those two, it is Mein Profil.
   int _homeTab = 1;
+  // Counts the profile edits made inside the tab shell (Lebenslagen,
+  // interests); the hand re-ranks on each. Learned signals don't count.
+  int _profileRevision = 0;
   late ActionLog _actionLog;
   // Cards thrown away from the hand.
   late Set<String> _dismissed;
@@ -366,13 +369,19 @@ class _MeinImpactAppState extends State<MeinImpactApp>
   Future<void> _onLebenslagenChanged(Set<String> lebenslagen) async {
     final updated = _profile!.copyWith(lebenslagen: lebenslagen);
     await widget._profileStore?.save(updated);
-    setState(() => _profile = updated);
+    setState(() {
+      _profile = updated;
+      _profileRevision++;
+    });
   }
 
   Future<void> _onInterestsChanged(InterestWeights interests) async {
     final updated = _profile!.copyWith(interests: interests);
     await widget._profileStore?.save(updated);
-    setState(() => _profile = updated);
+    setState(() {
+      _profile = updated;
+      _profileRevision++;
+    });
   }
 
   // Interests are learned silently: persisted, but the open feed is not
@@ -472,6 +481,7 @@ class _MeinImpactAppState extends State<MeinImpactApp>
       return MainTabScreen(
         opportunityRepository: widget._opportunityRepository,
         profile: _profile,
+        profileRevision: _profileRevision,
         initialTab: _homeTab,
         openTab: _openTab.stream,
         onEditProfile: () => setState(() => _requizWerte = true),

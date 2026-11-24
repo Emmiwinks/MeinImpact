@@ -42,12 +42,15 @@ typedef LetterOpener = Future<bool> Function(
 /// OpportunityRepository.pool, "one run, one feed"), ranked on-device by
 /// personal relevance and dealt as a hand of cards (HandView). Fetches the
 /// pool once per tab instance; ranking is a pure, cheap client-side
-/// transform re-applied whenever the profile changes, not a network
-/// concern. Actions the user marked done leave the hand.
+/// transform, re-applied to that pool when [profileRevision] changes (a
+/// profile edit), not on learned interest signals, so the hand does not
+/// shuffle under the user's finger. Actions the user marked done leave the
+/// hand.
 class AktionenTab extends StatefulWidget {
   const AktionenTab({
     required this.opportunityRepository,
     required this.profile,
+    this.profileRevision = 0,
     this.doneIds = const {},
     this.streak,
     this.onInterestSignal,
@@ -63,6 +66,8 @@ class AktionenTab extends StatefulWidget {
 
   final OpportunityRepository opportunityRepository;
   final UserProfile profile;
+  // Bumped by each profile edit; the hand re-ranks the loaded pool.
+  final int profileRevision;
   // Opportunity ids in the action log; hidden from the feed.
   final Set<String> doneIds;
   // The flame top right; none without it.
@@ -90,6 +95,8 @@ class AktionenTab extends StatefulWidget {
 
 class _AktionenTabState extends State<AktionenTab> with WidgetsBindingObserver {
   late Future<List<RankedOpportunity>> _future;
+  // The fetched pool, kept so a profile edit re-ranks without a refetch.
+  List<Opportunity>? _pool;
   bool _loadFailed = false;
 
   @override
@@ -97,6 +104,15 @@ class _AktionenTabState extends State<AktionenTab> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _future = _load();
+  }
+
+  @override
+  void didUpdateWidget(AktionenTab old) {
+    super.didUpdateWidget(old);
+    final pool = _pool;
+    if (widget.profileRevision != old.profileRevision && pool != null) {
+      _future = Future.value(_rank(pool));
+    }
   }
 
   @override
@@ -126,15 +142,17 @@ class _AktionenTabState extends State<AktionenTab> with WidgetsBindingObserver {
       final pool = await widget.opportunityRepository.pool(
         kreis: widget.profile.home?.kreis,
       );
-      final ranker = OpportunityRelevanceRanker(
-        interestConfig: widget.interestConfig,
-      );
-      return ranker.rank(pool, widget.profile);
+      _pool = pool;
+      return _rank(pool);
     } catch (_) {
       _loadFailed = true;
       rethrow;
     }
   }
+
+  List<RankedOpportunity> _rank(List<Opportunity> pool) =>
+      OpportunityRelevanceRanker(interestConfig: widget.interestConfig)
+          .rank(pool, widget.profile);
 
   // Opens the action; true once the user marked it done. Logging it waits
   // for [_complete], after the card has landed on the Wirkung pile.

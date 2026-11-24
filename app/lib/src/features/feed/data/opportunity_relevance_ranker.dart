@@ -200,7 +200,10 @@ class OpportunityRelevanceRanker {
     while (rest.isNotEmpty) {
       var take = 0;
       if ((result.length + 1) % interestConfig.explorationInterval == 0) {
-        bool unexplored(RankedOpportunity r) => interests.isUnexplored(
+        // A card without topics explores nothing.
+        bool unexplored(RankedOpportunity r) =>
+            r.opportunity.affectedTags.isNotEmpty &&
+            interests.isUnexplored(
               r.opportunity.affectedTags,
               now,
               interestConfig,
@@ -272,7 +275,7 @@ class OpportunityRelevanceRanker {
     Map<String, double> rarity,
     Map<String, double> snippetRarity,
   ) {
-    final snippetKey = _matchedSnippetKey(opportunity, profile);
+    final snippetKey = _matchedSnippetKey(opportunity, profile, snippetRarity);
     var strength = snippetKey == null ? 0.0 : snippetRarity[snippetKey] ?? 1.0;
     for (final id in opportunity.lebenslagen) {
       if (profile.lebenslagen.contains(id)) {
@@ -304,12 +307,26 @@ class OpportunityRelevanceRanker {
     );
   }
 
-  String? _matchedSnippetKey(Opportunity opportunity, UserProfile profile) {
+  /// The rarest of the user's snippet keys on the card, so a specific one
+  /// ("Pflegende") wins over a broad one ("Mieter") for both the strength
+  /// and the hook line.
+  String? _matchedSnippetKey(
+    Opportunity opportunity,
+    UserProfile profile,
+    Map<String, double> snippetRarity,
+  ) {
     if (opportunity.personalImpactSnippets.isEmpty) return null;
+    String? best;
+    var bestWeight = double.negativeInfinity;
     for (final key in profile.snippetKeys) {
-      if (opportunity.personalImpactSnippets.containsKey(key)) return key;
+      if (!opportunity.personalImpactSnippets.containsKey(key)) continue;
+      final weight = snippetRarity[key] ?? 1.0;
+      if (weight > bestWeight) {
+        best = key;
+        bestWeight = weight;
+      }
     }
-    return null;
+    return best;
   }
 
   /// The mean of whichever stance signals the card carries, -1..1. A

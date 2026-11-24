@@ -25,6 +25,7 @@ class MainTabScreen extends StatefulWidget {
   const MainTabScreen({
     required this.opportunityRepository,
     this.profile,
+    this.profileRevision = 0,
     this.initialTab = 1,
     this.openTab,
     this.onEditProfile,
@@ -44,6 +45,8 @@ class MainTabScreen extends StatefulWidget {
 
   final OpportunityRepository opportunityRepository;
   final UserProfile? profile;
+  // Bumped by each profile edit made in the shell; the hand re-ranks.
+  final int profileRevision;
 
   /// 0 Mein Profil, 1 Meine Aktionen (the default), 2 Mein Impact.
   final int initialTab;
@@ -135,6 +138,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
       AktionenTab(
         opportunityRepository: widget.opportunityRepository,
         profile: effectiveProfile,
+        profileRevision: widget.profileRevision,
         onInterestSignal: widget.onInterestSignal,
         doneIds: widget.doneIds,
         streak: progress.streak,

@@ -747,6 +747,63 @@ void main() {
     await tester.pumpAndSettle();
     expect(unseen, findsNothing);
   });
+
+  testWidgets(
+      'a profile edit re-ranks the loaded hand, a learned signal does not', (
+    tester,
+  ) async {
+    final repository = _Repository([
+      _o('allgemein', everyday: 5),
+      Opportunity.fromJson({
+        'id': 'miete',
+        'source_org': 'WeAct',
+        'source_url': 'https://example.org/miete',
+        'kind': 'petition',
+        'region': 'dresden',
+        'title': 'Frage miete?',
+        'summary': 'Zusammenfassung',
+        'lebenslagen': ['mieter'],
+        'everyday_relevance': 3,
+        'accessibility': 3,
+        'first_seen_at': '2026-11-01T00:00:00Z',
+      }),
+    ]);
+    Future<void> pump(UserProfile profile, int revision) => tester.pumpWidget(
+          MaterialApp(
+            locale: const Locale('de'),
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            home: Scaffold(
+              body: AktionenTab(
+                opportunityRepository: repository,
+                profile: profile,
+                profileRevision: revision,
+              ),
+            ),
+          ),
+        );
+    String front() => tester
+        .widgetList<ActionCard>(find.byType(ActionCard))
+        .firstWhere((c) => c.isFront)
+        .ranked
+        .opportunity
+        .id;
+    const picked = UserProfile(lebenslagen: {'mieter'});
+
+    await pump(const UserProfile(), 0);
+    await tester.pumpAndSettle();
+    expect(front(), 'allgemein');
+
+    // Same revision: a learned signal changed the profile, the hand stays
+    await pump(picked, 0);
+    await tester.pumpAndSettle();
+    expect(front(), 'allgemein');
+
+    await pump(picked, 1);
+    await tester.pumpAndSettle();
+    expect(front(), 'miete');
+    expect(repository.fetches, 1);
+  });
 }
 
 // The fan's own node; its children's words follow the label.
@@ -876,9 +933,11 @@ class _Repository implements OpportunityRepository {
 
   final List<Opportunity> items;
   final bool slow;
+  int fetches = 0;
 
   @override
   Future<List<Opportunity>> pool({String? kreis}) async {
+    fetches++;
     if (slow) await Future<void>.delayed(const Duration(milliseconds: 50));
     return items;
   }

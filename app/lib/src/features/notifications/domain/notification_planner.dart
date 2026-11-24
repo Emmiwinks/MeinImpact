@@ -67,13 +67,15 @@ class NotificationPlan {
 /// [pool] and [news] are null when they could not be (or were not)
 /// loaded; Monday's notification then stays as planned before, and
 /// results and news wait for the next check. [off] are the channels the
-/// user switched off in Android.
+/// user switched off in Android. [dismissed] are the cards they threw away
+/// from the hand: Monday's notification never names one.
 NotificationPlan planNotifications({
   required DateTime now,
   required NotificationState state,
   required ActionLog log,
   required Set<String> starred,
   required UserProfile profile,
+  Set<String> dismissed = const {},
   Set<NotificationChannel> off = const {},
   List<Opportunity>? pool,
   ImpactNewsFeed? news,
@@ -282,6 +284,7 @@ NotificationPlan planNotifications({
       ).rank(pool, profile, now: now))
         if (!ranked.opportunity.firstSeenAt.isBefore(since) &&
             !log.isDone(ranked.opportunity.id) &&
+            !dismissed.contains(ranked.opportunity.id) &&
             (ranked.isSituationMatch || ranked.interestTag != null))
           ranked.opportunity,
     ];
