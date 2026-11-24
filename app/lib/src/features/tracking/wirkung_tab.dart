@@ -6,6 +6,7 @@ import '../../app/theme/mi_theme.dart';
 import '../feed/domain/opportunity_repository.dart';
 import '../feed/presentation/hand/hand_view.dart';
 import '../feed/presentation/hand/topic_art.dart';
+import '../feed/presentation/widgets/ai_mark.dart';
 import '../notifications/notification_widgets.dart';
 import 'data/starred_actions_store.dart';
 import 'domain/action_log.dart';
@@ -321,7 +322,11 @@ class _ActionRowState extends State<_ActionRow> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(action.title, style: text.titleMedium),
+                    AiText(
+                      action.title,
+                      style: text.titleMedium,
+                      onDark: Theme.of(context).brightness == Brightness.dark,
+                    ),
                     const SizedBox(height: MiSpace.sm),
                     Text(
                       '${action.kind.label} · ${action.sourceOrg} · '

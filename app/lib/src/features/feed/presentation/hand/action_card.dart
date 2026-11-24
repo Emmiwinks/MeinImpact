@@ -7,6 +7,7 @@ import '../../data/opportunity_relevance_ranker.dart';
 import '../../domain/interest_weights.dart';
 import '../../domain/lebenslage.dart';
 import '../../domain/opportunity.dart';
+import '../widgets/ai_mark.dart';
 import 'topic_art.dart';
 
 /// One action as a playing card. The front says what it is and why it is
@@ -295,16 +296,18 @@ class _CardFront extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Flexible(
-                          child: Text(
+                          child: AiText(
                             cardTitle(ranked),
                             style: fittingTitle(
                               context,
                               cardTitle(ranked),
                               text.titleLarge!.copyWith(color: colors.onCard),
                               inner,
+                              trailing:
+                                  AiText.gap + AiMark.widthOf(context),
                             ),
+                                              onDark: false,
                             maxLines: _titleLines,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         if (why != null) ...[
@@ -609,9 +612,10 @@ class _BackContent extends StatelessWidget {
         MiSpace.xl,
       ),
       children: [
-        Text(
+        AiText(
           opportunity.summary,
           style: text.bodyMedium?.copyWith(color: colors.onCard),
+          onDark: false,
         ),
         if (facts.isNotEmpty) ...[
           const SizedBox(height: MiSpace.md),
@@ -664,7 +668,11 @@ class _BundleContent extends StatelessWidget {
         MiSpace.xl,
       ),
       children: [
-        Text(summary, style: text.bodyMedium?.copyWith(color: colors.onCard)),
+        AiText(
+          summary,
+          style: text.bodyMedium?.copyWith(color: colors.onCard),
+          onDark: false,
+        ),
         for (final option in options) ...[
           const SizedBox(height: MiSpace.md),
           _OptionBlock(
@@ -854,12 +862,14 @@ const _titleLines = 5;
 /// question into [_titleLines] lines and its longest word into one line,
 /// so a long question is set smaller rather than cut off, and a long
 /// compound ("Informationsfreiheitsgesetz") is not broken mid-word.
+/// [trailing] is room kept after the last word, for the AI mark.
 TextStyle fittingTitle(
   BuildContext context,
   String title,
   TextStyle base,
-  double width,
-) {
+  double width, {
+  double trailing = 0,
+}) {
   final scaler = MediaQuery.textScalerOf(context);
   final longest = title
       .split(RegExp(r'\s+'))
@@ -870,11 +880,26 @@ TextStyle fittingTitle(
       letterSpacing: -0.02 * size,
     );
     final painter = TextPainter(
-      text: TextSpan(text: title, style: style),
+      text: TextSpan(
+        style: style,
+        children: [
+          TextSpan(text: title),
+          if (trailing > 0) const WidgetSpan(child: SizedBox.shrink()),
+        ],
+      ),
       textDirection: TextDirection.ltr,
       textScaler: scaler,
       maxLines: _titleLines,
-    )..layout(maxWidth: width);
+    );
+    if (trailing > 0) {
+      painter.setPlaceholderDimensions([
+        PlaceholderDimensions(
+          size: Size(trailing, 1),
+          alignment: PlaceholderAlignment.middle,
+        ),
+      ]);
+    }
+    painter.layout(maxWidth: width);
     final word = TextPainter(
       text: TextSpan(text: longest, style: style),
       textDirection: TextDirection.ltr,

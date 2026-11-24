@@ -16,6 +16,8 @@ import 'package:meinimpact/src/features/tracking/data/action_log_store.dart';
 import 'package:meinimpact/src/features/tracking/domain/action_log.dart';
 import 'package:meinimpact/src/features/tracking/domain/impact_news.dart';
 
+import 'support/text_finder.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -79,8 +81,8 @@ void main() {
 
       await _takeAction(tester, 'Petition zum Klimaschutz');
 
-      expect(find.text('Petition zum Klimaschutz'), findsNothing);
-      expect(find.text('Du hast alle Karten gespielt.'), findsOneWidget);
+      expect(findText('Petition zum Klimaschutz'), findsNothing);
+      expect(findText('Du hast alle Karten gespielt.'), findsOneWidget);
       expect(harness.signals, [InterestSignal.opened, InterestSignal.acted]);
       expect(harness.done, {'petition-1': ActionVia.inAppBrowser});
     });
@@ -95,7 +97,7 @@ void main() {
 
       // The card is still in the hand, turned over as the user left it.
       expect(
-        find.text('Eine Petition fordert mehr Klimaschutz.'),
+        findText('Eine Petition fordert mehr Klimaschutz.'),
         findsOneWidget,
       );
       expect(harness.signals, [InterestSignal.opened]);
@@ -115,7 +117,7 @@ void main() {
       await _takeAction(tester, 'Petition zum Klimaschutz');
 
       expect(opened, isFalse);
-      expect(find.text('Mitmachen geht in der App'), findsOneWidget);
+      expect(findText('Mitmachen geht in der App'), findsOneWidget);
       expect(harness.done, isEmpty);
     });
 
@@ -158,24 +160,24 @@ void main() {
           ),
         ),
       );
-      await tester.tap(find.text('open'));
+      await tester.tap(findText('open'));
       await tester.pumpAndSettle();
 
       // No Fertig before there is a letter.
-      expect(find.text('Fertig'), findsNothing);
+      expect(findText('Fertig'), findsNothing);
 
       await tester.enterText(find.byType(TextField), 'Ich fahre dort täglich.');
-      await tester.tap(find.text('Brief erstellen'));
+      await tester.tap(findText('Brief erstellen'));
       await tester.pumpAndSettle();
 
       expect(repository.notes, 'Ich fahre dort täglich.');
       expect(
-        find.text('Sehr geehrte Damen und Herren, bitte stimmen Sie zu.'),
+        findText('Sehr geehrte Damen und Herren, bitte stimmen Sie zu.'),
         findsOneWidget,
       );
-      expect(find.text('Neu erstellen'), findsOneWidget);
+      expect(findText('Neu erstellen'), findsOneWidget);
 
-      await tester.tap(find.text('Fertig'));
+      await tester.tap(findText('Fertig'));
       await tester.pumpAndSettle();
 
       expect(result, isTrue);
@@ -219,13 +221,13 @@ void main() {
       expect([for (final b in boxes) b.value], [true, false, true]);
       // An office without a known address cannot be ticked
       expect(boxes[1].onChanged, isNull);
-      expect(find.text('Adresse fehlt noch'), findsOneWidget);
+      expect(findText('Adresse fehlt noch'), findsOneWidget);
       expect(
-        find.text('Mitglieder: Ausschuss für Stadtentwicklung (2)'),
+        findText('Mitglieder: Ausschuss für Stadtentwicklung (2)'),
         findsOneWidget,
       );
 
-      await tester.tap(find.text('SPD-Fraktion'));
+      await tester.tap(findText('SPD-Fraktion'));
       await tester.pump();
 
       expect(
@@ -277,15 +279,15 @@ void main() {
             ),
           ),
         );
-        await tester.tap(find.text('open'));
+        await tester.tap(findText('open'));
         await tester.pumpAndSettle();
-        await tester.ensureVisible(find.text('Brief erstellen'));
+        await tester.ensureVisible(findText('Brief erstellen'));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Brief erstellen'));
+        await tester.tap(findText('Brief erstellen'));
         await tester.pumpAndSettle();
-        await tester.ensureVisible(find.text('Mail-App'));
+        await tester.ensureVisible(findText('Mail-App'));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Mail-App'));
+        await tester.tap(findText('Mail-App'));
         await tester.pumpAndSettle();
         return result;
       }
@@ -315,7 +317,7 @@ void main() {
         );
 
         expect(result, isNull);
-        expect(find.text('Fertig'), findsOneWidget);
+        expect(findText('Fertig'), findsOneWidget);
       });
 
       testWidgets('without a mail app the user is pointed to copying',
@@ -365,22 +367,22 @@ void main() {
         ),
       );
 
-      await tester.tap(find.text('Brief erstellen'));
+      await tester.tap(findText('Brief erstellen'));
       await tester.pumpAndSettle();
 
       expect(
         find.textContaining('konnte gerade nicht erstellt werden'),
         findsOneWidget,
       );
-      expect(find.text('Dein Brief'), findsOneWidget);
-      expect(find.text('Fertig'), findsOneWidget);
+      expect(findText('Dein Brief'), findsOneWidget);
+      expect(findText('Fertig'), findsOneWidget);
     });
   });
 }
 
 // Turns the card over, then plays it from its back.
 Future<void> _takeAction(WidgetTester tester, String title) async {
-  await tester.tap(find.text(title));
+  await tester.tap(findText(title));
   await tester.pumpAndSettle();
   await tester.tap(find.byType(FilledButton));
   await tester.pumpAndSettle();

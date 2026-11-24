@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../app/theme/mi_theme.dart';
 import '../../data/opportunity_relevance_ranker.dart';
+import '../widgets/ai_mark.dart';
 import 'action_card.dart';
 import 'topic_art.dart';
 
@@ -81,7 +82,11 @@ class _Row extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(cardTitle(ranked), style: text.titleMedium),
+                  AiText(
+                    cardTitle(ranked),
+                    style: text.titleMedium,
+                    onDark: Theme.of(context).brightness == Brightness.dark,
+                  ),
                   if (why != null) ...[
                     const SizedBox(height: MiSpace.xs),
                     Text(

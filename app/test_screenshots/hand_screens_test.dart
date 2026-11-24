@@ -20,8 +20,7 @@ import 'package:meinimpact/src/features/feed/domain/opportunity.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity_repository.dart';
 import 'package:meinimpact/src/features/feed/domain/user_profile.dart';
 import 'package:meinimpact/src/features/feed/presentation/aktionen_tab.dart';
-import 'package:meinimpact/src/features/feed/presentation/letter_screen.dart';
-import 'package:meinimpact/src/features/onboarding/rucksack/rucksack_screen.dart';
+import 'package:meinimpact/src/features/feed/presentation/letter_screen.dart';import 'package:meinimpact/src/features/onboarding/rucksack/rucksack_screen.dart';
 import 'package:meinimpact/src/features/onboarding/value_profile_screen.dart';
 import 'package:meinimpact/src/features/tracking/domain/action_log.dart';
 import 'package:meinimpact/src/features/tracking/domain/impact_news.dart';
@@ -121,6 +120,28 @@ void main() {
       act: (t) => t.tap(find.textContaining('Blitzer')),
     ),
   );
+  testWidgets(
+    'card back, light',
+    (t) => shoot(
+      t,
+      'phone-back-light',
+      brightness: Brightness.light,
+      act: (t) => t.tap(find.textContaining('Blitzer')),
+    ),
+  );
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      'impact, ${brightness.name}',
+      (t) => shoot(
+        t,
+        'phone-impact-${brightness.name}',
+        brightness: brightness,
+        doneActions: _pitchDone(),
+        news: _pitchNews(),
+        act: (t) => t.tap(find.text('Mein Impact')),
+      ),
+    );
+  }
   testWidgets(
     'longest title, dark',
     (t) => shoot(

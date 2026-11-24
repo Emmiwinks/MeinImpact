@@ -10,6 +10,8 @@ import 'package:meinimpact/src/features/tracking/domain/action_log.dart';
 import 'package:meinimpact/src/features/tracking/domain/impact_news.dart';
 import 'package:meinimpact/src/features/tracking/wirkung_tab.dart';
 
+import 'support/text_finder.dart';
+
 void main() {
   group('ImpactNewsFeed', () {
     test('parses the API feed by opportunity id', () {
@@ -91,20 +93,20 @@ void main() {
         openLink: (url) async => opened = url,
       );
 
-      expect(find.text('Petition übergeben'), findsOneWidget);
-      expect(find.text('mdr.de'), findsOneWidget);
-      expect(find.text('Fremde Meldung'), findsNothing);
+      expect(findText('Petition übergeben'), findsOneWidget);
+      expect(findText('mdr.de'), findsOneWidget);
+      expect(findText('Fremde Meldung'), findsNothing);
       expect(
         find.textContaining('Noch keine Berichte gefunden'),
         findsOneWidget,
       );
       expect(find.textContaining('Wir suchen bald'), findsOneWidget);
-      expect(find.text('3 Aktionen erledigt'), findsOneWidget);
-      expect(find.text('1 davon mit Berichten'), findsOneWidget);
+      expect(findText('3 Aktionen erledigt'), findsOneWidget);
+      expect(findText('1 davon mit Berichten'), findsOneWidget);
 
-      await tester.ensureVisible(find.text('Petition übergeben'));
+      await tester.ensureVisible(findText('Petition übergeben'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Petition übergeben'));
+      await tester.tap(findText('Petition übergeben'));
       expect(opened, Uri.parse('https://www.mdr.de/nachrichten/1'));
     });
 
@@ -126,9 +128,9 @@ void main() {
       await _pump(tester, feed, [_entry('found')]);
 
       expect(find.textContaining('Hintergrund zum Thema'), findsOneWidget);
-      expect(find.text('Hintergrund'), findsOneWidget);
+      expect(findText('Hintergrund'), findsOneWidget);
       // Background alone does not count as a report on the action.
-      expect(find.text('Noch keine Berichte dazu'), findsOneWidget);
+      expect(findText('Noch keine Berichte dazu'), findsOneWidget);
     });
 
     testWidgets('an action can be starred and the star is kept',
@@ -154,7 +156,7 @@ void main() {
     testWidgets('a failed feed still lists the actions', (tester) async {
       await _pump(tester, null, [_entry('found')]);
 
-      expect(find.text('Petition found'), findsOneWidget);
+      expect(findText('Petition found'), findsOneWidget);
       expect(find.textContaining('nicht geladen werden'), findsOneWidget);
     });
   });

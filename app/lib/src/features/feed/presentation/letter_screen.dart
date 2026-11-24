@@ -8,6 +8,7 @@ import '../domain/letter_recipients.dart';
 import '../domain/opportunity.dart';
 import '../domain/opportunity_repository.dart';
 import 'hand/topic_art.dart';
+import 'widgets/ai_mark.dart';
 import 'widgets/done_bar.dart';
 
 /// The letter to the members of a body about to vote on a council decision:
@@ -225,7 +226,11 @@ class _LetterScreenState extends State<LetterScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(opportunity.title, style: textTheme.titleMedium),
+                      AiText(
+                        opportunity.title,
+                        style: textTheme.titleMedium,
+                        onDark: Theme.of(context).brightness == Brightness.dark,
+                      ),
                       const SizedBox(height: MiSpace.xs),
                       Text(
                         meeting != null

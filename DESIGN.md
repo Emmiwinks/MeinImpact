@@ -254,6 +254,9 @@ Big, solid and named after the act.
 - **Fact chip (card back):** transparent fill, 1px ink outline, pill, 6px 12px padding, Label type in ink. Registry facts only (dates, supporter count, place, districts); support counts are information, never a ranking claim.
 - **Kind chip (news tile):** the same pill on the table, 1px on-table-muted outline, Label type in the on-table colour: "Stellungnahme" or "Hintergrund". Plain news carries no chip. No colour coding by kind.
 
+### AI mark
+Every AI-written text carries the official EU icon for AI-generated content (`AiMark`, `assets/ai/`: the Commission's basic icon, a disc with "AI" cut in, unchanged but cropped to the disc) at each place it is shown, 17dp, scaling with the text size. Black on card stock and the peach table, the white variant on the ink table; no other colours (the Commission ships only black and white). Screen readers hear "KI-generierter Text". It follows the text it labels, after the last word (`AiText`): the question on the card front, the summary on the card back (bundles too), and the action title in "Alle Aktionen", Mein Impact and the letter screen's decision row. Never in front of the kind ("AI Petition" reads as if the petition were AI-made). The card question's size fitting keeps room for it. Not on the drafted letter (private correspondence) or on news tiles (real articles). It replaces the old "Diese KI-Texte können Fehler enthalten." line above the hand.
+
 ### News tile
 A report about a played action, flat on the table (not a card, so no shadow): raised table fill (#243242 dark, light enough to separate clearly from the ink table; #FFF8F0 light) with a keyline border, 14px corners, 16px 12px padding. It holds the optional kind chip, the title (Body Strong, up to three lines), the snippet (Body, muted, up to two lines) and a muted Label line with source host, date and an open-in-new icon. Tapping it opens the article in the in-app browser.
 

@@ -7,6 +7,8 @@ import 'package:meinimpact/src/features/feed/domain/opportunity.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity_repository.dart';
 import 'package:meinimpact/src/features/tracking/domain/impact_news.dart';
 
+import 'support/text_finder.dart';
+
 void main() {
   testWidgets('renders opportunities from the pool, no fabricated stats', (
     tester,
@@ -17,9 +19,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.bySemanticsLabel(RegExp('^Karte 1 von 1')), findsOneWidget);
-    expect(find.text('Petition zum Klimaschutz'), findsOneWidget);
+    expect(findText('Petition zum Klimaschutz'), findsOneWidget);
     // Kind of participation, straight from the registry.
-    expect(find.text('Petition'), findsOneWidget);
+    expect(findText('Petition'), findsOneWidget);
 
     // No invented score or time-estimate text anywhere.
     expect(find.textContaining('Bewertung'), findsNothing);
@@ -36,17 +38,17 @@ void main() {
       MeinImpactApp(opportunityRepository: _PoolRepository()),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Petition ansehen'), findsOneWidget);
+    expect(findText('Petition ansehen'), findsOneWidget);
 
-    await tester.tap(find.text('Petition zum Klimaschutz'));
+    await tester.tap(findText('Petition zum Klimaschutz'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Petition · WeAct'), findsOneWidget);
+    expect(findText('Petition · WeAct'), findsOneWidget);
     expect(
-      find.text('Eine Petition fordert mehr Klimaschutz.'),
+      findText('Eine Petition fordert mehr Klimaschutz.'),
       findsOneWidget,
     );
-    expect(find.text('Petition ansehen'), findsOneWidget);
+    expect(findText('Petition ansehen'), findsOneWidget);
   });
 
   testWidgets('renders empty pool state', (tester) async {
@@ -55,7 +57,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Gerade gibt es keine offenen Aktionen.'), findsOneWidget);
+    expect(findText('Gerade gibt es keine offenen Aktionen.'), findsOneWidget);
   });
 
   testWidgets('renders pool-loading errors and retries', (tester) async {
@@ -64,10 +66,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.text('Deine Karten konnten nicht geladen werden.'),
+      findText('Deine Karten konnten nicht geladen werden.'),
       findsOneWidget,
     );
-    await tester.tap(find.text('Nochmal versuchen'));
+    await tester.tap(findText('Nochmal versuchen'));
     await tester.pumpAndSettle();
     expect(repository.calls, 2);
   });
@@ -81,11 +83,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(NavigationBar), findsOneWidget);
-    expect(find.text('Mein Profil'), findsOneWidget);
-    expect(find.text('Meine Aktionen'), findsOneWidget);
-    expect(find.text('Mein Impact'), findsOneWidget);
+    expect(findText('Mein Profil'), findsOneWidget);
+    expect(findText('Meine Aktionen'), findsOneWidget);
+    expect(findText('Mein Impact'), findsOneWidget);
 
-    await tester.tap(find.text('Mein Impact'));
+    await tester.tap(findText('Mein Impact'));
     await tester.pumpAndSettle();
 
     // No action done yet: the tab explains how it fills.

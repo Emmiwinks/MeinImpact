@@ -224,7 +224,9 @@ class _AktionenTabState extends State<AktionenTab> with WidgetsBindingObserver {
     final hand = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _TopLine(streak: widget.streak),
+        // Cold wood before the first action says nothing yet: the flame
+        // shows once there is something to keep burning.
+        _TopLine(streak: widget.doneIds.isEmpty ? null : widget.streak),
         Expanded(child: _buildHand()),
       ],
     );
@@ -308,7 +310,8 @@ class _AktionenTabState extends State<AktionenTab> with WidgetsBindingObserver {
   }
 }
 
-/// Above the hand: that the card texts are AI-written, and the streak.
+/// Above the hand: the streak, top right. The row keeps its height without
+/// it, so the hand does not move when the flame first appears.
 class _TopLine extends StatelessWidget {
   const _TopLine({required this.streak});
 
@@ -316,7 +319,6 @@ class _TopLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.mi;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         MiSpace.lg,
@@ -324,25 +326,12 @@ class _TopLine extends StatelessWidget {
         MiSpace.base,
         0,
       ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.auto_awesome_outlined,
-            size: 16,
-            color: colors.onTableMuted,
-          ),
-          const SizedBox(width: MiSpace.xs),
-          Expanded(
-            child: Text(
-              'Diese KI-Texte können Fehler enthalten.',
-              style: Theme.of(context)
-                  .textTheme
-                  .labelMedium
-                  ?.copyWith(color: colors.onTableMuted),
-            ),
-          ),
-          if (streak case final streak?) StreakFlame(streak: streak),
-        ],
+      child: SizedBox(
+        height: 48,
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: streak == null ? null : StreakFlame(streak: streak!),
+        ),
       ),
     );
   }

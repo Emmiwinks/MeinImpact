@@ -21,6 +21,8 @@ import 'package:meinimpact/src/features/feed/presentation/hand/topic_art.dart';
 import 'package:meinimpact/src/features/tracking/domain/action_log.dart';
 import 'package:meinimpact/src/features/tracking/domain/impact_news.dart';
 
+import 'support/text_finder.dart';
+
 void main() {
   group('topic art', () {
     test('every topic tag has its own picture', () {
@@ -198,25 +200,25 @@ void main() {
           ),
         ),
       );
-      expect(find.text('öfter'), findsNothing);
+      expect(findText('öfter'), findsNothing);
 
       await tester.tap(find.byType(ActionCard));
       await tester.pumpAndSettle();
-      expect(find.text('Karten zu Wohnen/Miete:'), findsOneWidget);
+      expect(findText('Karten zu Wohnen/Miete:'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('vote-less')));
       await tester.pumpAndSettle();
 
       expect(votes, [('Wohnen/Miete', InterestSignal.less)]);
       expect(
-        find.text('Karten zu Wohnen/Miete kommen seltener.'),
+        findText('Karten zu Wohnen/Miete kommen seltener.'),
         findsOneWidget,
       );
       expect(find.byKey(const ValueKey('vote-more')), findsNothing);
       // The vote does not turn the card; a tap on the back does.
-      expect(find.text('Zusammenfassung'), findsOneWidget);
-      await tester.tap(find.text('Zusammenfassung'));
+      expect(findText('Zusammenfassung'), findsOneWidget);
+      await tester.tap(findText('Zusammenfassung'));
       await tester.pumpAndSettle();
-      expect(find.text('Zusammenfassung'), findsNothing);
+      expect(findText('Zusammenfassung'), findsNothing);
     });
   });
 
@@ -227,7 +229,7 @@ void main() {
       await tester.pumpWidget(_Tab(pool: _pool(7)));
       await tester.pumpAndSettle();
 
-      expect(find.text('Alle 7 ansehen'), findsOneWidget);
+      expect(findText('Alle 7 ansehen'), findsOneWidget);
       expect(_fanAt('Karte 1 von 5'), findsOneWidget);
 
       await tester.flingFrom(
@@ -243,13 +245,13 @@ void main() {
       await tester.pumpAndSettle();
       expect(_fanAt('Karte 2 von 5'), findsOneWidget);
 
-      await tester.tap(find.text('Alle 7 ansehen'));
+      await tester.tap(findText('Alle 7 ansehen'));
       await tester.pumpAndSettle();
-      expect(find.text('Alle Aktionen'), findsOneWidget);
+      expect(findText('Alle Aktionen'), findsOneWidget);
 
       // Taking one that is not dealt into the hand puts it in front.
-      await tester.scrollUntilVisible(find.text('Frage 7?'), 200);
-      await tester.tap(find.text('Frage 7?'));
+      await tester.scrollUntilVisible(findText('Frage 7?'), 200);
+      await tester.tap(findText('Frage 7?'));
       await tester.pumpAndSettle();
       expect(_fanAt('Karte 1 von 6'), findsOneWidget);
     });
@@ -260,9 +262,9 @@ void main() {
       await tester.pumpWidget(_Tab(pool: _pool(3)));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Frage 1?'));
+      await tester.tap(findText('Frage 1?'));
       await tester.pumpAndSettle();
-      expect(find.text('Antwort 1'), findsOneWidget);
+      expect(findText('Antwort 1'), findsOneWidget);
 
       await tester.flingFrom(
         const Offset(400, 300),
@@ -271,8 +273,8 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(_fanAt('Karte 2 von 3'), findsOneWidget);
-      expect(find.text('Antwort 2'), findsNothing);
-      expect(find.text('Antwort 1'), findsNothing);
+      expect(findText('Antwort 2'), findsNothing);
+      expect(findText('Antwort 1'), findsNothing);
     });
 
     testWidgets('the first time, the front card shows its back once', (
@@ -283,7 +285,7 @@ void main() {
       await tester.pumpWidget(_Tab(pool: _pool(3)));
       await tester.pump();
       await tester.pump();
-      expect(find.text('Antwort 1'), findsNothing);
+      expect(findText('Antwort 1'), findsNothing);
 
       // Turned over by itself, held a moment, then back; the throw hint
       // comes after it.
@@ -295,13 +297,13 @@ void main() {
       }
 
       await wait(1500);
-      expect(find.text('Antwort 1'), findsOneWidget);
-      expect(find.text('Lange drücken zum Weglegen'), findsNothing);
+      expect(findText('Antwort 1'), findsOneWidget);
+      expect(findText('Lange drücken zum Weglegen'), findsNothing);
       await wait(1500);
-      expect(find.text('Antwort 1'), findsNothing);
+      expect(findText('Antwort 1'), findsNothing);
       expect(HandHints.current.turnSeen, isTrue);
       await wait(2000);
-      expect(find.text('Lange drücken zum Weglegen'), findsOneWidget);
+      expect(findText('Lange drücken zum Weglegen'), findsOneWidget);
       await tester.pumpAndSettle();
 
       // Seen once, a new hand does not do it again.
@@ -310,7 +312,7 @@ void main() {
       await tester.pump();
       await tester.pump();
       await wait(1500);
-      expect(find.text('Antwort 1'), findsNothing);
+      expect(findText('Antwort 1'), findsNothing);
       await tester.pumpAndSettle();
     });
 
@@ -328,7 +330,7 @@ void main() {
       }
       expect(_fanAt('Ende deiner Hand'), findsOneWidget);
       expect(
-        find.text('Das waren die 5, die am besten zu dir passen.'),
+        findText('Das waren die 5, die am besten zu dir passen.'),
         findsOneWidget,
       );
       expect(
@@ -336,9 +338,9 @@ void main() {
         findsOneWidget,
       );
       // Only on the closing card; the link next to the dots steps back.
-      expect(find.text('Alle 7 ansehen'), findsOneWidget);
+      expect(findText('Alle 7 ansehen'), findsOneWidget);
 
-      await tester.tap(find.text('Zurück zur ersten Karte'));
+      await tester.tap(findText('Zurück zur ersten Karte'));
       await tester.pumpAndSettle();
       expect(_fanAt('Karte 1 von 5'), findsOneWidget);
     });
@@ -354,7 +356,7 @@ void main() {
         900,
       );
       await tester.pumpAndSettle();
-      expect(find.text('Das waren alle offenen Aktionen.'), findsOneWidget);
+      expect(findText('Das waren alle offenen Aktionen.'), findsOneWidget);
       expect(find.textContaining('sobald Region, Land'), findsOneWidget);
     });
 
@@ -383,10 +385,10 @@ void main() {
       await tester.pump(MiMotion.flight ~/ 2);
       // In flight: the copy on the overlay, while the card in the fan waits
       // hidden until the log takes it out.
-      expect(find.text('Frage 1?'), findsNWidgets(2));
+      expect(findText('Frage 1?'), findsNWidgets(2));
       await tester.pumpAndSettle();
 
-      expect(find.text('Frage 1?'), findsNothing);
+      expect(findText('Frage 1?'), findsNothing);
       expect(_fanAt('Karte 1 von 1'), findsOneWidget);
       expect(tab.played, ['1']);
     });
@@ -398,17 +400,17 @@ void main() {
       await tester.pumpWidget(tab);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Frage 1?'));
+      await tester.tap(findText('Frage 1?'));
       await tester.pump();
-      expect(find.text('Antwort 1'), findsOneWidget);
+      expect(findText('Antwort 1'), findsOneWidget);
       await tester.tap(find.byTooltip('Karte umdrehen'));
       await tester.pump();
-      expect(find.text('Antwort 1'), findsNothing);
+      expect(findText('Antwort 1'), findsNothing);
 
       await tester.tap(_playable);
       await tester.pump();
       await tester.pump();
-      expect(find.text('Frage 1?'), findsNothing);
+      expect(findText('Frage 1?'), findsNothing);
       expect(tab.played, ['1']);
     });
 
@@ -429,14 +431,14 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(_fanAt('Karte 1 von 1'), findsOneWidget);
-      expect(find.text('Alle 1 ansehen'), findsNothing);
+      expect(findText('Alle 1 ansehen'), findsNothing);
 
-      await tester.tap(find.text('Frage?'));
+      await tester.tap(findText('Frage?'));
       await tester.pumpAndSettle();
-      expect(find.text('Dafür spricht'), findsOneWidget);
-      expect(find.text('Gut für Kinder'), findsOneWidget);
-      expect(find.text('Dagegen spricht'), findsOneWidget);
-      expect(find.text('Teuer'), findsOneWidget);
+      expect(findText('Dafür spricht'), findsOneWidget);
+      expect(findText('Gut für Kinder'), findsOneWidget);
+      expect(findText('Dagegen spricht'), findsOneWidget);
+      expect(findText('Teuer'), findsOneWidget);
     });
 
     testWidgets('a bundle is one card; its options are ticked, not flown', (
@@ -468,29 +470,29 @@ void main() {
 
       expect(_fanAt('Karte 1 von 2'), findsOneWidget);
       expect(
-        find.text('Bleibt das Informationsfreiheitsgesetz?'),
+        findText('Bleibt das Informationsfreiheitsgesetz?'),
         findsOneWidget,
       );
       expect(find.textContaining('2 Optionen'), findsOneWidget);
 
-      await tester.tap(find.text('Optionen ansehen'));
+      await tester.tap(findText('Optionen ansehen'));
       await tester.pumpAndSettle();
-      expect(find.text('2 Petitionen · ähnliches Anliegen'), findsOneWidget);
-      expect(find.text('An den Bundestag.'), findsOneWidget);
-      expect(find.text('An die SPD-Fraktion.'), findsOneWidget);
+      expect(findText('2 Petitionen · ähnliches Anliegen'), findsOneWidget);
+      expect(findText('An den Bundestag.'), findsOneWidget);
+      expect(findText('An die SPD-Fraktion.'), findsOneWidget);
 
-      await tester.tap(find.text('Bei openPetition'));
+      await tester.tap(findText('Bei openPetition'));
       await tester.pumpAndSettle();
       // Done, but the card stays with the other option one tap away.
       expect(tab.played, ['op']);
       expect(find.byIcon(Icons.check_rounded), findsOneWidget);
-      expect(find.text('An die SPD-Fraktion.'), findsOneWidget);
+      expect(findText('An die SPD-Fraktion.'), findsOneWidget);
       expect(_fanAt('Karte 1 von 2'), findsOneWidget);
 
-      await tester.tap(find.text('Bei WeAct'));
+      await tester.tap(findText('Bei WeAct'));
       await tester.pumpAndSettle();
       expect(tab.played, ['op', 'we']);
-      expect(find.text('An die SPD-Fraktion.'), findsNothing);
+      expect(findText('An die SPD-Fraktion.'), findsNothing);
       expect(_fanAt('Karte 1 von 1'), findsOneWidget);
     });
 
@@ -503,7 +505,7 @@ void main() {
     testWidgets('while loading, the deck lies face down', (tester) async {
       await tester.pumpWidget(_Tab(pool: _pool(1), slow: true));
       await tester.pump();
-      expect(find.text('Deine Karten werden gemischt …'), findsOneWidget);
+      expect(findText('Deine Karten werden gemischt …'), findsOneWidget);
       await tester.pumpAndSettle();
     });
   });
@@ -548,7 +550,7 @@ void main() {
       final tab = _Tab(pool: _pool(3));
       await tester.pumpWidget(tab);
       // Never thrown one away: the hint says how, then fades.
-      final hint = find.text('Lange drücken zum Weglegen');
+      final hint = findText('Lange drücken zum Weglegen');
       await tester.pump();
       await tester.pump();
       await tester.pump(const Duration(seconds: 2));
@@ -557,12 +559,12 @@ void main() {
       expect(hint, findsNothing);
 
       await carry(tester);
-      expect(find.text(sheetTitle), findsOneWidget);
-      await tester.tap(find.text('Zu weit weg'));
+      expect(findText(sheetTitle), findsOneWidget);
+      await tester.tap(findText('Zu weit weg'));
       await tester.pumpAndSettle();
 
-      expect(find.text(sheetTitle), findsNothing);
-      expect(find.text('Frage 1?'), findsNothing);
+      expect(findText(sheetTitle), findsNothing);
+      expect(findText('Frage 1?'), findsNothing);
       expect(_fanAt('Karte 1 von 2'), findsOneWidget);
       expect(tab.dismissed, {'1'});
       final (path, body) = posts.single;
@@ -589,7 +591,7 @@ void main() {
       await tester.pumpWidget(tab);
       await tester.pumpAndSettle();
       await carry(tester, toTrash: false);
-      expect(find.text(sheetTitle), findsNothing);
+      expect(findText(sheetTitle), findsNothing);
       expect(_fanAt('Karte 1 von 3'), findsOneWidget);
       expect(tab.dismissed, isEmpty);
       // The hand still swipes and the dots are back.
@@ -610,16 +612,16 @@ void main() {
       await tester.pumpAndSettle();
 
       await carry(tester);
-      await tester.tap(find.text('Doch behalten'));
+      await tester.tap(findText('Doch behalten'));
       await tester.pumpAndSettle();
-      expect(find.text('Frage 1?'), findsOneWidget);
+      expect(findText('Frage 1?'), findsOneWidget);
       expect(_fanAt('Karte 1 von 3'), findsOneWidget);
       expect(tab.dismissed, isEmpty);
 
       await carry(tester);
-      await tester.tap(find.text('Überspringen'));
+      await tester.tap(findText('Überspringen'));
       await tester.pumpAndSettle();
-      expect(find.text('Frage 1?'), findsNothing);
+      expect(findText('Frage 1?'), findsNothing);
       expect(tab.dismissed, {'1'});
       expect(posts, isEmpty);
     });
@@ -639,20 +641,20 @@ void main() {
       );
       await tester.pumpWidget(tab);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Lange Frage?'));
+      await tester.tap(findText('Lange Frage?'));
       await tester.pumpAndSettle();
 
       // On the scrolling text, a drag still scrolls...
-      final text = tester.getCenter(find.text('Zusammenfassung'));
+      final text = tester.getCenter(findText('Zusammenfassung'));
       await tester.dragFrom(text, const Offset(0, -150));
       await tester.pumpAndSettle();
-      expect(find.text(sheetTitle), findsNothing);
+      expect(findText(sheetTitle), findsNothing);
       // ...and a long press lifts the card.
-      await carry(tester, from: tester.getCenter(find.text('Grund 3')));
-      await tester.tap(find.text('Möchte ich nicht unterstützen'));
+      await carry(tester, from: tester.getCenter(findText('Grund 3')));
+      await tester.tap(findText('Möchte ich nicht unterstützen'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), '  Zu teuer.  ');
-      await tester.tap(find.text('Senden'));
+      await tester.tap(findText('Senden'));
       await tester.pumpAndSettle();
 
       expect(tab.dismissed, {'1'});
@@ -668,8 +670,8 @@ void main() {
       await tester.pumpAndSettle();
 
       await carry(tester);
-      expect(find.text('Schon erledigt'), findsNothing);
-      await tester.tap(find.text('Thema interessiert mich nicht'));
+      expect(findText('Schon erledigt'), findsNothing);
+      await tester.tap(findText('Thema interessiert mich nicht'));
       await tester.pumpAndSettle();
       expect(tab.signals.single.$2, InterestSignal.less);
       expect(tab.signals.single.$1, _pool(3).first.affectedTags);
@@ -689,7 +691,7 @@ void main() {
         action,
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Überspringen'));
+      await tester.tap(findText('Überspringen'));
       await tester.pumpAndSettle();
       expect(tab.dismissed, {'1'});
       handle.dispose();
@@ -717,15 +719,15 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Mein Impact'));
+    await tester.tap(findText('Mein Impact'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Dein Feedback'));
+    await tester.tap(findText('Dein Feedback'));
     await tester.pumpAndSettle();
     final send = find.widgetWithText(FilledButton, 'Senden');
     // Kind and words first.
     expect(tester.widget<FilledButton>(send).onPressed, isNull);
-    await tester.tap(find.text('Idee'));
+    await tester.tap(findText('Idee'));
     await tester.enterText(find.byType(TextField), 'Mehr Karten zu Kultur');
     await tester.pump();
 
@@ -736,7 +738,7 @@ void main() {
     offline = false;
     await tester.tap(send);
     await tester.pumpAndSettle();
-    expect(find.text('Danke! Ist angekommen.'), findsOneWidget);
+    expect(findText('Danke! Ist angekommen.'), findsOneWidget);
     final (path, body) = posts.single;
     expect(path, '/v1/feedback');
     expect(body['kind'], 'idea');
@@ -770,7 +772,7 @@ void main() {
     // The streak's flame shows a number too.
     final unseen = find.descendant(
       of: find.byType(Badge),
-      matching: find.text('1'),
+      matching: findText('1'),
     );
     await tester.pumpWidget(shell(const []));
     await tester.pumpAndSettle();
@@ -781,9 +783,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(unseen, findsOneWidget);
 
-    await tester.tap(find.text('Mein Impact'));
+    await tester.tap(findText('Mein Impact'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Meine Aktionen'));
+    await tester.tap(findText('Meine Aktionen'));
     await tester.pumpAndSettle();
     expect(unseen, findsNothing);
   });
