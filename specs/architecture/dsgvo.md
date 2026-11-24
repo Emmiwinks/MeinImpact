@@ -209,11 +209,12 @@ For every new feature:
   opportunity titles, never user data, so it is not a processor of user
   data and needs no mention in the privacy policy. Keep it that way.
 - "Alle Daten löschen" in the profile.
-- Legacy tables from removed endpoints (`civic_actions`, `action_stats`,
-  `tracking_events`, `mdb_statements`, `push_subscriptions`,
-  `beta_tokens`) still exist in the database; drop them in a migration.
-  `news_items` stays on purpose (shelved media pipeline). (`feedback` was
-  dropped in migration 0025.)
+- ~~Legacy tables~~ dropped 2026-11-24 (migration 202611240026), incl.
+  `user_profiles` and `action_tracking`, which held installation ids.
+  `news_items` stays on purpose (shelved media pipeline).
+- The letter recipients request (`GET /v1/opportunities/{id}/recipients`)
+  puts the opportunity id in the URL, so the access log shows which
+  decision an IP drafted a letter for. Move it to a body like `tracked`.
 - Impressum and legal entity: unchanged from the earlier plan (sole
   trader/GbR now, gGmbH before public launch); confirm.
 

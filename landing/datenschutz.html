@@ -45,16 +45,36 @@
         <li>deine Postleitzahl und wo sie ungefähr liegt (Landkreis und ein Punkt in ihrem Gebiet)</li>
       </ul>
       <p>Diese Daten verlassen dein Handy nicht. Wenn du die App löschst, sind sie weg.</p>
+      <p>Dass diese Daten auf deinem Handy gespeichert werden, ist für die App technisch nötig (§ 25 Abs. 2 TDDDG).</p>
       <h3>Was die App an unseren Server schickt</h3>
       <ul>
-        <li><strong>Eine zufällige Installationsnummer.</strong> Damit bekommt die App eine Sitzung, um Aktionen zu laden. Die Nummer wird auf dem Server nicht gespeichert und lässt sich keiner Person zuordnen.</li>
+        <li><strong>Eine zufällige Installationsnummer.</strong> Damit bekommt die App eine Sitzung, um Aktionen zu laden. Die Nummer selbst wird auf dem Server nicht gespeichert. Nur wenn du Feedback schickst, speichern wir einen Codenamen, der aus ihr berechnet wird (siehe unten).</li>
         <li><strong>Dass jemand bei einer Aktion mitgemacht hat.</strong> Wenn du auf Fertig tippst, merkt sich der Server nur, seit welchem Tag bei dieser Aktion jemand mitgemacht hat. Nicht wer und nicht wie viele, und diese Anfragen werden nicht protokolliert. So weiß die App, zu welchen Aktionen sie Berichte suchen soll.</li>
         <li><strong>Deine Postleitzahl, einmal.</strong> Wenn du sie eingibst, schlägt der Server nach, in welchem Landkreis sie liegt, wo ungefähr, und wer dich im Bundestag vertritt. Die App merkt sich die Antwort auf deinem Handy. Der Server speichert die Postleitzahl nicht, und sie steht nicht in seinen Zugriffsprotokollen.</li>
         <li><strong>Deinen Landkreis,</strong> wenn die App Aktionen lädt. So bekommst du die Aktionen aus deinem Bundesland und ganz Deutschland, nicht die aus allen anderen. Welche davon in deiner Nähe sind, rechnet die App auf deinem Handy aus.</li>
+        <li><strong>Was in der App passiert, ohne Bezug zu dir.</strong> Etwa, dass eine Karte aufgedeckt wurde. Der Server zählt nur, wie oft so etwas an einem Tag vorkam. Wer es war, speichert er nicht.</li>
       </ul>
-      <p>Wenn die App Aktionen und Berichte lädt, verarbeitet der Server technisch deine IP-Adresse. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO.</p>
+      <p>Rechtsgrundlage ist die Nutzung der App, die du angefragt hast (Art. 6 Abs. 1 lit. b DSGVO). Die Erinnerungen der App plant dein Handy selbst. Dafür gibt es keinen Push-Dienst und keine Gerätekennung auf unserem Server.</p>
       <h3>Briefe an den Stadtrat</h3>
-      <p>Wenn du einen Briefentwurf erstellen lässt, schickt die App die Aktion und deine optionalen Notizen an unseren Server. Der Entwurf wird mit Mistral AI (Paris, Frankreich) geschrieben; dafür werden diese Angaben an Mistral übertragen. Wir speichern weder deine Notizen noch den Brief; Mistral verarbeitet sie nach seinen eigenen Bedingungen. Den Brief verschickst du selbst aus deinem eigenen Mailprogramm (Art. 6 Abs. 1 lit. b DSGVO).</p>
+      <p>Wenn du einen Briefentwurf erstellen lässt, schickt die App die Aktion und deine optionalen Notizen an unseren Server. Der Entwurf wird mit Mistral AI (Paris, Frankreich) geschrieben; dafür werden diese Angaben an Mistral übertragen. Wir speichern weder deine Notizen noch den Brief. Mistral bewahrt Anfragen bis zu 30 Tage auf, um Missbrauch zu erkennen, und löscht sie dann. Den Brief verschickst du selbst aus deinem eigenen Mailprogramm.</p>
+      <p>Deine Notizen können zeigen, wie du politisch denkst. Darum schicken wir sie nur mit deiner ausdrücklichen Einwilligung (Art. 6 Abs. 1 lit. a und Art. 9 Abs. 2 lit. a DSGVO), die du beim Start der App gibst.</p>
+      <h3>Feedback in der Beta</h3>
+      <p>Feedback schickst du nur, wenn du es selbst tust. Das sind zwei Arten:</p>
+      <ul>
+        <li><strong>Warum du eine Karte weglegst.</strong> Die Aktion, der Grund, den du antippst, und deine optionale Notiz. Dazu, wie die App die Karte für dich eingeordnet hatte (Platz in deinem Stapel und die Teilwerte der Sortierung, etwa Nähe und Interesse). Deine Antworten und dein Profil selbst sind nicht dabei.</li>
+        <li><strong>Nachrichten an uns</strong> über „Feedback“ in der App: deine Nachricht, welcher Bildschirm offen war, App-Version und Betriebssystem.</li>
+      </ul>
+      <p>Wir speichern das unter einem Codenamen. Er wird aus deiner Installationsnummer berechnet, damit wir sehen, ob eine Person etwas oft sagt oder viele Personen einmal. Wer hinter dem Codenamen steckt, können wir nicht herausfinden. Wir speichern nur den Tag, keine Uhrzeit. Feedback geht nie an eine KI. Nach 180 Tagen wird es automatisch gelöscht. Wir nutzen es, um Fehler zu beheben und die Sortierung der Aktionen zu verbessern.</p>
+      <p>Auch ein Grund wie „Möchte ich nicht unterstützen“ kann zeigen, wie du politisch denkst. Rechtsgrundlage ist deine ausdrückliche Einwilligung (Art. 6 Abs. 1 lit. a und Art. 9 Abs. 2 lit. a DSGVO).</p>
+      <h3>Einwilligung und Widerruf</h3>
+      <p>Beim ersten Start fragt dich die App nach deiner Einwilligung und ob du mindestens 16 Jahre alt bist. Du kannst die Einwilligung jederzeit widerrufen: Lass keine Briefe mehr entwerfen, schick kein Feedback mehr, oder lösch die App. Was vor dem Widerruf passiert ist, bleibt davon unberührt. Willst du dein bisheriges Feedback vorher gelöscht haben, schreib uns. Weil wir den Codenamen keiner Person zuordnen können, sag uns dafür, was du ungefähr wann geschickt hast.</p>
+      <h3>Wo die Daten liegen</h3>
+      <ul>
+        <li><strong>Fly.io</strong> betreibt unseren Server im Rechenzentrum in Frankfurt am Main.</li>
+        <li><strong>Supabase</strong> betreibt unsere Datenbank, ebenfalls in Frankfurt am Main.</li>
+        <li><strong>Mistral AI</strong> in Paris schreibt die Briefentwürfe.</li>
+      </ul>
+      <p>Wenn die App unseren Server anfragt, verarbeitet er technisch deine IP-Adresse. Fly.io schreibt dabei Zugriffsprotokolle (IP-Adresse, Zeitpunkt, aufgerufene Adresse, ohne den Inhalt deiner Anfrage) und löscht sie nach etwa 7 Tagen. Wir brauchen sie, um den Server zu betreiben und vor Angriffen zu schützen (Art. 6 Abs. 1 lit. f DSGVO).</p>
       <h3>Websites in der App</h3>
       <p>Petitionen und Beteiligungen öffnen in der App die Seite des jeweiligen Anbieters, etwa openPetition oder das Beteiligungsportal Sachsen. Dort gelten deren Datenschutzbestimmungen.</p>
       <h3>Google Play</h3>
@@ -64,7 +84,7 @@
       <p>Du hast das Recht auf Auskunft, Berichtigung, Löschung und Einschränkung der Verarbeitung, auf Datenübertragbarkeit und auf Widerspruch gegen Verarbeitungen, die auf berechtigtem Interesse beruhen. Schreib dafür einfach an <a href="mailto:hallo@meinimpact.de">hallo@meinimpact.de</a>.</p>
       <p>Du kannst dich außerdem bei einer Datenschutz-Aufsichtsbehörde beschweren, zum Beispiel bei der Sächsischen Datenschutz- und Transparenzbeauftragten in Dresden.</p>
 
-      <p class="stand">Stand: November 2026</p>
+      <p class="stand">Stand: 24. November 2026</p>
     </div>
   </main>
 

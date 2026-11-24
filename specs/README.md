@@ -118,15 +118,14 @@ The backend stores ONLY these tables. Nothing else.
 
 | Table | Contains |
 |---|---|
-| `actions` | Public civic action pool — no user data |
-| `beta_tokens` | Anonymous UUIDs — no identity |
-| `push_subscriptions` | Anonymous device push tokens |
-| `action_stats` | Anonymous completion counters |
-| `tracking_events` | Public civic outcome data |
-| `mdb_statements` | MdB public statement search results |
-| `feedback` | Anonymous ratings and comments |
-| `api_spend` | Cost tracking — no user data |
-| `pipeline_runs` | Ingestion run logs — no user data |
+| `opportunities` (+ support snapshots, news) | Public participation opportunities and their enrichment; no user data |
+| `council_members` | Public OParl council membership |
+| `ingestion_schedule`, `ingestion_runs`, `api_spend` | Operations; no user data |
+| `usage_counts` | Event counts per day; no user data |
+| `card_feedback`, `beta_feedback` | Beta feedback under a code name, 180 days |
+| `news_items` | Shelved, kept for later |
+
+Details: `data/database-schema.md`.
 
 ---
 
