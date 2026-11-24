@@ -14,6 +14,7 @@ import '../features/feed/domain/opportunity.dart';
 import '../features/feed/domain/opportunity_repository.dart';
 import '../features/feed/domain/user_profile.dart';
 import '../features/notifications/domain/notification_state.dart';
+import '../features/notifications/notification_widgets.dart';
 import '../features/notifications/notifications.dart';
 import '../features/onboarding/consent_screen.dart';
 import '../features/onboarding/intro_screen.dart';
@@ -210,16 +211,21 @@ class _MeinImpactAppState extends State<MeinImpactApp>
     if (_actionLog.isDone(entry.opportunityId)) return;
     Usage.current.count(UsageEvent.actionDone);
     final now = DateTime.now();
+    final first = _actionLog.entries.isEmpty;
     final updated = _actionLog.withDone(entry);
     final moment = ProgressMoment.between(
       Progress.of(_actionLog, now),
       Progress.of(updated, now),
     );
     setState(() => _actionLog = updated);
-    // The card has landed on the Wirkung pile by now.
+    // The card has landed on the Wirkung pile by now. After the first
+    // action, once its badges are shown, the app asks about notifications.
     final navigator = _navigatorKey.currentContext;
-    if (moment != null && navigator != null) {
-      unawaited(showProgressMoment(navigator, moment));
+    if (navigator != null && (moment != null || first)) {
+      unawaited(() async {
+        if (moment != null) await showProgressMoment(navigator, moment);
+        if (first && navigator.mounted) await askForNotifications(navigator);
+      }());
     }
     // Best effort: offline, the mark is lost and Mein Impact just doesn't
     // follow this one. Never blocks or fails the user's "Fertig".
