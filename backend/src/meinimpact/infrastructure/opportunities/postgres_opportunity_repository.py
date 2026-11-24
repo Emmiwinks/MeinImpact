@@ -156,8 +156,13 @@ class PostgresOpportunityRepository:
         record.personal_impact_snippets = dict(enrichment.personal_impact_snippets)
         await self._session.flush()
 
-    async def list_open(self, today: date) -> list[Opportunity]:
-        return [_to_domain(record) for record in await self._open_records(today)]
+    async def list_open(
+        self, today: date, *, include_drafts: bool = False
+    ) -> list[Opportunity]:
+        """What the feed serves; with `include_drafts` also what it would
+        serve for draft places (for their coverage report on /admin)."""
+        records = await self._open_records(today, include_drafts=include_drafts)
+        return [_to_domain(record) for record in records]
 
     async def bundle_items(self, today: date) -> list[BundleItem]:
         """Everything the feed serves, as the bundler sees it."""
@@ -194,14 +199,17 @@ class PostgresOpportunityRepository:
                 _clear_bundle(record)
         await self._session.flush()
 
-    async def _open_records(self, today: date) -> Sequence[OpportunityRecord]:
+    async def _open_records(
+        self, today: date, *, include_drafts: bool = False
+    ) -> Sequence[OpportunityRecord]:
+        # Draft places are ingested but never served
+        regions = [p.key for p in covered.ALL] if include_drafts else covered.LIVE_KEYS
         result = await self._session.execute(
             select(OpportunityRecord)
             .where(
                 OpportunityRecord.active.is_(True),
                 OpportunityRecord.is_relevant.is_(True),
-                # Draft places are ingested but never served
-                OpportunityRecord.region.in_(covered.LIVE_KEYS),
+                OpportunityRecord.region.in_(regions),
                 or_(
                     OpportunityRecord.everyday_relevance
                     > EXPERT_ONLY_MAX_EVERYDAY_RELEVANCE,

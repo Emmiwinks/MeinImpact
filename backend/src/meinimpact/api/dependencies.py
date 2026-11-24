@@ -104,6 +104,13 @@ def get_opportunity_repository(
     return PostgresOpportunityRepository(session)
 
 
+def get_admin_pool(
+    session: AsyncSession = Depends(get_db_session),
+) -> PostgresOpportunityRepository:
+    """The opportunity table for /admin, which also reads draft places."""
+    return PostgresOpportunityRepository(session)
+
+
 def get_council_repository(
     session: AsyncSession = Depends(get_db_session),
 ) -> PostgresCouncilRepository:

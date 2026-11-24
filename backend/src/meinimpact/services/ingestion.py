@@ -12,6 +12,7 @@ from meinimpact.core.config import Settings
 from meinimpact.infrastructure.ai.bundler import Bundler
 from meinimpact.infrastructure.ai.listing_enricher import ListingEnricher
 from meinimpact.infrastructure.ai.mistral_json import MistralJsonCompleter
+from meinimpact.infrastructure.ai.usage import Price
 from meinimpact.infrastructure.council.offices import FRAKTION_OFFICES
 from meinimpact.infrastructure.council.oparl_members import fetch_council_members
 from meinimpact.infrastructure.council.postgres_council_repository import (
@@ -31,6 +32,7 @@ from meinimpact.infrastructure.opportunities.postgres_opportunity_repository imp
 )
 from meinimpact.infrastructure.pipeline.ingestion import (
     IngestionSummary,
+    RunBudget,
     run_ingestion,
 )
 from meinimpact.services.recipients import is_local_body
@@ -73,6 +75,13 @@ async def run_configured_ingestion(settings: Settings) -> IngestionSummary:
                 enricher=ListingEnricher(completer, default_district_matchers()),
                 store=PostgresOpportunityRepository(session),
                 bundler=Bundler(bundle_completer),
+                budget=RunBudget(
+                    price=Price(
+                        settings.mistral_extraction_eur_per_m_input,
+                        settings.mistral_extraction_eur_per_m_output,
+                    ),
+                    max_eur=settings.ingestion_max_cost_eur,
+                ),
             )
             for body in OPARL_BODIES:
                 try:

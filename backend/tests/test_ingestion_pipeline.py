@@ -6,6 +6,7 @@ from collections.abc import Collection, Sequence
 from dataclasses import replace
 from datetime import date, datetime
 
+from meinimpact.infrastructure.ai import usage
 from meinimpact.infrastructure.ai.bundler import (
     Bundle,
     BundleItem,
@@ -16,12 +17,13 @@ from meinimpact.infrastructure.ai.listing_enricher import (
     Enrichment,
     enrichment_input_hash,
 )
+from meinimpact.infrastructure.ai.usage import Price
 from meinimpact.infrastructure.listings.model import Listing
 from meinimpact.infrastructure.opportunities.postgres_opportunity_repository import (
     PendingEnrichment,
     SyncResult,
 )
-from meinimpact.infrastructure.pipeline.ingestion import run_ingestion
+from meinimpact.infrastructure.pipeline.ingestion import RunBudget, run_ingestion
 from tests.listing_fakes import NOW, BrokenSource, StaticSource, make_listing
 
 
@@ -293,6 +295,75 @@ async def test_failed_detail_read_still_enriches_from_the_listing() -> None:
     assert summary.enriched == 1
     assert enricher.details == {"a": None}
     assert summary.errors == ["detail https://example.org/a: detail page down"]
+
+
+class CostlyEnricher(FakeEnricher):
+    """Reports one million prompt tokens per listing, as Mistral would."""
+
+    async def enrich(self, listing: Listing, detail: str | None) -> Enrichment:
+        usage.record(1_000_000, 0)
+        return await super().enrich(listing, detail)
+
+
+_ONE_EUR_PER_LISTING = Price(eur_per_m_input=1.0, eur_per_m_output=0.0)
+
+
+async def test_budget_leaves_the_rest_pending_and_skips_bundling() -> None:
+    store = FakeBundleStore([_bundle_item(1), _bundle_item(2)])
+    bundler = FakeBundler([[_bundle_item(1), _bundle_item(2)]])
+
+    summary = await run_ingestion(
+        sources=[StaticSource("src", [make_listing(n) for n in ("a", "b", "c")])],
+        detail_readers={},
+        enricher=CostlyEnricher(),
+        store=store,
+        bundler=bundler,
+        budget=RunBudget(price=_ONE_EUR_PER_LISTING, max_eur=1.5),
+        observed_at=NOW,
+        max_concurrency=1,
+    )
+
+    assert (summary.enriched, summary.deferred) == (2, 1)
+    assert summary.budget_reached
+    assert summary.cost_eur == 2.0
+    assert len(store.saved) == 2
+    assert bundler.offered == []  # bundling waits for the next run
+
+
+async def test_each_source_gets_its_own_row_with_its_cost() -> None:
+    summary = await run_ingestion(
+        sources=[
+            StaticSource("one", [make_listing("a"), make_listing("noise")]),
+            StaticSource(
+                "two",
+                [
+                    make_listing("x", source_id="b"),
+                    make_listing("y", region=None, source_id="b"),
+                ],
+                source_id="b",
+            ),
+            BrokenSource(source_id="broken"),
+        ],
+        detail_readers={},
+        enricher=CostlyEnricher(),
+        store=FakeStore(),
+        budget=RunBudget(price=_ONE_EUR_PER_LISTING, max_eur=100.0),
+        observed_at=NOW,
+    )
+
+    rows = {row.source: row for row in summary.sources}
+    one, two, broken = rows["one"], rows["two"], rows["broken:broken"]
+    assert (one.fetched, one.kept, one.pending, one.enriched, one.relevant) == (
+        2,
+        2,
+        2,
+        2,
+        1,
+    )
+    assert (one.calls, one.cost_eur) == (2, 2.0)
+    assert (two.fetched, two.kept, two.enriched, two.cost_eur) == (2, 1, 1, 1.0)
+    assert broken.error == "ValueError: markup changed"
+    assert (summary.calls, summary.cost_eur) == (3, 3.0)
 
 
 async def test_failed_source_is_reported_and_its_registry_is_incomplete() -> None:

@@ -12,9 +12,12 @@ import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from meinimpact.core.config import Settings
+from meinimpact.infrastructure.alerts import alert
 from meinimpact.infrastructure.database import Database
+from meinimpact.infrastructure.pipeline.drift import find_drift
 from meinimpact.infrastructure.pipeline.ingestion import IngestionSummary
 from meinimpact.infrastructure.pipeline.run_repository import (
     PostgresIngestionRunRepository,
@@ -84,7 +87,8 @@ class IngestionRuns:
             )
 
     async def execute(self, run_id: int) -> None:
-        """Runs ingestion for a claimed run and records how it ended."""
+        """Runs ingestion for a claimed run, records how it ended and raises
+        an alert for everything someone should look at."""
         summary: IngestionSummary | None = None
         error: str | None = None
         try:
@@ -93,13 +97,30 @@ class IngestionRuns:
             logger.exception("Ingestion run %s failed", run_id)
             error = f"{type(exc).__name__}: {exc}"
         async with self._database.session_factory() as session:
-            await PostgresIngestionRunRepository(session).finish(
-                run_id,
-                now=datetime.now(UTC),
-                summary=asdict(summary) if summary is not None else None,
-                error=error,
+            repository = PostgresIngestionRunRepository(session)
+            stored = asdict(summary) if summary is not None else None
+            if summary is not None and stored is not None:
+                summary.drift = find_drift(
+                    stored["sources"], await self._source_history(repository)
+                )
+                stored["drift"] = summary.drift
+            await repository.finish(
+                run_id, now=datetime.now(UTC), summary=stored, error=error
             )
+        for problem in _alerts(summary, error):
+            alert(problem)
         logger.info("Ingestion run %s finished: %s", run_id, summary or error)
+
+    @staticmethod
+    async def _source_history(
+        repository: PostgresIngestionRunRepository,
+    ) -> list[list[dict[str, Any]]]:
+        """Source rows of the latest finished runs, newest first."""
+        return [
+            list(run.summary.get("sources", []))
+            for run in await repository.recent()
+            if run.status == "succeeded" and run.summary
+        ]
 
     async def run_if_due(self) -> bool:
         run_id = await self.claim("scheduled")
@@ -107,6 +128,19 @@ class IngestionRuns:
             return False
         await self.execute(run_id)
         return True
+
+
+def _alerts(summary: IngestionSummary | None, error: str | None) -> list[str]:
+    if summary is None:
+        return [f"Ingestion fehlgeschlagen: {error}"]
+    problems = [f"Quelle fehlgeschlagen: {item}" for item in summary.failed_sources]
+    problems += [f"Quelle auffällig: {item}" for item in summary.drift]
+    if summary.budget_reached:
+        problems.append(
+            f"Budget erreicht ({summary.cost_eur:.2f} €): {summary.deferred} "
+            "Einträge warten auf den nächsten Lauf"
+        )
+    return problems
 
 
 async def run_scheduler(runs: IngestionRuns, check_every: timedelta) -> None:

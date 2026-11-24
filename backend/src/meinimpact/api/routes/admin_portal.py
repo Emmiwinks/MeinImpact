@@ -16,7 +16,7 @@ import uuid
 from collections import defaultdict, deque
 from datetime import UTC, date, datetime, timedelta
 from html import escape
-from typing import Any
+from typing import Any, Protocol
 from urllib.parse import parse_qs
 from zoneinfo import ZoneInfo
 
@@ -25,11 +25,13 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from meinimpact.api.dependencies import (
+    get_admin_pool,
     get_feedback_repository,
     get_ingestion_runs,
     get_usage_repository,
 )
 from meinimpact.core.config import Settings, get_settings
+from meinimpact.domain.entities import Opportunity
 from meinimpact.infrastructure.feedback.postgres_feedback_repository import (
     CardNote,
     DismissedCard,
@@ -41,6 +43,7 @@ from meinimpact.infrastructure.pipeline.run_repository import RunRecord, Schedul
 from meinimpact.infrastructure.usage.postgres_usage_repository import (
     PostgresUsageRepository,
 )
+from meinimpact.services.coverage import Light, PlaceCoverage, coverage
 from meinimpact.services.ingestion_runs import (
     INTERVAL_CHOICES_HOURS,
     IngestionRuns,
@@ -48,6 +51,13 @@ from meinimpact.services.ingestion_runs import (
 )
 
 router = APIRouter(prefix="/admin", include_in_schema=False)
+
+
+class AdminPool(Protocol):
+    async def list_open(
+        self, today: date, *, include_drafts: bool = False
+    ) -> list[Opportunity]: ...
+
 
 _COOKIE = "mi_admin"
 _AUDIENCE = "meinimpact-admin"
@@ -81,16 +91,23 @@ async def dashboard(
     settings: Settings = Depends(get_settings),
     runs: IngestionRuns = Depends(get_ingestion_runs),
     usage: PostgresUsageRepository = Depends(get_usage_repository),
+    pool: AdminPool = Depends(get_admin_pool),
 ) -> Response:
     if not _signed_in(request, settings):
         return _redirect("/admin/login")
     overview = await runs.overview()
     today = datetime.now(_BERLIN).date()
     counts = await usage.since(_week_start(today) - timedelta(weeks=_USAGE_WEEKS - 1))
+    places = coverage(
+        await pool.list_open(today, include_drafts=True), now=datetime.now(UTC)
+    )
     notice = _NOTICES.get(request.query_params.get("notice", ""))
     return _page(
         "Admin",
-        _dashboard_body(overview, settings, notice) + _usage_body(counts, today),
+        _dashboard_body(overview, settings, notice)
+        + _coverage_body(places)
+        + _sources_body(overview)
+        + _usage_body(counts, today),
         refresh=overview.running is not None,
     )
 
@@ -458,8 +475,20 @@ def _run_row(run: RunRecord) -> str:
             ]
         )
         details.append(f'<p class="counts">{counts}</p>')
+        if "cost_eur" in summary:
+            cost = (
+                f"{summary['cost_eur']:.2f} € Mistral · {summary.get('calls', 0)} "
+                "Aufrufe"
+            )
+            if summary.get("budget_reached"):
+                cost += (
+                    f" · Budget erreicht, {summary.get('deferred', 0)} warten auf "
+                    "den nächsten Lauf"
+                )
+            details.append(f'<p class="counts">{escape(cost)}</p>')
     problems = [
         *(f"Quelle: {item}" for item in summary.get("failed_sources", [])),
+        *(f"Auffällig: {item}" for item in summary.get("drift", [])),
         *summary.get("errors", []),
     ]
     if run.error:
@@ -471,6 +500,82 @@ def _run_row(run: RunRecord) -> str:
             f"</summary><ul>{items}</ul></details>"
         )
     return f'<div class="run"><p>{head}</p>{"".join(details)}</div>'
+
+
+_LIGHT_LABELS = {Light.GREEN: "gut", Light.YELLOW: "dünn", Light.RED: "zu wenig"}
+
+
+def _coverage_body(places: list[PlaceCoverage]) -> str:
+    rows = ""
+    for item in places:
+        place = item.place
+        status = "" if place.is_live else " · Entwurf"
+        lines = [
+            f"{item.cards} Karten · {item.new_this_week} neu in 7 Tagen · "
+            f"{item.kinds} Arten · {item.tags} Themen"
+            + (
+                f" · {item.top_source_share:.0%} aus {item.top_source}"
+                if item.top_source
+                else ""
+            ),
+            *item.gaps,
+            *(
+                f"Richtung: {axis} meist Pol {'links' if value < 0 else 'rechts'} "
+                f"({value:+.1f} über {cards} Karten)"
+                for axis, value, cards in item.leans
+            ),
+        ]
+        rows += (
+            f'<div class="run"><p><span class="light {item.light}">'
+            f"{_LIGHT_LABELS[item.light]}</span> {escape(place.name)}"
+            f'<span class="muted">{status}</span></p>'
+            + "".join(f'<p class="counts">{escape(line)}</p>' for line in lines)
+            + "</div>"
+        )
+    return f"""
+<section class="card">
+  <h2>Abdeckung</h2>
+  <p class="muted">Was die App jetzt pro Ort zeigen würde, auch für Entwürfe.
+  Schwellen vorläufig (services/coverage.py). Richtung ist nur ein Hinweis.</p>
+  <div class="runs">{rows}</div>
+</section>"""
+
+
+_SOURCE_COLUMNS = (
+    ("gelesen", "fetched"),
+    ("behalten", "kept"),
+    ("neu/geändert", "pending"),
+    ("angereichert", "enriched"),
+    ("relevant", "relevant"),
+    ("wartet", "deferred"),
+    ("Aufrufe", "calls"),
+)
+
+
+def _sources_body(overview: Overview) -> str:
+    latest = next(
+        (r for r in overview.runs if r.summary and r.summary.get("sources")), None
+    )
+    if latest is None or latest.summary is None:
+        return ""
+    head = "".join(f"<th>{label}</th>" for label, _ in _SOURCE_COLUMNS)
+    rows = ""
+    for row in latest.summary["sources"]:
+        name = escape(str(row.get("source", "?")))
+        if row.get("error"):
+            name += ' <span class="error">Fehler</span>'
+        cells = "".join(f"<td>{row.get(key, 0)}</td>" for _, key in _SOURCE_COLUMNS)
+        rows += (
+            f"<tr><th>{name}</th>{cells}<td>{row.get('cost_eur', 0):.2f} €</td>"
+            f"<td>{row.get('duration_s', 0):.0f} s</td></tr>"
+        )
+    return f"""
+<section class="card">
+  <h2>Quellen</h2>
+  <p class="muted">Lauf vom {_time(latest.started_at)}. Kosten ohne Bündelung.</p>
+  <div class="table"><table><tr><th>Quelle</th>{head}<th>Kosten</th><th>Dauer</th>
+  </tr>{rows}</table></div>
+</section>"""
 
 
 _WEEKDAYS = ("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")
@@ -683,6 +788,10 @@ button.link { background: none; color: var(--muted); padding: 0;
 .status.succeeded { color: var(--ok); }
 .status.failed { color: var(--bad); }
 .status.running { color: var(--run); }
+.light { font-weight: 600; }
+.light.green { color: var(--ok); }
+.light.yellow { color: var(--run); }
+.light.red { color: var(--bad); }
 h3 { font-size: .95rem; margin: 16px 0 6px; }
 .table { overflow-x: auto; }
 table { border-collapse: collapse; font-size: .85rem;

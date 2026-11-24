@@ -11,6 +11,8 @@ from typing import Any, Protocol
 
 import httpx
 
+from meinimpact.infrastructure.ai.usage import record as record_usage
+
 Sleep = Callable[[float], Awaitable[None]]
 
 _RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504})
@@ -62,8 +64,11 @@ class MistralJsonCompleter:
         response = await self._post_with_retry(body)
         data = response.json()
         usage = data.get("usage") or {}
-        self.prompt_tokens += int(usage.get("prompt_tokens") or 0)
-        self.completion_tokens += int(usage.get("completion_tokens") or 0)
+        prompt_tokens = int(usage.get("prompt_tokens") or 0)
+        completion_tokens = int(usage.get("completion_tokens") or 0)
+        self.prompt_tokens += prompt_tokens
+        self.completion_tokens += completion_tokens
+        record_usage(prompt_tokens, completion_tokens)
         content = data["choices"][0]["message"]["content"]
         parsed = json.loads(content)
         if not isinstance(parsed, dict):

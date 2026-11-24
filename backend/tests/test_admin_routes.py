@@ -6,9 +6,14 @@ from zoneinfo import ZoneInfo
 import pytest
 from fastapi.testclient import TestClient
 
-from meinimpact.api.dependencies import get_ingestion_runs, get_usage_repository
+from meinimpact.api.dependencies import (
+    get_admin_pool,
+    get_ingestion_runs,
+    get_usage_repository,
+)
 from meinimpact.api.routes import admin_portal
 from meinimpact.core.config import Settings
+from meinimpact.domain.entities import Opportunity
 from meinimpact.infrastructure.pipeline.run_repository import RunRecord, Schedule
 from meinimpact.main import create_app
 from meinimpact.services.ingestion_runs import Overview
@@ -50,6 +55,18 @@ class FakeUsage:
         return self.counts
 
 
+class FakePool:
+    def __init__(self, open_: list[Opportunity] | None = None) -> None:
+        self.open = open_ or []
+        self.included_drafts: bool | None = None
+
+    async def list_open(
+        self, today: date, *, include_drafts: bool = False
+    ) -> list[Opportunity]:
+        self.included_drafts = include_drafts
+        return self.open
+
+
 @pytest.fixture(autouse=True)
 def _reset_throttle() -> None:
     admin_portal._failures.clear()
@@ -59,6 +76,7 @@ def _client(
     runs: FakeRuns | None = None,
     *,
     usage: FakeUsage | None = None,
+    pool: FakePool | None = None,
     admin_api_key: str | None = "secret",
     admin_password: str | None = "pw",
     mistral_api_key: str | None = "key",
@@ -71,8 +89,10 @@ def _client(
     app = create_app(settings)
     fake = runs or FakeRuns()
     fake_usage = usage or FakeUsage()
+    fake_pool = pool or FakePool()
     app.dependency_overrides[get_ingestion_runs] = lambda: fake
     app.dependency_overrides[get_usage_repository] = lambda: fake_usage
+    app.dependency_overrides[get_admin_pool] = lambda: fake_pool
     return TestClient(app, follow_redirects=False)
 
 
@@ -80,9 +100,10 @@ def _signed_in(
     runs: FakeRuns | None = None,
     *,
     usage: FakeUsage | None = None,
+    pool: FakePool | None = None,
     **kwargs: str | None,
 ) -> TestClient:
-    client = _client(runs, usage=usage, **kwargs)
+    client = _client(runs, usage=usage, pool=pool, **kwargs)
     response = client.post("/admin/login", data={"password": "pw"})
     assert response.status_code == 303
     return client
@@ -324,6 +345,60 @@ def test_dashboard_shows_usage_per_day_and_week() -> None:
     assert row(f"ab {monday:%d.%m.}", 3, 0, 0, 0, 0, 2) in page
     last_week = monday - timedelta(weeks=1)
     assert row(f"ab {last_week:%d.%m.}", 0, 0, 0, 0, 0, 5) in page
+
+
+def test_dashboard_shows_sources_cost_and_drift_of_the_latest_run() -> None:
+    started = datetime(2026, 11, 24, 10, 0, tzinfo=UTC)
+    runs = FakeRuns()
+    runs.runs = [
+        RunRecord(
+            id=5,
+            trigger="scheduled",
+            status="succeeded",
+            started_at=started,
+            finished_at=started + timedelta(minutes=9),
+            summary={
+                "cost_eur": 0.734,
+                "calls": 61,
+                "budget_reached": True,
+                "deferred": 12,
+                "drift": ["weact: 0 gelesen (sonst 9)"],
+                "sources": [
+                    {
+                        "source": "openpetition:dresden",
+                        "fetched": 40,
+                        "kept": 31,
+                        "pending": 4,
+                        "enriched": 4,
+                        "relevant": 3,
+                        "deferred": 0,
+                        "calls": 10,
+                        "cost_eur": 0.05,
+                        "duration_s": 12.4,
+                    },
+                    {"source": "weact", "fetched": 0, "error": "Timeout"},
+                ],
+            },
+            error=None,
+        )
+    ]
+
+    page = _signed_in(runs).get("/admin").text
+
+    assert "0.73 € Mistral · 61 Aufrufe · Budget erreicht, 12 warten" in page
+    assert "Auffällig: weact: 0 gelesen (sonst 9)" in page
+    assert "<th>openpetition:dresden</th><td>40</td><td>31</td>" in page
+    assert 'weact <span class="error">Fehler</span>' in page
+
+
+def test_dashboard_shows_coverage_per_place_including_drafts() -> None:
+    pool = FakePool()
+
+    page = _signed_in(pool=pool).get("/admin").text
+
+    assert pool.included_drafts is True
+    assert "<h2>Abdeckung</h2>" in page
+    assert '<span class="light red">zu wenig</span> Dresden' in page
 
 
 def test_logout_clears_session() -> None:

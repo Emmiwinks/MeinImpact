@@ -26,6 +26,7 @@ from meinimpact.core.middleware import (
     RequestSizeLimitMiddleware,
     SecurityHeadersMiddleware,
 )
+from meinimpact.infrastructure.alerts import init_sentry
 from meinimpact.infrastructure.mdb.wks_service import WksService
 from meinimpact.services.beta_feedback import run_feedback_cleanup
 from meinimpact.services.impact_news import run_news_scheduler
@@ -55,6 +56,7 @@ _skip_unlogged_paths = _SkipUnloggedPaths()
 def create_app(settings: Settings | None = None) -> FastAPI:
     """Creates and configures the FastAPI app."""
     resolved_settings = settings or get_settings()
+    init_sentry(resolved_settings.sentry_dsn, resolved_settings.environment)
     # addFilter ignores a filter that is already attached
     logging.getLogger("uvicorn.access").addFilter(_skip_unlogged_paths)
 

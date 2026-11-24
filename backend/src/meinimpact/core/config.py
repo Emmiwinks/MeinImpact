@@ -48,6 +48,13 @@ class Settings(BaseSettings):
     # production turns it on in fly.toml. The interval is set on /admin.
     ingestion_scheduler_enabled: bool = False
     ingestion_check_minutes: int = 15
+    # What one ingestion run may spend on Mistral (enrichment and bundling).
+    # Provisional: a full re-enrichment after a version bump then spreads
+    # over a few runs instead of costing everything at once.
+    ingestion_max_cost_eur: float = 2.0
+    # Alerts (failed or drifting sources, budget reached, crashes) also go to
+    # Sentry, which mails them. Unset: logs and /admin only.
+    sentry_dsn: str | None = None
     # Mein Impact news for tracked opportunities (services/impact_news.py).
     # Off by default like ingestion; fly.toml turns it on.
     impact_news_enabled: bool = False
