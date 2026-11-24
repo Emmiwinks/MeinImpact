@@ -10,6 +10,7 @@ import '../../tracking/domain/action_log.dart';
 import '../../tracking/domain/progress.dart';
 import '../../tracking/streak_flame.dart';
 import '../data/bundled_cards.dart';
+import '../data/hand_hints.dart';
 import '../data/hand_mix.dart';
 import '../data/opportunity_relevance_ranker.dart';
 import '../domain/interest_config.dart';
@@ -288,6 +289,7 @@ class _AktionenTabState extends State<AktionenTab> with WidgetsBindingObserver {
           onPlayed: (ranked) => _complete(ranked.opportunity),
           onOpened: (ranked) {
             Usage.current.count(UsageEvent.cardTurned);
+            HandHints.current.markTurnSeen();
             Notifications.current.lookedAt(ranked.opportunity);
             widget.onInterestSignal?.call(
               ranked.opportunity.affectedTags,
@@ -298,6 +300,8 @@ class _AktionenTabState extends State<AktionenTab> with WidgetsBindingObserver {
           // The web teaser has no feedback to collect.
           onThrow: widget.isWeb ? null : _throwAway,
           throwHint: widget.dismissedIds.isEmpty,
+          turnHint: !HandHints.current.turnSeen,
+          onTurnHinted: HandHints.current.markTurnSeen,
         );
       },
     );

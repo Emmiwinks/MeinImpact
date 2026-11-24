@@ -33,6 +33,8 @@ class HandView extends StatefulWidget {
     this.onVote,
     this.onThrow,
     this.throwHint = false,
+    this.turnHint = false,
+    this.onTurnHinted,
     this.doneIds = const {},
     super.key,
   });
@@ -55,6 +57,12 @@ class HandView extends StatefulWidget {
   // Shows once, for someone who never threw a card away, that a long press
   // lifts a card: the front card rises once and a line says so.
   final bool throwHint;
+  // Shows once, for someone who never turned a card, that a card has a
+  // back: the front card turns over and back by itself. The throw hint
+  // waits for it.
+  final bool turnHint;
+  // The turn hint has run (or was cut short by the user).
+  final VoidCallback? onTurnHinted;
 
   @override
   State<HandView> createState() => _HandViewState();
@@ -77,13 +85,24 @@ class _HandViewState extends State<HandView> with TickerProviderStateMixin {
   late final AnimationController _flight;
   // Runs the throw hint once: the dip, then the line fades out.
   late final AnimationController _hint;
+  // The front card is still to turn over and back once.
+  late bool _peek = widget.turnHint;
+
+  bool get _throwHinted => widget.throwHint && widget.onThrow != null;
 
   @override
   void initState() {
     super.initState();
     _flight = AnimationController(vsync: this, duration: MiMotion.flight);
     _hint = AnimationController(vsync: this, duration: _hintDuration);
-    if (widget.throwHint && widget.onThrow != null) _hint.forward();
+    if (_throwHinted && !_peek) _hint.forward();
+  }
+
+  void _peeked() {
+    if (!_peek || !mounted) return;
+    setState(() => _peek = false);
+    widget.onTurnHinted?.call();
+    if (_throwHinted) _hint.forward();
   }
 
   @override
@@ -247,6 +266,8 @@ class _HandViewState extends State<HandView> with TickerProviderStateMixin {
         doneIds: widget.doneIds,
         onOpened: () => widget.onOpened?.call(ranked),
         onVote: widget.onVote,
+        peek: isFront && _peek,
+        onPeeked: _peeked,
       );
 
   @override

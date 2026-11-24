@@ -6,6 +6,7 @@ import 'package:meinimpact/l10n/app_localizations.dart';
 import 'package:meinimpact/src/app/main_tab_screen.dart';
 import 'package:meinimpact/src/app/theme/mi_theme.dart';
 import 'package:meinimpact/src/core/feedback/beta_feedback.dart';
+import 'package:meinimpact/src/features/feed/data/hand_hints.dart';
 import 'package:meinimpact/src/features/feed/data/opportunity_relevance_ranker.dart';
 import 'package:meinimpact/src/features/feed/domain/interest_weights.dart';
 import 'package:meinimpact/src/features/feed/domain/letter_recipients.dart';
@@ -272,6 +273,45 @@ void main() {
       expect(_fanAt('Karte 2 von 3'), findsOneWidget);
       expect(find.text('Antwort 2'), findsNothing);
       expect(find.text('Antwort 1'), findsNothing);
+    });
+
+    testWidgets('the first time, the front card shows its back once', (
+      tester,
+    ) async {
+      HandHints.current = HandHints.unseen();
+      addTearDown(() => HandHints.current = HandHints.off());
+      await tester.pumpWidget(_Tab(pool: _pool(3)));
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Antwort 1'), findsNothing);
+
+      // Turned over by itself, held a moment, then back; the throw hint
+      // comes after it.
+      // In frames, so the timers and the turn both run.
+      Future<void> wait(int ms) async {
+        for (var i = 0; i < ms ~/ 100; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
+        }
+      }
+
+      await wait(1500);
+      expect(find.text('Antwort 1'), findsOneWidget);
+      expect(find.text('Lange drücken zum Weglegen'), findsNothing);
+      await wait(1500);
+      expect(find.text('Antwort 1'), findsNothing);
+      expect(HandHints.current.turnSeen, isTrue);
+      await wait(2000);
+      expect(find.text('Lange drücken zum Weglegen'), findsOneWidget);
+      await tester.pumpAndSettle();
+
+      // Seen once, a new hand does not do it again.
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpWidget(_Tab(pool: _pool(3)));
+      await tester.pump();
+      await tester.pump();
+      await wait(1500);
+      expect(find.text('Antwort 1'), findsNothing);
+      await tester.pumpAndSettle();
     });
 
     testWidgets('after the last card the hand ends', (tester) async {

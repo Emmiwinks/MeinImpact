@@ -24,6 +24,8 @@ class ActionCard extends StatefulWidget {
     this.isFront = true,
     this.contentOpacity = 1,
     this.drift = 0,
+    this.peek = false,
+    this.onPeeked,
     super.key,
   });
 
@@ -46,10 +48,21 @@ class ActionCard extends StatefulWidget {
   // How far the card is from the front of the fan, -1 to 1; the art slides
   // a little against it, so it seems to sit behind the card's window.
   final double drift;
+  // Dealt with [peek], the card turns over and back once by itself, so
+  // the user sees it has a back; [onPeeked] follows, also when a tap or a
+  // swipe cut it short or it never ran.
+  final bool peek;
+  final VoidCallback? onPeeked;
 
   @override
   State<ActionCard> createState() => _ActionCardState();
 }
+
+// The peek: a moment to land on the table first, a quick turn, long
+// enough on the back to see there is more, and back.
+const _peekDelay = Duration(milliseconds: 700);
+const _peekTurn = Duration(milliseconds: 420);
+const _peekHold = Duration(milliseconds: 900);
 
 class _ActionCardState extends State<ActionCard>
     with SingleTickerProviderStateMixin {
@@ -75,6 +88,32 @@ class _ActionCardState extends State<ActionCard>
   void initState() {
     super.initState();
     _turn = AnimationController(vsync: this, duration: MiMotion.flip);
+    if (widget.peek) _peekAtBack();
+  }
+
+  Future<void> _peekAtBack() async {
+    // Told even when the card left the table meanwhile.
+    final done = widget.onPeeked;
+    await Future<void>.delayed(_peekDelay);
+    if (!mounted) {
+      done?.call();
+      return;
+    }
+    // Only from face up on the front card, and not when the system asks
+    // for no animations.
+    if (widget.isFront && _turn.value == 0 && !MiMotion.reduced(context)) {
+      try {
+        await _turn.animateTo(1, duration: _peekTurn).orCancel;
+        await Future<void>.delayed(_peekHold);
+        // A tap during the hold already turned it back.
+        if (mounted && widget.isFront && _turn.value == 1) {
+          await _turn.animateBack(0, duration: _peekTurn).orCancel;
+        }
+      } on TickerCanceled {
+        // A tap or swipe took over.
+      }
+    }
+    done?.call();
   }
 
   @override

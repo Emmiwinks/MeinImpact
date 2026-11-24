@@ -13,6 +13,7 @@ import 'src/core/security/installation_id_store.dart';
 import 'src/core/security/token_store.dart';
 import 'src/core/usage/usage.dart';
 import 'src/features/feed/data/dismissed_cards_store.dart';
+import 'src/features/feed/data/hand_hints.dart';
 import 'src/features/feed/data/remote_opportunity_repository.dart';
 import 'src/features/notifications/notifications.dart';
 import 'src/features/tracking/data/action_log_store.dart';
@@ -52,6 +53,7 @@ void main() async {
   final initialActionLog = await actionLogStore.load();
   const dismissedStore = DismissedCardsStore();
   final initialDismissed = await dismissedStore.load();
+  HandHints.current = await HandHints.load();
 
   runApp(
     MeinImpactApp.withProfile(
