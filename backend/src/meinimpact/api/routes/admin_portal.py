@@ -536,7 +536,6 @@ _REASONS = (
     ("too_much_effort", "Zu viel Aufwand", "Appeal"),
     ("unclear_text", "Text unklar oder falsch", "Anreicherung"),
     ("dont_support", "Möchte ich nicht unterstützen", "Werte"),
-    ("already_done", "Schon erledigt", ""),
     ("other", "Sonstiges", ""),
 )
 _REASON_LABELS = {key: label for key, label, _ in _REASONS}

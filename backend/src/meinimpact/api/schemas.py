@@ -322,7 +322,8 @@ class CardRanking(BaseModel):
     """The score parts the app's ranker gave a card: never profile data.
 
     Each part is what it added to the card's blended score
-    (opportunity_relevance_ranker.dart); `werte` is the 0-1 tie-break.
+    (opportunity_relevance_ranker.dart); `haltung` is the Werteprofil and
+    Stadthaushalt part, negative where the card goes against the user.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -333,7 +334,7 @@ class CardRanking(BaseModel):
     situation: float = Field(ge=-100, le=100)
     interest: float = Field(ge=-100, le=100)
     locality: float = Field(ge=-100, le=100)
-    werte: float = Field(ge=0, le=1)
+    haltung: float = Field(ge=-100, le=100)
     # The card took an exploration slot (a topic with no learned interest yet)
     exploration: bool = False
 

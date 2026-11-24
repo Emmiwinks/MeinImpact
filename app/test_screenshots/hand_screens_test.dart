@@ -51,6 +51,8 @@ void main() {
     List<ActionLogEntry> doneActions = const [],
     ImpactNewsFeed news = const ImpactNewsFeed(),
     Future<void> Function(WidgetTester tester)? act,
+    // False to catch a motion midway: [act] then pumps itself.
+    bool settle = true,
   }) async {
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3;
@@ -83,10 +85,16 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    if (settle) {
+      await tester.pumpAndSettle();
+    } else {
+      // The pool, then the hand.
+      await tester.pump();
+      await tester.pump();
+    }
     if (act != null) {
       await act(tester);
-      await tester.pumpAndSettle();
+      if (settle) await tester.pumpAndSettle();
     }
     await tester.runAsync(() async {
       final boundary = _boundary.currentContext!.findRenderObject()!
@@ -208,6 +216,133 @@ void main() {
       ),
     );
   }
+  // Throwing a card away: a long press on [from], carried [share] of the
+  // way to the trash can and held there; or let go there with [drop].
+  final trash = find.byWidgetPredicate(
+    (w) => w is Icon && w.semanticLabel == 'Papierkorb',
+  );
+  Future<void> carry(
+    WidgetTester t, {
+    Offset from = const Offset(195, 300),
+    double share = 1,
+    bool drop = false,
+  }) async {
+    final gesture = await t.startGesture(from);
+    await t.pump(const Duration(milliseconds: 600));
+    await t.pump(MiMotion.quick);
+    final to = Offset.lerp(from, t.getCenter(trash), share)!;
+    for (var i = 1; i <= 12; i++) {
+      await gesture.moveTo(Offset.lerp(from, to, i / 12)!);
+      await t.pump(const Duration(milliseconds: 16));
+    }
+    await t.pump(MiMotion.quick);
+    if (drop) {
+      await gesture.up();
+    } else {
+      addTearDown(gesture.up);
+    }
+  }
+
+  for (final brightness in Brightness.values) {
+    testWidgets(
+      'throw hint, ${brightness.name}',
+      (t) => shoot(
+        t,
+        'phone-throw-hint-${brightness.name}',
+        brightness: brightness,
+        settle: false,
+        // The lift at its highest.
+        act: (t) => t.pump(const Duration(milliseconds: 1235)),
+      ),
+    );
+    testWidgets(
+      'card lifted, on its way, ${brightness.name}',
+      (t) => shoot(
+        t,
+        'phone-throw-carry-${brightness.name}',
+        brightness: brightness,
+        settle: false,
+        act: (t) async {
+          await t.pumpAndSettle();
+          await carry(t, share: 0.45);
+        },
+      ),
+    );
+    testWidgets(
+      'card over the trash, ${brightness.name}',
+      (t) => shoot(
+        t,
+        'phone-throw-hot-${brightness.name}',
+        brightness: brightness,
+        settle: false,
+        act: (t) async {
+          await t.pumpAndSettle();
+          await carry(t);
+        },
+      ),
+    );
+    testWidgets(
+      'reason sheet, ${brightness.name}',
+      (t) => shoot(
+        t,
+        'phone-throw-reasons-${brightness.name}',
+        brightness: brightness,
+        act: (t) => carry(t, drop: true),
+      ),
+    );
+    testWidgets(
+      'feedback sheet, ${brightness.name}',
+      (t) => shoot(
+        t,
+        'phone-feedback-sheet-${brightness.name}',
+        brightness: brightness,
+        act: (t) async {
+          await t.tap(find.text('Dein Feedback'));
+          await t.pumpAndSettle();
+          await t.tap(find.text('Fehler'));
+          await t.enterText(
+            find.byType(TextField),
+            'Beim Zurückkommen aus dem Browser war die Karte kurz weg.',
+          );
+        },
+      ),
+    );
+  }
+  testWidgets(
+    'back lifted, dark',
+    (t) => shoot(
+      t,
+      'phone-throw-carry-back-dark',
+      settle: false,
+      act: (t) async {
+        await t.pumpAndSettle();
+        await t.tap(find.textContaining('Blitzer'));
+        await t.pumpAndSettle();
+        await carry(
+          t,
+          from: t.getCenter(find.text('Dafür spricht')),
+          share: 0.45,
+        );
+      },
+    ),
+  );
+  testWidgets(
+    'reason with a note, dark',
+    (t) => shoot(
+      t,
+      'phone-throw-note-dark',
+      act: (t) async {
+        await carry(t, drop: true);
+        await t.pumpAndSettle();
+        await t.tap(find.text('Möchte ich nicht unterstützen'));
+        await t.pumpAndSettle();
+        await t.enterText(
+          find.byType(TextField),
+          'Blitzer bringen nichts, lieber Schwellen.',
+        );
+      },
+    ),
+  );
   testWidgets(
     'all actions, dark',
     (t) => shoot(

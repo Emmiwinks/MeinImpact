@@ -90,7 +90,7 @@ time. Never sent to an LLM.
 
 | Data | Table | Retention | Purpose |
 |---|---|---|---|
-| Card thrown away: opportunity id, reason, optional note (≤500), the ranker's score parts for that card (position, appeal, situation, interest, locality, Werte alignment; no profile fields), app version | `card_feedback` | 180 days (`feedback_retention_days`, daily cleanup) | recalibrate the ranking |
+| Card thrown away: opportunity id, reason, optional note (≤500), the ranker's score parts for that card (position, appeal, situation, interest, locality, Haltung; no profile fields), app version | `card_feedback` | 180 days (`feedback_retention_days`, daily cleanup) | recalibrate the ranking |
 | Free-text message: kind, text (≤2000), screen, app version, platform | `beta_feedback` | 180 days | fix bugs, collect ideas |
 
 The reason "Möchte ich nicht unterstützen" plus its note can reveal a
@@ -137,7 +137,10 @@ One screen after the intro, before the Werte questions. Blocking; the
    - For a letter, the user's text goes briefly to an AI in the EU that
      drafts it; we do not store it.
    - Feedback the user sends (why a card went away, messages) is stored
-     under a code name for 180 days. (Wording still to draft.)
+     under a code name for 180 days. On screen: "Wenn du uns Feedback
+     gibst, etwa warum du eine Karte weglegst, speichern wir es unter
+     einem Codenamen, nicht unter deinem Namen, und löschen es nach 180
+     Tagen."
 2. Link to the full policy, as a joke: "Und hier das rechtssichere
    Bla-bla zum Gegenlesen."
 3. Age confirmation checkbox: at least 16 (GDPR consent age in

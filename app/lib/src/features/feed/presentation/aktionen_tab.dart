@@ -2,7 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../app/theme/mi_theme.dart';
+import '../../../core/feedback/beta_feedback.dart';
 import '../../../core/usage/usage.dart';
+import '../../feedback/feedback_sheets.dart';
 import '../../notifications/notifications.dart';
 import '../../tracking/domain/action_log.dart';
 import '../../tracking/domain/progress.dart';
@@ -53,6 +55,8 @@ class AktionenTab extends StatefulWidget {
     this.interestConfig = const InterestConfig(),
     this.openAction = ActionBrowserScreen.open,
     this.openLetter = LetterScreen.open,
+    this.dismissedIds = const {},
+    this.onDismissed,
     this.isWeb = kIsWeb,
     super.key,
   });
@@ -73,6 +77,10 @@ class AktionenTab extends StatefulWidget {
   final ActionOpener openAction;
   // The letter for council decisions; replaceable in tests.
   final LetterOpener openLetter;
+  // Opportunity ids thrown away from the hand: never dealt again.
+  final Set<String> dismissedIds;
+  // Ids just thrown away, to keep.
+  final ValueChanged<Set<String>>? onDismissed;
   // The web teaser build; replaceable in tests.
   final bool isWeb;
 
@@ -162,6 +170,34 @@ class _AktionenTabState extends State<AktionenTab> with WidgetsBindingObserver {
         ?.call(opportunity.affectedTags, InterestSignal.acted);
   }
 
+  // A card pulled off the hand: why, if the user says. Resolves to false
+  // when they keep it after all.
+  Future<bool> _throwAway(RankedOpportunity ranked, int position) async {
+    final verdict = await showCardReasonSheet(context);
+    if (verdict?.keep ?? false) return false;
+    Usage.current.count(UsageEvent.cardDismissed);
+    final opportunity = ranked.opportunity;
+    // A bundle goes with all its options.
+    widget.onDismissed?.call(
+      ranked.isBundle
+          ? {for (final o in ranked.options) o.opportunity.id}
+          : {opportunity.id},
+    );
+    final reason = verdict?.reason;
+    if (reason == null) return true;
+    BetaFeedback.current.card(
+      opportunityId: opportunity.id,
+      reason: reason,
+      note: verdict?.note,
+      ranking: ranked.parts.toFeedback(position: position),
+    );
+    if (reason == CardReason.notInterested) {
+      widget.onInterestSignal
+          ?.call(opportunity.affectedTags, InterestSignal.less);
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     final hand = Column(
@@ -199,7 +235,13 @@ class _AktionenTabState extends State<AktionenTab> with WidgetsBindingObserver {
         final pool = snapshot.data ?? const <RankedOpportunity>[];
         // Mixed after the done ones are out, so the hand on screen is mixed
         final opportunities = mixHand(
-          bundleCards(pool, doneIds: widget.doneIds),
+          bundleCards(
+            [
+              for (final r in pool)
+                if (!widget.dismissedIds.contains(r.opportunity.id)) r,
+            ],
+            doneIds: widget.doneIds,
+          ),
           handSize: kHandSize,
         );
         if (opportunities.isEmpty) {
@@ -232,6 +274,9 @@ class _AktionenTabState extends State<AktionenTab> with WidgetsBindingObserver {
             );
           },
           onVote: (tag, signal) => widget.onInterestSignal?.call([tag], signal),
+          // The web teaser has no feedback to collect.
+          onThrow: widget.isWeb ? null : _throwAway,
+          throwHint: widget.dismissedIds.isEmpty,
         );
       },
     );

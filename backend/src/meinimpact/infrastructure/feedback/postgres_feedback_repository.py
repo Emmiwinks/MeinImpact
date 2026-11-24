@@ -3,8 +3,8 @@
 Each reason points at one ranking knob: `too_far` at LocalityConfig,
 `not_interested` at the interest weights, `not_affected` at the Lebenslagen
 match, `too_much_effort` at appeal, `unclear_text` at the enrichment prompts,
-`dont_support` at the Werte match. `already_done` and `other` are read by
-hand.
+`dont_support` at the Werte match. `other` is read by hand. (No "already
+done": a card done through the app leaves the hand on "Fertig".)
 """
 
 import uuid
@@ -29,7 +29,6 @@ CardReason = Literal[
     "too_much_effort",
     "unclear_text",
     "dont_support",
-    "already_done",
     "other",
 ]
 MessageKind = Literal["bug", "idea", "praise", "other"]

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meinimpact/src/features/feed/data/opportunity_relevance_ranker.dart';
+import 'package:meinimpact/src/features/feed/domain/interest_weights.dart';
 import 'package:meinimpact/src/features/feed/domain/lebenslagen_search.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity.dart';
 import 'package:meinimpact/src/features/feed/domain/user_profile.dart';
@@ -273,6 +274,67 @@ void main() {
       ];
       final ranked = ranker.rank(pool, const UserProfile());
       expect(ranked, hasLength(2));
+    });
+
+    test('each card keeps the parts of its score, for beta feedback', () {
+      final pool = [
+        _opportunity(id: 'a', everyday: 5, accessible: 5),
+        _opportunity(
+          id: 'b',
+          personalImpactSnippets: const {'wohnsituation:mieter': 'Du.'},
+          werteRelevanz: const {'wirtschaft_gleichheit': 1},
+        ),
+      ];
+      const profile = UserProfile(
+        lebenslagen: {'mieter'},
+        werte: {
+          'wirtschaft_gleichheit': -2,
+          'wirtschaft_staat': -1,
+          'diplomatie_nation': 1,
+          'freiheit_staat': 1,
+        },
+      );
+      final ranked = ranker.rank(pool, profile);
+      final b = ranked.firstWhere((r) => r.opportunity.id == 'b');
+      expect(b.parts.situation, greaterThan(0));
+      // A petition against the user's stance pulls the card down.
+      expect(b.parts.haltung, lessThan(0));
+      // The order is the order of the totals.
+      expect(
+        ranked.map((r) => r.parts.total).toList(),
+        [...ranked.map((r) => r.parts.total)]..sort((x, y) => y.compareTo(x)),
+      );
+      expect(b.parts.toFeedback(position: 3), {
+        'position': 3,
+        'score': b.parts.total,
+        'appeal': b.opportunity.appeal,
+        'situation': b.parts.situation,
+        'interest': 0.0,
+        'locality': b.parts.locality,
+        'haltung': b.parts.haltung,
+        'exploration': false,
+      });
+      // A bundle's face keeps its own parts.
+      expect(b.withOptions([b, ranked.first]).parts, same(b.parts));
+    });
+
+    test('a card in an exploration slot says so in its parts', () {
+      final now = DateTime(2026, 11, 23);
+      final pool = [
+        for (var i = 0; i < 5; i++)
+          _opportunity(id: 'liked-$i', affectedTags: const ['Verkehr']),
+        _opportunity(id: 'new', affectedTags: const ['Kultur']),
+      ];
+      final profile = UserProfile(
+        interests: InterestWeights(
+          weights: const {'Verkehr': 0.8},
+          asOf: now,
+        ),
+      );
+      final ranked = ranker.rank(pool, profile, now: now);
+      final explored = ranked.where((r) => r.parts.exploration).toList();
+      expect(explored.single.opportunity.id, 'new');
+      expect(ranked.indexOf(explored.single), 4);
     });
 
     test('opportunities with a matched personal snippet rank above others', () {

@@ -6,6 +6,7 @@ import 'package:meinimpact/l10n/app_localizations.dart';
 
 import '../core/profile/user_profile_store.dart';
 import '../core/usage/usage.dart';
+import '../features/feed/data/dismissed_cards_store.dart';
 import '../features/feed/domain/home_location.dart';
 import '../features/feed/domain/interest_config.dart';
 import '../features/feed/domain/interest_weights.dart';
@@ -41,15 +42,19 @@ class MeinImpactApp extends StatefulWidget {
         _profileStore = null,
         _initialProfile = null,
         _actionLogStore = null,
-        _initialActionLog = const ActionLog();
+        _initialActionLog = const ActionLog(),
+        _dismissedStore = null,
+        _initialDismissed = const {};
 
   /// Production constructor — shows onboarding when no profile exists.
   const MeinImpactApp.withProfile({
     required OpportunityRepository opportunityRepository,
     required UserProfileStore profileStore,
     required ActionLogStore actionLogStore,
+    DismissedCardsStore? dismissedStore,
     UserProfile? initialProfile,
     ActionLog initialActionLog = const ActionLog(),
+    Set<String> initialDismissed = const {},
     InterestConfig interestConfig = const InterestConfig(),
     super.key,
   })  : _opportunityRepository = opportunityRepository,
@@ -57,7 +62,9 @@ class MeinImpactApp extends StatefulWidget {
         _profileStore = profileStore,
         _initialProfile = initialProfile,
         _actionLogStore = actionLogStore,
-        _initialActionLog = initialActionLog;
+        _initialActionLog = initialActionLog,
+        _dismissedStore = dismissedStore,
+        _initialDismissed = initialDismissed;
 
   final OpportunityRepository _opportunityRepository;
   final InterestConfig _interestConfig;
@@ -65,6 +72,8 @@ class MeinImpactApp extends StatefulWidget {
   final UserProfile? _initialProfile;
   final ActionLogStore? _actionLogStore;
   final ActionLog _initialActionLog;
+  final DismissedCardsStore? _dismissedStore;
+  final Set<String> _initialDismissed;
 
   @override
   State<MeinImpactApp> createState() => _MeinImpactAppState();
@@ -87,6 +96,8 @@ class _MeinImpactAppState extends State<MeinImpactApp>
   // The tab the shell opens on: back from those two, it is Mein Profil.
   int _homeTab = 1;
   late ActionLog _actionLog;
+  // Cards thrown away from the hand.
+  late Set<String> _dismissed;
   final _navigatorKey = GlobalKey<NavigatorState>();
   // Tabs a notification asks to open.
   final _openTab = StreamController<int>.broadcast();
@@ -96,6 +107,7 @@ class _MeinImpactAppState extends State<MeinImpactApp>
     super.initState();
     _profile = widget._initialProfile;
     _actionLog = widget._initialActionLog;
+    _dismissed = widget._initialDismissed;
     WidgetsBinding.instance.addObserver(this);
     unawaited(Usage.current.markActive());
     unawaited(_locateHomeIfMissing());
@@ -207,6 +219,12 @@ class _MeinImpactAppState extends State<MeinImpactApp>
     await widget._actionLogStore?.save(updated);
     // The flame may be safe now, and reminders about it are done.
     Notifications.current.refresh();
+  }
+
+  Future<void> _onCardsDismissed(Set<String> ids) async {
+    final updated = {..._dismissed, ...ids};
+    setState(() => _dismissed = updated);
+    await widget._dismissedStore?.save(updated);
   }
 
   Future<void> _onWerteComplete(Map<String, double> werte) async {
@@ -342,6 +360,8 @@ class _MeinImpactAppState extends State<MeinImpactApp>
         doneIds: _actionLog.doneIds,
         doneActions: _actionLog.entries,
         onActionDone: _onActionDone,
+        dismissedIds: _dismissed,
+        onCardsDismissed: _onCardsDismissed,
       );
     }
 
@@ -378,6 +398,8 @@ class _MeinImpactAppState extends State<MeinImpactApp>
         doneIds: _actionLog.doneIds,
         doneActions: _actionLog.entries,
         onActionDone: _onActionDone,
+        dismissedIds: _dismissed,
+        onCardsDismissed: _onCardsDismissed,
         interestConfig: widget._interestConfig,
       );
     }

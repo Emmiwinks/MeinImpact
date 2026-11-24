@@ -9,6 +9,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 enum UsageEvent {
   onboardingDone('onboarding_done'),
   cardTurned('card_turned'),
+  cardDismissed('card_dismissed'),
   actionOpened('action_opened'),
   actionDone('action_done'),
   letterToMailApp('letter_to_mail_app'),

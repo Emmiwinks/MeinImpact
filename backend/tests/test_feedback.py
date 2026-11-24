@@ -42,7 +42,7 @@ _RANKING = {
     "situation": 0.5,
     "interest": 0.1,
     "locality": 0.2,
-    "werte": 0.5,
+    "haltung": -0.15,
 }
 
 
@@ -167,11 +167,15 @@ def test_blank_note_is_kept_as_none() -> None:
     "overrides",
     [
         {"reason": "seh_ich_anders"},
+        # Done cards leave on "Fertig", so this reason was dropped
+        {"reason": "already_done"},
         {"note": "x" * 501},
         # Anything beyond the score parts is refused, so no profile data
         # can slip in through the ranking
         {"ranking": {**_RANKING, "plz": "01067"}},
-        {"ranking": {**_RANKING, "werte": 1.5}},
+        {"ranking": {**_RANKING, "haltung": 150}},
+        # The old 0-1 Werte tie-break is gone with the ranker that had it
+        {"ranking": {**_RANKING, "werte": 0.5}},
     ],
 )
 def test_invalid_card_feedback_is_rejected(overrides: dict[str, Any]) -> None:

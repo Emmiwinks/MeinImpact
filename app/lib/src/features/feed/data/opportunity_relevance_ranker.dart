@@ -6,6 +6,52 @@ import '../domain/locality_config.dart';
 import '../domain/opportunity.dart';
 import '../domain/user_profile.dart';
 
+/// What each signal added to a card's blended score (see
+/// OpportunityRelevanceRanker), kept per card so a thrown-away card can
+/// tell the beta feedback why it was dealt.
+class ScoreParts {
+  const ScoreParts({
+    this.appeal = 0,
+    this.situation = 0,
+    this.interest = 0,
+    this.locality = 0,
+    this.haltung = 0,
+    this.exploration = false,
+  });
+
+  final double appeal;
+  final double situation;
+  final double interest;
+  final double locality;
+  final double haltung;
+  // The card took an exploration slot, not its place by score.
+  final bool exploration;
+
+  double get total => appeal + situation + interest + locality + haltung;
+
+  /// The ranking snapshot of POST /v1/feedback/card, for the card at
+  /// [position] in the hand (0 = first).
+  Map<String, Object?> toFeedback({required int position}) => {
+        'position': position,
+        'score': total,
+        'appeal': appeal,
+        'situation': situation,
+        'interest': interest,
+        'locality': locality,
+        'haltung': haltung,
+        'exploration': exploration,
+      };
+
+  ScoreParts asExploration() => ScoreParts(
+        appeal: appeal,
+        situation: situation,
+        interest: interest,
+        locality: locality,
+        haltung: haltung,
+        exploration: true,
+      );
+}
+
 /// An opportunity plus the on-device-computed relevance facts the UI needs,
 /// computed once here rather than per widget rebuild.
 class RankedOpportunity {
@@ -17,12 +63,19 @@ class RankedOpportunity {
     this.matchStrength = 0,
     this.haltung = 0,
     this.inOwnNeighbourhood = false,
+    this.parts = const ScoreParts(),
     this.options = const [],
   });
 
   /// This card as the face of a bundle: [options] are all its members,
   /// itself included, best ranked first (see bundleCards).
-  RankedOpportunity withOptions(List<RankedOpportunity> options) {
+  RankedOpportunity withOptions(List<RankedOpportunity> options) =>
+      _copy(options: options);
+
+  RankedOpportunity _copy({
+    ScoreParts? parts,
+    List<RankedOpportunity>? options,
+  }) {
     return RankedOpportunity(
       opportunity: opportunity,
       matchedSnippet: matchedSnippet,
@@ -31,11 +84,14 @@ class RankedOpportunity {
       matchStrength: matchStrength,
       haltung: haltung,
       inOwnNeighbourhood: inOwnNeighbourhood,
-      options: options,
+      parts: parts ?? this.parts,
+      options: options ?? this.options,
     );
   }
 
   final Opportunity opportunity;
+  // What ranked this card where it is.
+  final ScoreParts parts;
   // The bundle's members when this card bundles several; empty otherwise.
   final List<RankedOpportunity> options;
   bool get isBundle => options.length >= 2;
@@ -118,21 +174,10 @@ class OpportunityRelevanceRanker {
     final interests = profile.interests;
     final rarity = _rarity(pool, (o) => o.lebenslagen);
     final snippetRarity = _rarity(pool, (o) => o.personalImpactSnippets.keys);
-    final ranked = pool
-        .map((o) => _rankOne(o, profile, at, rarity, snippetRarity))
-        .toList();
-    double score(RankedOpportunity r) =>
-        r.opportunity.appeal +
-        interestConfig.matchBonus * r.matchStrength +
-        localityConfig.adjustment(r.opportunity, profile.home) +
-        interestConfig.rankingInfluence *
-            interests.interestIn(
-              r.opportunity.affectedTags,
-              at,
-              interestConfig,
-            ) +
-        interestConfig.haltungInfluence * r.haltung;
-    ranked.sort((a, b) => score(b).compareTo(score(a)));
+    final ranked = [
+      for (final o in pool)
+        _scored(_rankOne(o, profile, at, rarity, snippetRarity), profile, at),
+    ]..sort((a, b) => b.parts.total.compareTo(a.parts.total));
     if (interestConfig.explorationInterval <= 0 ||
         !interests.hasSignal(at, interestConfig)) {
       return ranked;
@@ -165,11 +210,35 @@ class OpportunityRelevanceRanker {
         if (pick >= 0) {
           take = pick;
           explored.addAll(rest[pick].opportunity.affectedTags);
+          rest[pick] = rest[pick]._copy(
+            parts: rest[pick].parts.asExploration(),
+          );
         }
       }
       result.add(rest.removeAt(take));
     }
     return result;
+  }
+
+  RankedOpportunity _scored(
+    RankedOpportunity r,
+    UserProfile profile,
+    DateTime now,
+  ) {
+    return r._copy(
+      parts: ScoreParts(
+        appeal: r.opportunity.appeal,
+        situation: interestConfig.matchBonus * r.matchStrength,
+        interest: interestConfig.rankingInfluence *
+            profile.interests.interestIn(
+              r.opportunity.affectedTags,
+              now,
+              interestConfig,
+            ),
+        locality: localityConfig.adjustment(r.opportunity, profile.home),
+        haltung: interestConfig.haltungInfluence * r.haltung,
+      ),
+    );
   }
 
   /// Weight per key (a Lebenslage, a snippet key) from how many cards in

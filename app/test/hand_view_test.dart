@@ -1,8 +1,11 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meinimpact/l10n/app_localizations.dart';
 import 'package:meinimpact/src/app/main_tab_screen.dart';
 import 'package:meinimpact/src/app/theme/mi_theme.dart';
+import 'package:meinimpact/src/core/feedback/beta_feedback.dart';
 import 'package:meinimpact/src/features/feed/data/opportunity_relevance_ranker.dart';
 import 'package:meinimpact/src/features/feed/domain/interest_weights.dart';
 import 'package:meinimpact/src/features/feed/domain/letter_recipients.dart';
@@ -465,6 +468,249 @@ void main() {
     });
   });
 
+  group('throwing a card away', () {
+    final posts = <(String, Map<String, Object?>)>[];
+    setUp(() {
+      posts.clear();
+      BetaFeedback.current = BetaFeedback(
+        post: (path, body) async => posts.add((path, body)),
+      );
+    });
+    tearDown(() => BetaFeedback.current = BetaFeedback.off());
+
+    const sheetTitle = 'Warum legst du sie weg?';
+    final trash = find.byWidgetPredicate(
+      (w) => w is Icon && w.semanticLabel == 'Papierkorb',
+    );
+
+    // A long press on [from], then carried to the trash can, or up a little
+    // without [toTrash], and let go.
+    Future<void> carry(
+      WidgetTester tester, {
+      Offset from = const Offset(400, 250),
+      bool toTrash = true,
+    }) async {
+      final gesture = await tester.startGesture(from);
+      await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
+      await tester.pump(MiMotion.quick);
+      final to = toTrash
+          ? tester.getCenter(trash)
+          : from - const Offset(0, 80);
+      for (var i = 1; i <= 10; i++) {
+        await gesture.moveTo(Offset.lerp(from, to, i / 10)!);
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      await gesture.up();
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('dropped in the trash, it goes with its reason and ranking', (
+      tester,
+    ) async {
+      final tab = _Tab(pool: _pool(3));
+      await tester.pumpWidget(tab);
+      // Never thrown one away: the hint says how, then fades.
+      final hint = find.text('Lange drücken zum Weglegen');
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 2));
+      expect(hint, findsOneWidget);
+      await tester.pumpAndSettle();
+      expect(hint, findsNothing);
+
+      await carry(tester);
+      expect(find.text(sheetTitle), findsOneWidget);
+      await tester.tap(find.text('Zu weit weg'));
+      await tester.pumpAndSettle();
+
+      expect(find.text(sheetTitle), findsNothing);
+      expect(find.text('Frage 1?'), findsNothing);
+      expect(_fanAt('Karte 1 von 2'), findsOneWidget);
+      expect(tab.dismissed, {'1'});
+      final (path, body) = posts.single;
+      expect(path, '/v1/feedback/card');
+      expect(body['opportunity_id'], '1');
+      expect(body['reason'], 'too_far');
+      expect(body.containsKey('note'), isFalse);
+      final ranking = body['ranking']! as Map<String, Object?>;
+      expect(ranking['position'], 0);
+      expect(ranking.keys, {
+        'position',
+        'score',
+        'appeal',
+        'situation',
+        'interest',
+        'locality',
+        'haltung',
+        'exploration',
+      });
+    });
+
+    testWidgets('let go elsewhere, it goes back into the hand', (tester) async {
+      final tab = _Tab(pool: _pool(3));
+      await tester.pumpWidget(tab);
+      await tester.pumpAndSettle();
+      await carry(tester, toTrash: false);
+      expect(find.text(sheetTitle), findsNothing);
+      expect(_fanAt('Karte 1 von 3'), findsOneWidget);
+      expect(tab.dismissed, isEmpty);
+      // The hand still swipes and the dots are back.
+      await tester.flingFrom(
+        const Offset(400, 300),
+        const Offset(-250, 0),
+        900,
+      );
+      await tester.pumpAndSettle();
+      expect(_fanAt('Karte 2 von 3'), findsOneWidget);
+    });
+
+    testWidgets('kept after all it comes back; skipped it goes unexplained', (
+      tester,
+    ) async {
+      final tab = _Tab(pool: _pool(3));
+      await tester.pumpWidget(tab);
+      await tester.pumpAndSettle();
+
+      await carry(tester);
+      await tester.tap(find.text('Doch behalten'));
+      await tester.pumpAndSettle();
+      expect(find.text('Frage 1?'), findsOneWidget);
+      expect(_fanAt('Karte 1 von 3'), findsOneWidget);
+      expect(tab.dismissed, isEmpty);
+
+      await carry(tester);
+      await tester.tap(find.text('Überspringen'));
+      await tester.pumpAndSettle();
+      expect(find.text('Frage 1?'), findsNothing);
+      expect(tab.dismissed, {'1'});
+      expect(posts, isEmpty);
+    });
+
+    testWidgets('turned over, its text lifts it too; a reason takes a note', (
+      tester,
+    ) async {
+      final tab = _Tab(
+        pool: [
+          _o(
+            '1',
+            title: 'Lange Frage?',
+            pro: [for (var i = 0; i < 12; i++) 'Grund $i'],
+          ),
+          _o('2'),
+        ],
+      );
+      await tester.pumpWidget(tab);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Lange Frage?'));
+      await tester.pumpAndSettle();
+
+      // On the scrolling text, a drag still scrolls...
+      final text = tester.getCenter(find.text('Zusammenfassung'));
+      await tester.dragFrom(text, const Offset(0, -150));
+      await tester.pumpAndSettle();
+      expect(find.text(sheetTitle), findsNothing);
+      // ...and a long press lifts the card.
+      await carry(tester, from: tester.getCenter(find.text('Grund 3')));
+      await tester.tap(find.text('Möchte ich nicht unterstützen'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), '  Zu teuer.  ');
+      await tester.tap(find.text('Senden'));
+      await tester.pumpAndSettle();
+
+      expect(tab.dismissed, {'1'});
+      expect(posts.single.$2['reason'], 'dont_support');
+      expect(posts.single.$2['note'], 'Zu teuer.');
+    });
+
+    testWidgets('not interested means fewer cards of the topic', (
+      tester,
+    ) async {
+      final tab = _Tab(pool: _pool(3));
+      await tester.pumpWidget(tab);
+      await tester.pumpAndSettle();
+
+      await carry(tester);
+      expect(find.text('Schon erledigt'), findsNothing);
+      await tester.tap(find.text('Thema interessiert mich nicht'));
+      await tester.pumpAndSettle();
+      expect(tab.signals.single.$2, InterestSignal.less);
+      expect(tab.signals.single.$1, _pool(3).first.affectedTags);
+    });
+
+    testWidgets('screen readers can throw a card away', (tester) async {
+      final handle = tester.ensureSemantics();
+      final tab = _Tab(pool: _pool(2));
+      await tester.pumpWidget(tab);
+      await tester.pumpAndSettle();
+
+      final fan =
+          find.semantics.byLabel(RegExp('^Karte 1')).evaluate().single;
+      final action = fan.getSemanticsData().customSemanticsActionIds!.single;
+      fan.owner!.performAction(
+        fan.id,
+        SemanticsAction.customAction,
+        action,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Überspringen'));
+      await tester.pumpAndSettle();
+      expect(tab.dismissed, {'1'});
+      handle.dispose();
+    });
+  });
+
+  testWidgets('Feedback in the tab bar sends kind, words and the open tab', (
+    tester,
+  ) async {
+    final posts = <(String, Map<String, Object?>)>[];
+    var offline = true;
+    BetaFeedback.current = BetaFeedback(
+      post: (path, body) async {
+        if (offline) throw Exception('offline');
+        posts.add((path, body));
+      },
+    );
+    addTearDown(() => BetaFeedback.current = BetaFeedback.off());
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('de'),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        home: MainTabScreen(opportunityRepository: _Repository(const [])),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mein Impact'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Dein Feedback'));
+    await tester.pumpAndSettle();
+    final send = find.widgetWithText(FilledButton, 'Senden');
+    // Kind and words first.
+    expect(tester.widget<FilledButton>(send).onPressed, isNull);
+    await tester.tap(find.text('Idee'));
+    await tester.enterText(find.byType(TextField), 'Mehr Karten zu Kultur');
+    await tester.pump();
+
+    await tester.tap(send);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Das ging gerade nicht raus'), findsOneWidget);
+
+    offline = false;
+    await tester.tap(send);
+    await tester.pumpAndSettle();
+    expect(find.text('Danke! Ist angekommen.'), findsOneWidget);
+    final (path, body) = posts.single;
+    expect(path, '/v1/feedback');
+    expect(body['kind'], 'idea');
+    expect(body['message'], 'Mehr Karten zu Kultur');
+    expect(body['screen'], 'impact');
+    expect(body['platform'], 'android');
+    // The sheet left the tab where it was.
+    final bar = tester.widget<NavigationBar>(find.byType(NavigationBar));
+    expect(bar.selectedIndex, 2);
+  });
+
   testWidgets('Wirkung counts the actions done since it was last opened', (
     tester,
   ) async {
@@ -585,6 +831,8 @@ class _Tab extends StatefulWidget {
   final bool slow;
   final bool disableAnimations;
   final played = <String>[];
+  final dismissed = <String>{};
+  final signals = <(List<String>, InterestSignal)>[];
 
   @override
   State<_Tab> createState() => _TabState();
@@ -616,6 +864,10 @@ class _TabState extends State<_Tab> {
             widget.played.add(opportunity.id);
             setState(() => _doneIds.add(opportunity.id));
           },
+          dismissedIds: {...widget.dismissed},
+          onDismissed: (ids) => setState(() => widget.dismissed.addAll(ids)),
+          onInterestSignal: (tags, signal) =>
+              widget.signals.add((tags, signal)),
         ),
       ),
     );

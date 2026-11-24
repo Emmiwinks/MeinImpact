@@ -12,6 +12,7 @@ import '../features/feed/domain/opportunity_repository.dart';
 import '../features/feed/domain/user_profile.dart';
 import '../features/feed/presentation/aktionen_tab.dart';
 import '../features/feed/presentation/widgets/profile_column.dart';
+import '../features/feedback/feedback_sheets.dart';
 import '../features/tracking/domain/action_log.dart';
 import '../features/tracking/domain/progress.dart';
 import '../features/tracking/wirkung_tab.dart';
@@ -34,6 +35,8 @@ class MainTabScreen extends StatefulWidget {
     this.doneIds = const {},
     this.doneActions = const [],
     this.onActionDone,
+    this.dismissedIds = const {},
+    this.onCardsDismissed,
     this.interestConfig = const InterestConfig(),
     super.key,
   });
@@ -57,6 +60,9 @@ class MainTabScreen extends StatefulWidget {
   // The action log, oldest first.
   final List<ActionLogEntry> doneActions;
   final void Function(Opportunity opportunity, ActionVia via)? onActionDone;
+  // Cards thrown away from the hand.
+  final Set<String> dismissedIds;
+  final ValueChanged<Set<String>>? onCardsDismissed;
   final InterestConfig interestConfig;
 
   static const _fallbackProfile = UserProfile();
@@ -83,6 +89,19 @@ class _MainTabScreenState extends State<MainTabScreen> {
   void dispose() {
     unawaited(_openTab?.cancel());
     super.dispose();
+  }
+
+  static const _feedback = 3;
+  // The tab a message was written on, for /admin/feedback.
+  static const _screens = ['profil', 'aktionen', 'impact'];
+
+  Future<void> _giveFeedback(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final sent = await showFeedbackSheet(context, screen: _screens[_tabIndex]);
+    if (!sent) return;
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(content: Text('Danke! Ist angekommen.')));
   }
 
   void _select(int index) => setState(() {
@@ -116,6 +135,8 @@ class _MainTabScreenState extends State<MainTabScreen> {
         doneIds: widget.doneIds,
         streak: progress.streak,
         onActionDone: widget.onActionDone,
+        dismissedIds: widget.dismissedIds,
+        onDismissed: widget.onCardsDismissed,
         interestConfig: widget.interestConfig,
       ),
       // Scrolls itself, for pull-to-refresh.
@@ -142,7 +163,11 @@ class _MainTabScreenState extends State<MainTabScreen> {
             ),
             bottomNavigationBar: NavigationBar(
               selectedIndex: _tabIndex,
-              onDestinationSelected: _select,
+              // The last one is beta feedback: it opens a sheet over the
+              // tab, it is no tab of its own.
+              onDestinationSelected: (index) => index == _feedback
+                  ? _giveFeedback(context)
+                  : _select(index),
               destinations: [
                 NavigationDestination(
                   icon: const Icon(Icons.person_outline),
@@ -170,6 +195,13 @@ class _MainTabScreenState extends State<MainTabScreen> {
                   ),
                   selectedIcon: const Icon(Icons.timeline),
                   label: l10n.tabImpact,
+                ),
+                const NavigationDestination(
+                  // A bubble fills its square, unlike the thin glyphs next
+                  // to it: a size smaller to look the same.
+                  icon: Icon(Icons.chat_bubble_outline_rounded, size: 20),
+                  // As long as its neighbours, so the gaps look even.
+                  label: 'Dein Feedback',
                 ),
               ],
             ),

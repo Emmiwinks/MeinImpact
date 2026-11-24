@@ -318,16 +318,17 @@ Body:
   "opportunity_id": "uuid",
   "reason": "too_far",   // too_far | not_interested | not_affected |
                          // too_much_effort | unclear_text | dont_support |
-                         // already_done | other
+                         // other
   "note": "...",         // optional, max 500 chars
   "ranking": {           // the on-device ranker's parts for this card;
-    "position": 2,       // extra keys are rejected
+                         // extra keys are rejected
+    "position": 2,       // 0 = first card of the hand as shown
     "score": 1.4,
-    "appeal": 0.6,
+    "appeal": 0.6,       // each part: what it added to the score
     "situation": 0.5,
     "interest": 0.1,
     "locality": 0.2,
-    "werte": 0.5,        // 0-1, the tie-break
+    "haltung": -0.15,    // Werteprofil and Stadthaushalt; negative = against
     "exploration": false
   },
   "app_version": "0.3.0+12"

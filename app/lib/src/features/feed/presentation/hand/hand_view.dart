@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
@@ -17,8 +18,11 @@ const kHandSize = 5;
 /// The "Für dich" tab: the user's best matches as a fanned hand of cards,
 /// best first. Playing a card hands it to [onPlay]; when that reports the
 /// action done, the card flies onto the Wirkung pile and [onPlayed] takes
-/// it out, so the next best match moves up. Everything else is one tap away
-/// in "Alle ansehen", where any card can be taken into the hand.
+/// it out, so the next best match moves up. A long press lifts a card, and
+/// dropped on the trash can it is thrown away ([onThrow]); the next best
+/// match moves up too. Everything else
+/// is one tap away in "Alle ansehen", where any card can be taken into the
+/// hand.
 class HandView extends StatefulWidget {
   const HandView({
     required this.opportunities,
@@ -27,6 +31,8 @@ class HandView extends StatefulWidget {
     required this.onPlayed,
     this.onOpened,
     this.onVote,
+    this.onThrow,
+    this.throwHint = false,
     this.doneIds = const {},
     super.key,
   });
@@ -43,44 +49,80 @@ class HandView extends StatefulWidget {
   final void Function(RankedOpportunity ranked)? onOpened;
   // "öfter" / "seltener" on a card's back, for one topic.
   final void Function(String tag, InterestSignal signal)? onVote;
+  // A card was dropped in the trash at [position] (0 = first); resolves to
+  // false when the user kept it after all, and it comes back.
+  final Future<bool> Function(RankedOpportunity ranked, int position)? onThrow;
+  // Shows once, for someone who never threw a card away, that a long press
+  // lifts a card: the front card rises once and a line says so.
+  final bool throwHint;
 
   @override
   State<HandView> createState() => _HandViewState();
 }
 
-class _HandViewState extends State<HandView>
-    with SingleTickerProviderStateMixin {
+class _HandViewState extends State<HandView> with TickerProviderStateMixin {
   final _fanKey = GlobalKey<_CardFanState>();
   final _frontKey = GlobalKey();
   // Fractional index of the front card, shared by the fan and the dots.
   final _position = ValueNotifier<double>(0);
+  // A card is lifted: the trash can takes the dots' place.
+  final _carrying = ValueNotifier<bool>(false);
+  // The lifted card is over the trash can.
+  final _overTrash = ValueNotifier<bool>(false);
+  final _trashKey = GlobalKey();
   // Cards taken into the hand from "Alle ansehen", most recent first.
   final _pulled = <String>[];
+  // Thrown off the hand while the reason sheet is open.
+  final _away = <String>{};
   late final AnimationController _flight;
+  // Runs the throw hint once: the dip, then the line fades out.
+  late final AnimationController _hint;
 
   @override
   void initState() {
     super.initState();
     _flight = AnimationController(vsync: this, duration: MiMotion.flight);
+    _hint = AnimationController(vsync: this, duration: _hintDuration);
+    if (widget.throwHint && widget.onThrow != null) _hint.forward();
   }
 
   @override
   void dispose() {
     _flight.dispose();
+    _hint.dispose();
     _position.dispose();
+    _carrying.dispose();
+    _overTrash.dispose();
     super.dispose();
   }
 
   List<RankedOpportunity> get _hand {
-    final byId = {for (final r in widget.opportunities) r.opportunity.id: r};
+    final open = widget.opportunities
+        .where((r) => !_away.contains(r.opportunity.id))
+        .toList();
+    final byId = {for (final r in open) r.opportunity.id: r};
     final pulled = [
       for (final id in _pulled)
         if (byId[id] case final r?) r,
     ];
-    final rest = widget.opportunities
-        .where((r) => !_pulled.contains(r.opportunity.id))
-        .take(kHandSize);
+    final rest =
+        open.where((r) => !_pulled.contains(r.opportunity.id)).take(kHandSize);
     return [...pulled, ...rest];
+  }
+
+  Future<void> _throw(RankedOpportunity ranked, int position) async {
+    final onThrow = widget.onThrow;
+    if (onThrow == null) return;
+    final id = ranked.opportunity.id;
+    _hint.value = 1;
+    setState(() => _away.add(id));
+    final gone = await onThrow(ranked, position);
+    if (!mounted) return;
+    setState(() {
+      _away.remove(id);
+      if (gone) _pulled.remove(id);
+    });
+    if (!gone) _fanKey.currentState?.jumpTo(position);
   }
 
   Future<void> _play(RankedOpportunity ranked) async {
@@ -184,10 +226,33 @@ class _HandViewState extends State<HandView>
     _fanKey.currentState?.jumpTo(0);
   }
 
+  Widget _card(
+    RankedOpportunity ranked, {
+    required bool isFront,
+    required double contentOpacity,
+    required double drift,
+  }) =>
+      ActionCard(
+        // The front card's GlobalKey moves to the next card on a swipe;
+        // keyed by action, the next one does not inherit the turned-over
+        // state and starts face up.
+        key: ValueKey(ranked.opportunity.id),
+        ranked: ranked,
+        actionLabel: widget.actionLabel(ranked.opportunity),
+        isFront: isFront,
+        contentOpacity: contentOpacity,
+        drift: drift,
+        onAction: isFront ? () => _play(ranked) : null,
+        onOption: isFront ? _playOption : null,
+        doneIds: widget.doneIds,
+        onOpened: () => widget.onOpened?.call(ranked),
+        onVote: widget.onVote,
+      );
+
   @override
   Widget build(BuildContext context) {
     final hand = _hand;
-    final total = widget.opportunities.length;
+    final total = widget.opportunities.length - _away.length;
     // No header: the tab already says "Für dich" and the dots count the
     // cards, so the space goes to the cards.
     return Column(
@@ -195,39 +260,29 @@ class _HandViewState extends State<HandView>
       children: [
         const SizedBox(height: MiSpace.base),
         Expanded(
-          child: _CardFan(
-            key: _fanKey,
-            cards: hand,
-            position: _position,
-            frontKey: _frontKey,
-            builder: (
-              ranked, {
-              required isFront,
-              required contentOpacity,
-              required drift,
-            }) =>
-                ActionCard(
-              // The front card's GlobalKey moves to the next card on a
-              // swipe; keyed by action, the next one does not inherit the
-              // turned-over state and starts face up.
-              key: ValueKey(ranked.opportunity.id),
-              ranked: ranked,
-              actionLabel: widget.actionLabel(ranked.opportunity),
-              isFront: isFront,
-              contentOpacity: contentOpacity,
-              drift: drift,
-              onAction: isFront ? () => _play(ranked) : null,
-              onOption: isFront ? _playOption : null,
-              doneIds: widget.doneIds,
-              onOpened: () => widget.onOpened?.call(ranked),
-              onVote: widget.onVote,
-            ),
-            endCard: ({required isFront, required contentOpacity}) => _EndCard(
-              dealt: hand.length,
-              total: total,
-              contentOpacity: contentOpacity,
-              onShowAll: _showAll,
-              onRestart: () => _fanKey.currentState?.animateTo(0),
+          child: AnimatedBuilder(
+            animation: _hint,
+            builder: (context, child) => _CardFan(
+              key: _fanKey,
+              cards: hand,
+              position: _position,
+              carrying: _carrying,
+              overTrash: _overTrash,
+              trashKey: _trashKey,
+              frontKey: _frontKey,
+              nudge: MiMotion.reduced(context) ? 0 : _hintLift(_hint.value),
+              onThrow: widget.onThrow == null
+                  ? null
+                  : (index) => _throw(hand[index], index),
+              builder: _card,
+              endCard: ({required isFront, required contentOpacity}) =>
+                  _EndCard(
+                dealt: hand.length,
+                total: total,
+                contentOpacity: contentOpacity,
+                onShowAll: _showAll,
+                onRestart: () => _fanKey.currentState?.animateTo(0),
+              ),
             ),
           ),
         ),
@@ -238,20 +293,64 @@ class _HandViewState extends State<HandView>
             MiSpace.base,
             MiSpace.sm,
           ),
-          child: ValueListenableBuilder(
-            valueListenable: _position,
-            builder: (context, position, _) => Row(
-              children: [
-                _Dots(count: hand.length + 1, position: position),
-                const Spacer(),
-                // The closing card carries its own "Alle ansehen".
-                if (total > 1 && position.round() < hand.length)
-                  TextButton(
-                    onPressed: _showAll,
-                    child: Text('Alle $total ansehen'),
-                  ),
-              ],
-            ),
+          child: AnimatedBuilder(
+            animation: Listenable.merge([_position, _carrying, _hint]),
+            builder: (context, _) {
+              final position = _position.value;
+              final hinting = _hint.value > 0 && _hint.value < 1;
+              // One height for dots, link and trash, so the hand never
+              // jumps when they swap.
+              final fade =
+                  MiMotion.reduced(context) ? Duration.zero : MiMotion.quick;
+              final carrying = _carrying.value;
+              return SizedBox(
+                height: 48,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: AnimatedOpacity(
+                        opacity: carrying ? 0 : 1,
+                        duration: fade,
+                        child: IgnorePointer(
+                          ignoring: carrying,
+                          child: Row(
+                            children: [
+                              _Dots(count: hand.length + 1, position: position),
+                              // While it runs, the throw hint stands in for
+                              // the link.
+                              if (hinting)
+                                Expanded(
+                                  child: Align(
+                                    alignment: Alignment.centerRight,
+                                    child: _ThrowHint(t: _hint.value),
+                                  ),
+                                )
+                              else ...[
+                                const Spacer(),
+                                // The closing card carries its own "Alle
+                                // ansehen".
+                                if (total > 1 && position.round() < hand.length)
+                                  TextButton(
+                                    onPressed: _showAll,
+                                    child: Text('Alle $total ansehen'),
+                                  ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned.fill(
+                      child: AnimatedOpacity(
+                        opacity: carrying ? 1 : 0,
+                        duration: fade,
+                        child: _Trash(targetKey: _trashKey, hot: _overTrash),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         ),
       ],
@@ -266,6 +365,104 @@ typedef _CardBuilder = Widget Function(
   required double drift,
 });
 
+const _hintDuration = Duration(milliseconds: 6500);
+
+/// How far the throw hint lifts the front card at [t] of the hint, 0-1:
+/// up and down once, early on, as a long press would.
+double _hintLift(double t) {
+  const start = 0.12, length = 0.14;
+  if (t < start || t > start + length) return 0;
+  return sin((t - start) / length * pi);
+}
+
+/// Where a lifted card is dropped to be thrown away. It warms up (coral)
+/// while the card is over it.
+class _Trash extends StatelessWidget {
+  const _Trash({required this.targetKey, required this.hot});
+
+  // On the can itself, to tell when a card is over it.
+  final GlobalKey targetKey;
+  final ValueListenable<bool> hot;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.mi;
+    return Center(
+      child: ValueListenableBuilder(
+        valueListenable: hot,
+        builder: (context, hot, _) => AnimatedScale(
+          key: targetKey,
+          scale: hot ? 1.25 : 1,
+          duration: MiMotion.quick,
+          curve: MiMotion.ease,
+          child: AnimatedContainer(
+            duration: MiMotion.quick,
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: hot ? colors.topics[0] : colors.tableRaised,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: hot ? colors.topics[0] : colors.onTableMuted,
+              ),
+            ),
+            child: Icon(
+              Icons.delete_outline_rounded,
+              semanticLabel: 'Papierkorb',
+              color: hot ? colors.onCard : colors.onTable,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The throw hint's words next to the dots, at [t] of the hint: in with
+/// the lift, out at the end.
+class _ThrowHint extends StatelessWidget {
+  const _ThrowHint({required this.t});
+
+  final double t;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.mi;
+    final opacity = min(
+      ((t - 0.08) / 0.06).clamp(0.0, 1.0),
+      ((1 - t) / 0.12).clamp(0.0, 1.0),
+    );
+    return Opacity(
+      opacity: opacity,
+      child: SizedBox(
+        height: 48,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.delete_outline_rounded,
+              size: 16,
+              color: colors.onTableMuted,
+            ),
+            const SizedBox(width: MiSpace.xs),
+            Flexible(
+              child: Text(
+                'Lange drücken zum Weglegen',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context)
+                    .textTheme
+                    .labelMedium
+                    ?.copyWith(color: colors.onTableMuted),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 typedef _EndBuilder = Widget Function({
   required bool isFront,
   required double contentOpacity,
@@ -274,6 +471,9 @@ typedef _EndBuilder = Widget Function({
 /// The fanned cards: the front one upright, the next ones peeking out to
 /// the right behind it, and a closing card after the last one, so the hand
 /// has an end. A horizontal swipe moves through it and snaps to a card.
+/// A long press lifts the front card, on either face; it then follows the
+/// finger. Dropped on the trash can ([trashKey]) it shrinks into it and
+/// goes to [onThrow]; dropped anywhere else it glides back into the hand.
 class _CardFan extends StatefulWidget {
   const _CardFan({
     required this.cards,
@@ -281,23 +481,47 @@ class _CardFan extends StatefulWidget {
     required this.frontKey,
     required this.builder,
     required this.endCard,
+    required this.carrying,
+    required this.overTrash,
+    required this.trashKey,
+    this.onThrow,
+    this.nudge = 0,
     super.key,
   });
 
   final List<RankedOpportunity> cards;
   final ValueNotifier<double> position;
+  // A card is lifted, so the trash can shows.
+  final ValueNotifier<bool> carrying;
+  // The lifted card is over the trash can.
+  final ValueNotifier<bool> overTrash;
+  final GlobalKey trashKey;
   final GlobalKey frontKey;
   final _CardBuilder builder;
   final _EndBuilder endCard;
+  // The index of the card dropped in the trash.
+  final ValueChanged<int>? onThrow;
+  // Extra lift of the front card (0-1), for the throw hint.
+  final double nudge;
 
   @override
   State<_CardFan> createState() => _CardFanState();
 }
 
-class _CardFanState extends State<_CardFan>
-    with SingleTickerProviderStateMixin {
+class _CardFanState extends State<_CardFan> with TickerProviderStateMixin {
   ValueNotifier<double> get position => widget.position;
   late final AnimationController _snap;
+  // 0-1: how far the front card is lifted off the hand.
+  late final AnimationController _lift;
+  // 0-1: a dropped card on its way back, or into the trash.
+  late final AnimationController _settle;
+  // Where the finger has carried the lifted card.
+  Offset _carry = Offset.zero;
+  // Where the finger holds the card, from its middle.
+  Offset _grip = Offset.zero;
+  Offset _settleTo = Offset.zero;
+  bool _binning = false;
+  bool _busy = false;
   double _cardWidth = 300;
   bool _hideFront = false;
 
@@ -306,12 +530,101 @@ class _CardFanState extends State<_CardFan>
   // The closing card sits right after the last action card.
   int get _last => widget.cards.length;
 
+  bool get _canLift =>
+      widget.onThrow != null &&
+      !_busy &&
+      position.value.round() < widget.cards.length;
+
+  // The front card's offset from its place: carried, or settling.
+  Offset get _offset {
+    final t = MiMotion.ease.transform(_settle.value);
+    return Offset.lerp(_carry, _settleTo, t)!;
+  }
+
+  void _onLiftStart(LongPressStartDetails details) {
+    if (!_canLift) return;
+    _snap.stop();
+    position.value = position.value.roundToDouble();
+    _carry = Offset.zero;
+    final size = context.size;
+    _grip = size == null
+        ? Offset.zero
+        : details.localPosition - size.center(Offset.zero);
+    _settle.value = 0;
+    widget.carrying.value = true;
+    if (MiMotion.reduced(context)) {
+      _lift.value = 1;
+    } else {
+      _lift.forward(from: 0);
+    }
+  }
+
+  void _onLiftMove(LongPressMoveUpdateDetails details) {
+    if (!widget.carrying.value || _busy) return;
+    setState(() => _carry = details.offsetFromOrigin);
+    widget.overTrash.value = _overTrash(details.globalPosition);
+  }
+
+  Future<void> _onLiftEnd(LongPressEndDetails details) async {
+    if (!widget.carrying.value || _busy) return;
+    final index = position.value.round();
+    final drop = _overTrash(details.globalPosition);
+    _busy = true;
+    _binning = drop;
+    _settleTo = drop ? _trashOffset() ?? _carry : Offset.zero;
+    if (MiMotion.reduced(context)) {
+      _settle.value = 1;
+    } else {
+      await _settle.animateTo(
+        1,
+        duration: drop ? MiMotion.settle : MiMotion.flip,
+        curve: Curves.linear,
+      );
+    }
+    if (!mounted) return;
+    widget.overTrash.value = false;
+    widget.carrying.value = false;
+    if (drop) widget.onThrow?.call(index);
+    setState(() {
+      _carry = Offset.zero;
+      _settleTo = Offset.zero;
+      _lift.value = 0;
+      _settle.value = 0;
+      _binning = false;
+      _busy = false;
+    });
+  }
+
+  bool _overTrash(Offset global) {
+    final box =
+        widget.trashKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return false;
+    // The can and a fingertip around it.
+    return (box.localToGlobal(Offset.zero) & box.size)
+        .inflate(28)
+        .contains(global);
+  }
+
+  // From the front card's place to the middle of the trash can.
+  Offset? _trashOffset() {
+    final trash =
+        widget.trashKey.currentContext?.findRenderObject() as RenderBox?;
+    final fan = context.findRenderObject() as RenderBox?;
+    if (trash == null || fan == null) return null;
+    return trash.localToGlobal(trash.size.center(Offset.zero)) -
+        fan.localToGlobal(fan.size.center(Offset.zero));
+  }
+
   @override
   void initState() {
     super.initState();
     _snap = AnimationController.unbounded(vsync: this)
       ..addListener(() => position.value = _snap.value);
+    _lift = AnimationController(vsync: this, duration: MiMotion.quick)
+      ..addListener(_onMove);
+    _settle = AnimationController(vsync: this)..addListener(_onMove);
     position.addListener(_onMove);
+    widget.overTrash.addListener(_onMove);
   }
 
   @override
@@ -326,7 +639,10 @@ class _CardFanState extends State<_CardFan>
   @override
   void dispose() {
     position.removeListener(_onMove);
+    widget.overTrash.removeListener(_onMove);
     _snap.dispose();
+    _lift.dispose();
+    _settle.dispose();
     super.dispose();
   }
 
@@ -370,6 +686,7 @@ class _CardFanState extends State<_CardFan>
             min(constraints.maxHeight - MiSpace.lg, _cardWidth * 1.75);
         final pos = position.value;
         final front = pos.round().clamp(0, _last);
+        final throwable = widget.onThrow != null && front < cards.length;
         final visible = [
           for (var i = 0; i <= _last; i++)
             if (i - pos > -1.2 && i - pos < 3.2) i,
@@ -386,10 +703,19 @@ class _CardFanState extends State<_CardFan>
               : 'Ende deiner Hand',
           onIncrease: front < _last ? () => animateTo(front + 1) : null,
           onDecrease: front > 0 ? () => animateTo(front - 1) : null,
+          customSemanticsActions: throwable
+              ? {
+                  const CustomSemanticsAction(label: 'Karte weglegen'): () =>
+                      widget.onThrow?.call(front),
+                }
+              : null,
           child: GestureDetector(
             behavior: HitTestBehavior.translucent,
             onHorizontalDragUpdate: _onDrag,
             onHorizontalDragEnd: _onDragEnd,
+            onLongPressStart: throwable ? _onLiftStart : null,
+            onLongPressMoveUpdate: throwable ? _onLiftMove : null,
+            onLongPressEnd: throwable ? _onLiftEnd : null,
             child: Stack(
               alignment: Alignment.center,
               children: [
@@ -432,28 +758,64 @@ class _CardFanState extends State<_CardFan>
   }) {
     final behind = max(0.0, delta);
     final leaving = min(0.0, delta);
+    // Lifted, the front card grows a little and tilts with the finger.
+    // Over the trash it shrinks, so the can shows; dropped in, it shrinks
+    // away into it.
+    final settle = _settle.value;
+    final lift = isFront
+        ? max(_lift.value * (_binning ? 1 : 1 - settle), widget.nudge)
+        : 0.0;
+    final carried = isFront ? _offset : Offset.zero;
+    final hot = isFront && widget.overTrash.value;
+    final binned = isFront && _binning ? 1 - 0.88 * settle : 1.0;
+    // Carried down towards the can, the card gets smaller, so it stays in
+    // sight above the tab bar: under half its size by the can.
+    final toward = isFront ? (carried.dy / (height * 0.6)).clamp(0.0, 1.0) : 0;
+    final shrink = 1 - 0.55 * toward;
     // Fanned like a hand held up: the cards behind turn up about their
     // bottom right corner, so they peek out above it to the right.
     final dx = behind * 8 + leaving * (width + 60);
-    final angle = behind * 0.07 - leaving * 0.12;
-    final scale = 1 - 0.02 * behind;
+    final angle = behind * 0.07 - leaving * 0.12 + carried.dx * 0.0008;
+    final scale = (1 - 0.02 * behind) * (1 + 0.05 * lift) * shrink * binned;
+    // Towards the can, the card moves up over the finger until its lower
+    // edge rests on the can, so it stays in sight above the tab bar; as it
+    // drops in, it lets go of that.
+    final held = isFront && (widget.carrying.value || _busy)
+        ? (_grip - Offset(0, height * scale / 2)) *
+            toward.toDouble() *
+            (_binning ? 1 - settle : 1)
+        : Offset.zero;
+    final fade = isFront && _binning
+        ? (1 - max(0.0, settle - 0.6) / 0.4).clamp(0.0, 1.0)
+        : 1.0;
+    // While the front card is lifted, the next one shows its words: it is
+    // the one that moves up.
+    final next = (delta - 1).abs() < 0.5
+        ? _lift.value * (_binning ? 1 : 1 - settle)
+        : 0.0;
     final card = SizedBox(
       key: isFront ? widget.frontKey : null,
       width: width,
       height: height,
-      child: build((1 - behind * 2).clamp(0.0, 1.0)),
+      child: build(max((1 - behind * 2).clamp(0.0, 1.0), next)),
     );
     return Transform.translate(
       key: key,
-      offset: Offset(dx, 0),
+      offset: Offset(dx, 0) + carried + held,
       child: Transform.rotate(
         angle: angle,
         alignment: behind > 0 ? Alignment.bottomRight : Alignment.bottomCenter,
         child: Transform.scale(
           scale: scale,
-          child: Opacity(
-            opacity: isFront && _hideFront ? 0 : 1,
-            child: IgnorePointer(ignoring: !isFront, child: card),
+          child: AnimatedScale(
+            scale: hot ? 0.8 : 1,
+            duration:
+                MiMotion.reduced(context) ? Duration.zero : MiMotion.quick,
+            curve: MiMotion.ease,
+            child: Opacity(
+              opacity: isFront && _hideFront ? 0 : fade,
+              child: IgnorePointer(ignoring: !isFront, child: card),
+            ),
           ),
         ),
       ),
