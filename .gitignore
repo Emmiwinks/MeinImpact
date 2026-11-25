@@ -30,7 +30,11 @@ app/ios/Pods/
 app/macos/Pods/
 
 # Installed agent skills (impeccable, flutter-design, mobile-app-design-mastery)
-.claude/
+# and local Claude settings; the project's own skills are kept
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/add-city/
 .agents/
 .github/agents/
 .github/hooks/
