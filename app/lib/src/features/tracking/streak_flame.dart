@@ -6,12 +6,11 @@ import 'package:flutter/material.dart';
 import '../../app/theme/mi_theme.dart';
 import 'domain/progress.dart';
 
-/// The streak, top right on the Aktionen tab: a little fire on two logs with
-/// the weeks in a row. The fresher the last action, the bigger the flame;
-/// paused, only the wood is left with a wisp of smoke. When an action
-/// carries the streak on, the flame hops and the number rolls; one that
-/// lights it again sends a spark onto the wood first. Tapping it opens the
-/// streak's details.
+/// The streak, top right on the Aktionen tab: a flame with the weeks in a
+/// row. The fresher the last action, the bigger the flame; paused, it is
+/// grey with a wisp of smoke. When an action carries the streak on, the
+/// flame hops and the number rolls; one that lights it again sends a spark
+/// to its foot first. Tapping it opens the streak's details.
 class StreakFlame extends StatefulWidget {
   const StreakFlame({required this.streak, super.key});
 
@@ -452,10 +451,11 @@ class WeekTrail extends StatelessWidget {
   }
 }
 
-/// Two crossed logs and, by [level], a flame of three layers (coral, amber,
-/// card stock), an ember or a wisp of smoke. [phase] (0 to 1, looping)
-/// moves the flicker and the smoke; [grow] scales the flame out of the
-/// wood; [spark] (0 to 1) flies a spark in from the left onto the wood.
+/// By [level], a flame of three layers (coral, amber, card stock) or, unlit,
+/// its shape in grey (paused: with a wisp of smoke). [phase] (0 to 1,
+/// looping) moves the flicker and the smoke; [grow] scales the flame up
+/// over the grey shape; [spark] (0 to 1) flies a spark in from the left
+/// onto its foot.
 class FlamePainter extends CustomPainter {
   FlamePainter({
     required this.level,
@@ -473,38 +473,56 @@ class FlamePainter extends CustomPainter {
 
   static const _strength = {
     FlameLevel.strong: 1.0,
-    FlameLevel.medium: 0.74,
-    FlameLevel.ember: 0.4,
+    FlameLevel.medium: 0.78,
+    FlameLevel.ember: 0.56,
   };
 
   @override
   void paint(Canvas canvas, Size size) {
     final s = size.shortestSide;
-    final base = Offset(size.width / 2, s * 0.8);
+    final base = Offset(size.width / 2, s * 0.92);
+    final full = s * 0.8;
     final strength = (_strength[level] ?? 0) * grow;
 
-    if (level == FlameLevel.ember || strength > 0) {
-      // Glow on the wood under the fire.
+    // Unlit, or not yet grown back: the flame's shape in grey.
+    if (grow < 1 || _strength[level] == null) {
+      final grey = colors.onTableMuted;
+      _tongue(canvas, base, full, full * 0.66, 0, grey.withValues(alpha: 0.4));
+      _tongue(
+        canvas,
+        base,
+        full * 0.68,
+        full * 0.44,
+        0,
+        grey.withValues(alpha: 0.55),
+      );
+      _tongue(
+        canvas,
+        base,
+        full * 0.34,
+        full * 0.22,
+        0,
+        colors.table.withValues(alpha: 0.7),
+      );
+    }
+
+    if (strength > 0) {
+      // A soft glow under the fire.
       canvas.drawOval(
         Rect.fromCenter(
-          center: base.translate(0, s * 0.02),
-          width: s * 0.62,
-          height: s * 0.16,
+          center: base,
+          width: s * 0.5,
+          height: s * 0.12,
         ),
         Paint()
           ..color = colors.topics[2].withValues(alpha: 0.35 * grow)
           ..maskFilter = MaskFilter.blur(BlurStyle.normal, s * 0.05),
       );
-    }
-
-    _logs(canvas, s, base);
-
-    if (strength > 0) {
       final wave = sin(2 * pi * phase);
       final sway = wave * s * 0.04;
       final stretch = 1 + 0.06 * sin(4 * pi * phase + 1);
-      final height = s * 0.66 * strength * stretch;
-      final flame = base.translate(0, -s * 0.04);
+      final height = full * strength * stretch;
+      final flame = base;
       _tongue(canvas, flame, height, height * 0.66, sway, colors.topics[0]);
       _tongue(
         canvas,
@@ -524,29 +542,11 @@ class FlamePainter extends CustomPainter {
       );
     }
 
-    if (level == FlameLevel.smoke && spark == null) _smoke(canvas, s, base);
+    if (level == FlameLevel.smoke && spark == null) {
+      _smoke(canvas, s, base.translate(0, -full * 0.85));
+    }
 
     if (spark case final t?) _spark(canvas, s, base, t);
-  }
-
-  void _logs(Canvas canvas, double s, Offset base) {
-    final wood = Paint()
-      ..color = level.index <= FlameLevel.smoke.index
-          ? colors.onTableMuted
-          : colors.onTable.withValues(alpha: 0.85)
-      ..strokeWidth = s * 0.11
-      ..strokeCap = StrokeCap.round;
-    canvas
-      ..drawLine(
-        base.translate(-s * 0.3, s * 0.1),
-        base.translate(s * 0.3, -s * 0.02),
-        wood,
-      )
-      ..drawLine(
-        base.translate(s * 0.3, s * 0.1),
-        base.translate(-s * 0.3, -s * 0.02),
-        wood,
-      );
   }
 
   void _tongue(
@@ -580,19 +580,20 @@ class FlamePainter extends CustomPainter {
     canvas.drawPath(path, Paint()..color = color);
   }
 
-  // Two puffs, half a round apart, rising, drifting and fading.
-  void _smoke(Canvas canvas, double s, Offset base) {
+  // Two small puffs off the grey tip, half a round apart, rising, drifting
+  // and fading.
+  void _smoke(Canvas canvas, double s, Offset tip) {
     for (final offset in [0.0, 0.5]) {
       final t = (phase + offset) % 1;
-      final center = base.translate(
-        sin(t * 2 * pi) * s * 0.08,
-        -s * 0.08 - t * s * 0.62,
+      final center = tip.translate(
+        sin(t * 2 * pi) * s * 0.06,
+        -t * s * 0.3,
       );
       canvas.drawCircle(
         center,
-        s * (0.06 + t * 0.1),
+        s * (0.04 + t * 0.06),
         Paint()
-          ..color = colors.onTableMuted.withValues(alpha: 0.45 * (1 - t))
+          ..color = colors.onTableMuted.withValues(alpha: 0.6 * (1 - t))
           ..maskFilter = MaskFilter.blur(BlurStyle.normal, s * 0.02),
       );
     }

@@ -107,7 +107,7 @@ enum FlameLevel {
   /// No streak: cold wood.
   out,
 
-  /// Paused: the wood with a wisp of smoke.
+  /// Paused: a grey flame with a wisp of smoke.
   smoke,
 
   /// The last action is more than [kFlameMediumDays] days ago.
