@@ -41,25 +41,18 @@ where = ["src"]
 "meinimpact.infrastructure.geo" = ["data/*.json"]
 
 [tool.pytest.ini_options]
-addopts = "--cov=meinimpact --cov-report=term-missing --cov-fail-under=80 -m 'not live and not dormant'"
+addopts = "--cov=meinimpact --cov-report=term-missing --cov-fail-under=80 -m 'not live'"
 asyncio_mode = "auto"
 pythonpath = ["src", "tests"]
 testpaths = ["tests"]
 markers = [
     "live: hits the real external API, excluded from the default test run",
-    "dormant: exercises an adapter that's preserved but not wired into any pipeline, excluded from the default test run",
 ]
 
 [tool.coverage.run]
 branch = true
 source = ["meinimpact"]
 data_file = "/tmp/.coverage"
-omit = [
-    # Preserved but unwired (see markers.dormant above) — its tests are
-    # excluded from the default run, so its lines would otherwise show as
-    # uncovered and drag down --cov-fail-under.
-    "*/infrastructure/sources/dip_adapter.py",
-]
 
 [tool.coverage.report]
 exclude_lines = [

@@ -33,12 +33,8 @@ class Settings(BaseSettings):
     # mistral_model, which stays small/cheap for letter-draft generation.
     mistral_extraction_model: str = "mistral-medium-latest"
     mistral_base_url: str = "https://api.mistral.ai/v1"
-    # Unused by any pipeline for now — DipAdapter is preserved unwired in
-    # infrastructure/sources/dip_adapter.py in case a later project stage
-    # needs it again. See specs/data/ingestion-pipeline.md "Status".
-    dip_api_key: str | None = None
+    # Mein Impact news search (infrastructure/impact/news_ladder.py)
     tavily_api_key: str | None = None
-    newsdata_api_key: str | None = None
     max_request_body_bytes: int = 65_536
     admin_api_key: str | None = None
     # Password for the /admin page. Unset means the page rejects every login.
