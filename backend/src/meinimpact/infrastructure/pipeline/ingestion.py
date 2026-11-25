@@ -157,6 +157,8 @@ class IngestionSummary:
     sources: list[SourceStats] = field(default_factory=list)
     # Sources that behave unlike their own recent runs (filled after the run)
     drift: list[str] = field(default_factory=list)
+    # Letter addresses missing or no longer on their source page (weekly)
+    contacts: list[str] = field(default_factory=list)
 
 
 async def run_ingestion(

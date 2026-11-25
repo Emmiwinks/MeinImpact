@@ -298,7 +298,9 @@ async def test_member_sync_reports_fraktionen_without_an_office(
     assert repository.replaced == members
     assert summary.council_members == 3
     assert summary.council_members_synced_at == "2026-11-09T00:00:00+00:00"
-    assert summary.errors == ["Fraktion ohne Büro-Adresse: Neue Fraktion"]
+    assert summary.errors == []
+    # Dresden's addresses carry no source page yet, so nothing is fetched
+    assert summary.contacts == ["Dresden: Fraktion ohne Büro-Adresse: Neue Fraktion"]
 
 
 async def test_repository_replaces_members_per_source(db_session: AsyncSession) -> None:

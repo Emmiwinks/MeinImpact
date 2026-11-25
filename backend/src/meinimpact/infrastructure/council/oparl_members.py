@@ -103,6 +103,41 @@ async def fetch_council_members(
     return members
 
 
+@dataclass(frozen=True, slots=True)
+class Fraktion:
+    url: str
+    name: str
+    # Only where OParl carries one (Dresden's do not)
+    email: str | None
+
+
+async def fetch_fraktionen(
+    http: PoliteHttpClient, body: OParlBody, *, today: date, max_pages: int = 500
+) -> list[Fraktion]:
+    """The council's Fraktionen that have members and no end date.
+
+    Seen live in Dresden: every Fraktion is listed twice, the second time
+    without members (left out here), and dissolved Fraktionen keep no end
+    date (kept: only the member sync knows whether anyone still belongs).
+    """
+    return [
+        Fraktion(
+            url=https(str(org["id"])),
+            name=clean_text(str(org.get("name") or "")),
+            email=str(org["email"]).strip() if org.get("email") else None,
+        )
+        for org in await _all(http, f"{body.body_url}/organizations", max_pages)
+        if is_fraktion(org) and org.get("membership") and is_current(org, today)
+    ]
+
+
+def is_fraktion(organization: Mapping[str, Any]) -> bool:
+    return bool(
+        _FRAKTION.search(str(organization.get("classification") or ""))
+        or _FRAKTION.search(str(organization.get("name") or ""))
+    )
+
+
 async def _all(
     http: PoliteHttpClient, url: str, max_pages: int
 ) -> list[Mapping[str, Any]]:

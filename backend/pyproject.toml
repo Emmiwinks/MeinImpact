@@ -39,6 +39,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "meinimpact.infrastructure.geo" = ["data/*.json"]
+"meinimpact.infrastructure.council" = ["data/*.json"]
 
 [tool.pytest.ini_options]
 addopts = "--cov=meinimpact --cov-report=term-missing --cov-fail-under=80 -m 'not live'"

@@ -135,6 +135,7 @@ def _alerts(summary: IngestionSummary | None, error: str | None) -> list[str]:
         return [f"Ingestion fehlgeschlagen: {error}"]
     problems = [f"Quelle fehlgeschlagen: {item}" for item in summary.failed_sources]
     problems += [f"Quelle auffällig: {item}" for item in summary.drift]
+    problems += [f"Adresse: {item}" for item in summary.contacts]
     if summary.budget_reached:
         problems.append(
             f"Budget erreicht ({summary.cost_eur:.2f} €): {summary.deferred} "

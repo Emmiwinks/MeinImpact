@@ -13,7 +13,11 @@ from meinimpact.infrastructure.ai.bundler import Bundler
 from meinimpact.infrastructure.ai.listing_enricher import ListingEnricher
 from meinimpact.infrastructure.ai.mistral_json import MistralJsonCompleter
 from meinimpact.infrastructure.ai.usage import Price
-from meinimpact.infrastructure.council.offices import FRAKTION_OFFICES
+from meinimpact.infrastructure.council.offices import (
+    FRAKTION_OFFICES,
+    check_sources,
+    load_offices,
+)
 from meinimpact.infrastructure.council.oparl_members import fetch_council_members
 from meinimpact.infrastructure.council.postgres_council_repository import (
     PostgresCouncilRepository,
@@ -113,10 +117,11 @@ async def sync_council_members(
     body: OParlBody,
 ) -> None:
     """Refreshes the members letters go to, at most once a week (a full
-    OParl walk takes about ten minutes). Fraktionen without a known office
-    address are reported on the admin page, unless their members only sit
-    on district and village councils, where letters list names only (seen
-    live: Fraktionen dissolved in 2024 that OParl still shows there)."""
+    OParl walk takes about ten minutes), and checks the office addresses
+    against their source pages. Fraktionen without a known office address
+    are reported, unless their members only sit on district and village
+    councils, where letters list names only (seen live: Fraktionen
+    dissolved in 2024 that OParl still shows there)."""
     last = await repository.last_synced(body.source_id)
     if last is not None and now - last < MEMBER_SYNC_INTERVAL:
         summary.council_members_synced_at = last.isoformat()
@@ -134,4 +139,10 @@ async def sync_council_members(
             and not is_local_body(m.organization_name)
         }
     )
-    summary.errors.extend(f"Fraktion ohne Büro-Adresse: {name}" for name in unknown)
+    summary.contacts.extend(
+        f"{body.locality}: Fraktion ohne Büro-Adresse: {name}" for name in unknown
+    )
+    summary.contacts.extend(
+        f"{body.locality}: {problem}"
+        for problem in await check_sources(http, load_offices(body.region))
+    )

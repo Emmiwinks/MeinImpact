@@ -489,6 +489,7 @@ def _run_row(run: RunRecord) -> str:
     problems = [
         *(f"Quelle: {item}" for item in summary.get("failed_sources", [])),
         *(f"Auffällig: {item}" for item in summary.get("drift", [])),
+        *(f"Adresse: {item}" for item in summary.get("contacts", [])),
         *summary.get("errors", []),
     ]
     if run.error:

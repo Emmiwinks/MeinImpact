@@ -1,0 +1,85 @@
+{
+  "place": "dresden",
+  "offices": [
+    {
+      "organization": "https://oparl.dresden.de/bodies/0001/organizations/gr/120",
+      "fraktion": "AfD-Fraktion",
+      "email": "afd-fraktion@dresden.de",
+      "source": null,
+      "verified_on": "2026-11-08",
+      "note": "Imprint of a 2025 Fraktion publication (afd-fraktion-dresden.de)"
+    },
+    {
+      "organization": "https://oparl.dresden.de/bodies/0001/organizations/gr/121",
+      "fraktion": "Fraktion FDP/Freie Bürger",
+      "email": "fdp-fb-fraktion@dresden.de",
+      "source": null,
+      "verified_on": "2026-11-08",
+      "note": "dresden.de Fraktion page (rathaus/politik/stadtrat/fraktionen)"
+    },
+    {
+      "organization": "https://oparl.dresden.de/bodies/0001/organizations/gr/205",
+      "fraktion": "BSW-Fraktion",
+      "email": "bsw-fraktion@dresden.de",
+      "source": null,
+      "verified_on": "2026-11-08",
+      "note": "dresden.de Fraktion page (rathaus/politik/stadtrat/fraktionen)"
+    },
+    {
+      "organization": "https://oparl.dresden.de/bodies/0001/organizations/gr/209",
+      "fraktion": "PVP-Kooperation",
+      "email": "post@pvp-kooperation.de",
+      "source": null,
+      "verified_on": "2026-11-08",
+      "note": "Provided by the user"
+    },
+    {
+      "organization": "https://oparl.dresden.de/bodies/0001/organizations/gr/212",
+      "fraktion": "Team Zastrow",
+      "email": "kontakt@team-zastrow.de",
+      "source": null,
+      "verified_on": "2026-11-08",
+      "note": "team-zastrow.de: no Fraktion address, the party contact"
+    },
+    {
+      "organization": "https://oparl.dresden.de/bodies/0001/organizations/gr/217",
+      "fraktion": "BSW-Fraktion",
+      "email": "bsw-fraktion@dresden.de",
+      "source": null,
+      "verified_on": "2026-11-08",
+      "note": "Same office as gr/205: OParl lists the Fraktion again under the party's new name from 2026-10-12"
+    },
+    {
+      "organization": "https://oparl.dresden.de/bodies/0001/organizations/gr/30",
+      "fraktion": "Fraktion Bündnis 90/Die Grünen",
+      "email": "gruene-fraktion@dresden.de",
+      "source": null,
+      "verified_on": "2026-11-08",
+      "note": "dresden.de Fraktion page (rathaus/politik/stadtrat/fraktionen)"
+    },
+    {
+      "organization": "https://oparl.dresden.de/bodies/0001/organizations/gr/32",
+      "fraktion": "SPD-Fraktion",
+      "email": "spd-fraktion@dresden.de",
+      "source": null,
+      "verified_on": "2026-11-08",
+      "note": "dresden.de Fraktion page (rathaus/politik/stadtrat/fraktionen)"
+    },
+    {
+      "organization": "https://oparl.dresden.de/bodies/0001/organizations/gr/33",
+      "fraktion": "Fraktion Die Linke",
+      "email": "linke-fraktion@dresden.de",
+      "source": null,
+      "verified_on": "2026-11-08",
+      "note": "linke-fraktion-dresden.de contact block"
+    },
+    {
+      "organization": "https://oparl.dresden.de/bodies/0001/organizations/gr/5",
+      "fraktion": "CDU-Fraktion",
+      "email": "cdu-fraktion@dresden.de",
+      "source": null,
+      "verified_on": "2026-11-08",
+      "note": "dresden.de Fraktion page (rathaus/politik/stadtrat/fraktionen)"
+    }
+  ]
+}
