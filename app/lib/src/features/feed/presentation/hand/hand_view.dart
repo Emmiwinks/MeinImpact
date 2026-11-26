@@ -79,7 +79,8 @@ class _HandViewState extends State<HandView> with TickerProviderStateMixin {
   // Thrown off the hand while the reason sheet is open.
   final _away = <String>{};
   late final AnimationController _flight;
-  // Runs the throw hint once: the dip, then the line fades out.
+  // Runs the throw hint: the dip and the line, which then waits until the
+  // user swipes or lifts a card, and fades out.
   late final AnimationController _hint;
   // The front card is still to turn over and back once.
   late bool _peek = widget.turnHint;
@@ -90,19 +91,47 @@ class _HandViewState extends State<HandView> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _flight = AnimationController(vsync: this, duration: MiMotion.flight);
-    _hint = AnimationController(vsync: this, duration: _hintDuration);
-    if (_throwHinted && !_peek) _hint.forward();
+    // Kept at full length when the phone turns animations off: it carries
+    // words to read, and the card does not move then anyway.
+    _hint = AnimationController(
+      vsync: this,
+      duration: _hintDuration,
+      animationBehavior: AnimationBehavior.preserve,
+    );
+    if (_throwHinted && !_peek) _showHint();
+    _position.addListener(_onPosition);
+    _carrying.addListener(_onCarrying);
   }
 
   void _peeked() {
     if (!_peek || !mounted) return;
     setState(() => _peek = false);
     widget.onTurnHinted?.call();
-    if (_throwHinted) _hint.forward();
+    if (_throwHinted) _showHint();
+  }
+
+  // Shown after the turn, when the eyes may still be on the card, so the
+  // line stays until the user swipes or lifts a card.
+  void _showHint() => _hint.animateTo(_hintHold);
+
+  void _endHint() {
+    if (_hint.value == 0 || _hint.value >= _hintOut) return;
+    _hint.value = _hintOut;
+    _hint.forward();
+  }
+
+  void _onPosition() {
+    if (_position.value.round() != 0) _endHint();
+  }
+
+  void _onCarrying() {
+    if (_carrying.value) _endHint();
   }
 
   @override
   void dispose() {
+    _position.removeListener(_onPosition);
+    _carrying.removeListener(_onCarrying);
     _flight.dispose();
     _hint.dispose();
     _position.dispose();
@@ -382,6 +411,10 @@ typedef _CardBuilder = Widget Function(
 });
 
 const _hintDuration = Duration(milliseconds: 6500);
+// Where the throw hint waits, its line fully shown, and where it fades out
+// from (see _ThrowHint).
+const _hintHold = 0.5;
+const _hintOut = 0.88;
 
 /// How far the throw hint lifts the front card at [t] of the hint, 0-1:
 /// up and down once, early on, as a long press would.
@@ -446,7 +479,7 @@ class _ThrowHint extends StatelessWidget {
     final colors = context.mi;
     final opacity = min(
       ((t - 0.08) / 0.06).clamp(0.0, 1.0),
-      ((1 - t) / 0.12).clamp(0.0, 1.0),
+      ((1 - t) / (1 - _hintOut)).clamp(0.0, 1.0),
     );
     return Opacity(
       opacity: opacity,

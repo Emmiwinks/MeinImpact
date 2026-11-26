@@ -208,7 +208,8 @@ void main() {
       await tester.pumpWidget(_Tab(pool: _pool(7)));
       await tester.pumpAndSettle();
 
-      expect(findText('Alle 7 ansehen'), findsOneWidget);
+      // The throw hint stands in for the link until the first swipe.
+      expect(findText('Alle 7 ansehen'), findsNothing);
       expect(_fanAt('Karte 1 von 5'), findsOneWidget);
 
       await tester.flingFrom(
@@ -218,6 +219,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(_fanAt('Karte 2 von 5'), findsOneWidget);
+      expect(findText('Alle 7 ansehen'), findsOneWidget);
 
       // A drag too short to fling snaps back.
       await tester.dragFrom(const Offset(400, 300), const Offset(30, 0));
@@ -523,19 +525,44 @@ void main() {
       await tester.pumpAndSettle();
     }
 
+    testWidgets('the hint stays until the hand is swiped', (tester) async {
+      await tester.pumpWidget(_Tab(pool: _pool(3)));
+      final hint = findText('Lange drücken zum Weglegen');
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 30));
+      expect(hint, findsOneWidget);
+
+      await tester.flingFrom(
+        const Offset(400, 300),
+        const Offset(-250, 0),
+        900,
+      );
+      await tester.pumpAndSettle();
+      expect(hint, findsNothing);
+    });
+
+    testWidgets('with animations off, the hint still shows', (tester) async {
+      // Android's "Remove animations" cuts ordinary animations to 5 %.
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      await tester.pumpWidget(_Tab(pool: _pool(3)));
+      await tester.pumpAndSettle();
+      expect(findText('Lange drücken zum Weglegen'), findsOneWidget);
+    });
+
     testWidgets('dropped in the trash, it goes with its reason and ranking', (
       tester,
     ) async {
       final tab = _Tab(pool: _pool(3));
       await tester.pumpWidget(tab);
-      // Never thrown one away: the hint says how, then fades.
+      // Never thrown one away: the hint says how, and goes once the card
+      // is lifted.
       final hint = findText('Lange drücken zum Weglegen');
-      await tester.pump();
-      await tester.pump();
-      await tester.pump(const Duration(seconds: 2));
-      expect(hint, findsOneWidget);
       await tester.pumpAndSettle();
-      expect(hint, findsNothing);
+      expect(hint, findsOneWidget);
 
       await carry(tester);
       expect(findText(sheetTitle), findsOneWidget);
