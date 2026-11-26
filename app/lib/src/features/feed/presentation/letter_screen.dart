@@ -280,9 +280,6 @@ class _LetterScreenState extends State<LetterScreen> {
               maxLength: 1000,
               style: textTheme.bodyLarge,
               textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                hintText: 'Ich fahre dort jeden Tag mit dem Rad …',
-              ),
             ),
             const SizedBox(height: MiSpace.sm),
             // Once there is a letter, sending it is the main step; drafting
