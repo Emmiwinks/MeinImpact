@@ -40,7 +40,9 @@ void main() {
     Widget home, {
     Brightness brightness = Brightness.dark,
     Future<void> Function(WidgetTester tester)? act,
+    Duration? at,
   }) async {
+    IntroScreen.replay();
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3;
     tester.view.padding = const FakeViewPadding(top: 141, bottom: 102);
@@ -63,7 +65,13 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    if (at != null) {
+      // A frame in the middle of an animation.
+      await tester.pump();
+      await tester.pump(at);
+    } else {
+      await tester.pumpAndSettle();
+    }
     if (act != null) {
       await act(tester);
       await tester.pumpAndSettle();
@@ -100,6 +108,18 @@ void main() {
         brightness: brightness,
       ),
     );
+    for (final ms in [1200, 2700, 4200, 5000]) {
+      testWidgets(
+        'intro at $ms ms, $b',
+        (t) => screen(
+          t,
+          'phone-intro-$ms-$b',
+          IntroScreen(onStart: () {}, onLater: () {}),
+          brightness: brightness,
+          at: Duration(milliseconds: ms),
+        ),
+      );
+    }
     testWidgets(
       'consent, $b',
       (t) => screen(

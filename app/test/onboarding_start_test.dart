@@ -140,16 +140,16 @@ void main() {
     testWidgets('intro, then the consent, then the questions', (tester) async {
       await start(tester);
 
-      await tester.tap(find.text("Los geht's · ca. 5 Minuten"));
+      await tester.tap(find.text('Test starten · ca. 5 Min.'));
       await tester.pumpAndSettle();
       expect(find.text('Kurz zu deinen Daten'), findsOneWidget);
 
       // Back from the consent is the intro again.
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
-      expect(find.text("Los geht's · ca. 5 Minuten"), findsOneWidget);
+      expect(find.text('Test starten · ca. 5 Min.'), findsOneWidget);
 
-      await tester.tap(find.text("Los geht's · ca. 5 Minuten"));
+      await tester.tap(find.text('Test starten · ca. 5 Min.'));
       await tester.pumpAndSettle();
       await agree(tester);
       expect(find.text('Was passt eher zu dir?'), findsOneWidget);
