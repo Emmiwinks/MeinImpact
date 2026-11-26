@@ -13,7 +13,9 @@ logger = logging.getLogger(__name__)
 
 def init_sentry(dsn: str | None, environment: str) -> None:
     """No-op without a DSN. Sends no personal data: no IPs, cookies,
-    headers or request bodies (a location request carries a PLZ)."""
+    request bodies (a location request carries a PLZ) or the values of
+    local variables in stack traces (they can hold a PLZ, feedback text or
+    a pseudonym)."""
     if not dsn:
         return
     sentry_sdk.init(
@@ -21,6 +23,7 @@ def init_sentry(dsn: str | None, environment: str) -> None:
         environment=environment,
         send_default_pii=False,
         max_request_body_size="never",
+        include_local_variables=False,
         traces_sample_rate=0.0,
     )
 

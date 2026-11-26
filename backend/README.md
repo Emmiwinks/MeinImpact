@@ -49,7 +49,7 @@ To get them by mail:
 3. Set it on Fly: `fly secrets set MEINIMPACT_SENTRY_DSN=<dsn>`.
 
 Sentry then also receives crashes. It never gets personal data: no IPs,
-cookies, headers or request bodies.
+cookies, request bodies or local variable values in stack traces.
 
 What one run may spend on Mistral is `MEINIMPACT_INGESTION_MAX_COST_EUR`
 (default 2.0). Listings left when it is reached are enriched by the next

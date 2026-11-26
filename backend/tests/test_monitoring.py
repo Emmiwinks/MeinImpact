@@ -7,6 +7,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
+import sentry_sdk
 
 from meinimpact.infrastructure import alerts
 from meinimpact.infrastructure.ai import usage
@@ -167,3 +168,14 @@ def test_alert_without_sentry_only_logs(caplog: pytest.LogCaptureFixture) -> Non
     alerts.alert("weact: 0 gelesen")
 
     assert "ALERT: weact: 0 gelesen" in caplog.text
+
+
+def test_sentry_gets_no_personal_data(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: dict[str, Any] = {}
+    monkeypatch.setattr(sentry_sdk, "init", lambda **kw: seen.update(kw))
+
+    alerts.init_sentry("https://key@o1.ingest.de.sentry.io/1", "test")
+
+    assert seen["send_default_pii"] is False
+    assert seen["max_request_body_size"] == "never"
+    assert seen["include_local_variables"] is False
