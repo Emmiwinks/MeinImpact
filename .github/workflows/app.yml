@@ -150,6 +150,9 @@ jobs:
 
   web:
     name: Build web app
+    # Off while testing runs through Play (decided 2026-11-26): nothing links
+    # to the web app, and the last deployed version stays online.
+    if: false
     needs: test
     runs-on: ubuntu-latest
     defaults:
