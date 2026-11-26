@@ -23,7 +23,7 @@ Done when the chosen municipality's chain is printed with no "not found" line.
 
 For every new level, go through [reference/known-platforms.md](reference/known-platforms.md) top to bottom. Search the web only for what that list leaves open, and only for registries of the kinds named there.
 
-For each candidate, fetch its `robots.txt` before anything else and record one verdict: **found** (allowed, machine-readable or parseable, has open items), **rejected** (why), or **blocked** (robots, login, JS token wall). A blocked source that matters gets a permission request drafted from [reference/permission-letter.md](reference/permission-letter.md); the user sends it.
+For each candidate, fetch its `robots.txt` before anything else and record one verdict: **found** (allowed and parseable; note how many open items it has today, zero included, since a configured page costs one request per run and catches later items), **rejected** (why), or **blocked** (robots, login, JS token wall). A blocked source that matters gets a permission request drafted from [reference/permission-letter.md](reference/permission-letter.md); the user sends it.
 
 A source counts only if a shared adapter under `infrastructure/listings/sources/` can read it, configured from the place file. When a shared adapter fits but cannot take the place as configuration yet, extend it to take it (configuration, never a copy of the module). A source that needs a module of its own for this one place: stop and ask the user first.
 
@@ -33,9 +33,9 @@ Done when every platform in the list has a verdict for every new level.
 
 Write one file per new level, `status` left at its default (draft). The module docstring records the step-2 verdicts: sources found, rejected (with reason), blocked (with contact status, e.g. "asked 2026-11-25"). That docstring is the place's record; the next change to this place starts by reading it.
 
-Then: `python -m pytest -q --no-cov tests/test_places.py`. The registry validates parents, AGS nesting and live/draft order on import.
+Then: `python -m pytest -q --no-cov tests/test_places.py`. The registry validates parents, AGS nesting and live/draft order on import. `test_place_districts_are_synced` fails for a place with `district_types` until step 4 has run its sync; that one is expected here.
 
-Done when the tests pass.
+Done when every other test in the file passes.
 
 ## 4. Reference data and contacts
 
@@ -44,7 +44,7 @@ Done when the tests pass.
 
 Place data comes only from these sync scripts and from pages recorded as `source`; never type coordinates, lists or addresses in from memory.
 
-Done when every current Fraktion has an address with a source, or is named in the report as missing.
+Done when `tests/test_places.py` passes in full, and every current Fraktion has an address with a source or is named in the report as missing.
 
 ## 5. Dry run
 
@@ -52,7 +52,7 @@ Done when every current Fraktion has an address with a source, or is named in th
 python scripts/dryrun_place.py <key> --enrich 20
 ```
 
-It prints kept listings per source, kind and region, authorities that name the place but match no file (fix with `portal_names`, rerun), and for the sample the relevant share and € per listing. The sample costs real Mistral money (about 1 cent per listing); 20 is enough.
+Run it for the widest new level (a new Land covers its Kreis and town), so one run and one sample serve the whole chain. It reads only the sources that can list something for that place, and prints kept listings per source, kind and region, authorities that name the place but match no file (fix with `portal_names`, rerun), and for the sample the relevant share and € per listing. The sample costs real Mistral money (about 1 cent per listing); 20 is enough.
 
 Then the quality gates: `ruff format --check`, `ruff check`, `mypy --no-incremental src scripts tests`, `pytest`.
 

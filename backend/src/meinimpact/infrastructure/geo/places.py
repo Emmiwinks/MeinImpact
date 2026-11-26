@@ -87,22 +87,49 @@ class PlaceIndex:
             plz,
         )
 
-    def locate(self, name: str, gebiet: str = "") -> Area | None:
-        """The area of the municipality, else the Kreis, called `name`
-        within `gebiet` (an AGS prefix, "" = all of Germany); None when
-        no or more than one place there has that name."""
+    def _municipalities(self, name: str, gebiet: str) -> list[tuple[str, Area]]:
+        """(Kreis AGS, area) of the municipalities called `name` within
+        `gebiet`, from the strictest name match that finds any."""
         candidates = [self._places.get(name, [])] + [
             index.get(key(name), []) for key, index in self._loose
         ]
         for entries in candidates:
-            municipalities = [
-                area for kreis, area in entries if kreis.startswith(gebiet)
+            found = [
+                (kreis, area) for kreis, area in entries if kreis.startswith(gebiet)
             ]
-            if len(municipalities) > 1:
-                return None
-            if municipalities:
-                area = municipalities[0]
-                return Area(area.centre, max(area.km, MIN_PLACE_KM))
+            if found:
+                return found
+        return []
+
+    def kreis_of(self, name: str, gebiet: str = "") -> str | None:
+        """The Kreis AGS of the one municipality called `name` within
+        `gebiet`; None when there is none or more than one.
+
+        A merged municipality the table only knows by its parts
+        ("Oranienbaum-Wörlitz" as "Oranienbaum" and "Wörlitz") counts when
+        every part lies in the same, single Kreis."""
+        found = self._municipalities(name, gebiet)
+        if found:
+            return found[0][0] if len(found) == 1 else None
+        parts = [part.strip() for part in name.split("-") if part.strip()]
+        if len(parts) < 2:
+            return None
+        kreise = {
+            kreis for part in parts for kreis, _ in self._municipalities(part, gebiet)
+        }
+        found_all = all(self._municipalities(part, gebiet) for part in parts)
+        return kreise.pop() if found_all and len(kreise) == 1 else None
+
+    def locate(self, name: str, gebiet: str = "") -> Area | None:
+        """The area of the municipality, else the Kreis, called `name`
+        within `gebiet` (an AGS prefix, "" = all of Germany); None when
+        no or more than one place there has that name."""
+        municipalities = self._municipalities(name, gebiet)
+        if len(municipalities) > 1:
+            return None
+        if municipalities:
+            area = municipalities[0][1]
+            return Area(area.centre, max(area.km, MIN_PLACE_KM))
         kreis = self._kreise.get(name)
         if kreis is None:
             kreise = {

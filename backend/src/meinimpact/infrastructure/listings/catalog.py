@@ -8,7 +8,7 @@ it on `Place` if it is per place, and its assembly here.
 """
 
 import re
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 
 from meinimpact import places as covered
 from meinimpact.infrastructure.geo.districts import (
@@ -24,7 +24,6 @@ from meinimpact.infrastructure.listings.source import DetailReader, ListingSourc
 from meinimpact.infrastructure.listings.sources import (
     eu_have_your_say,
     openpetition,
-    sachsen_beteiligung,
     weact,
 )
 from meinimpact.infrastructure.listings.sources.eu_have_your_say import (
@@ -44,6 +43,7 @@ from meinimpact.infrastructure.listings.sources.openpetition import (
 from meinimpact.infrastructure.listings.sources.sachsen_beteiligung import (
     PortalCoverage,
     SachsenBeteiligungSource,
+    municipality_name,
 )
 from meinimpact.infrastructure.listings.sources.weact import (
     WeActDetailReader,
@@ -60,10 +60,14 @@ OPENPETITION_SCOPES = tuple(
     if place.openpetition_path
 )
 
+PORTAL_LANDS: tuple[covered.Place, ...] = tuple(
+    place for place in covered.ALL if place.portal
+)
+
 # Display names shown with every opportunity in the app.
 SOURCE_NAMES: Mapping[str, str] = {
     openpetition.SOURCE_ID: "openPetition",
-    sachsen_beteiligung.SOURCE_ID: "Beteiligungsportal Sachsen",
+    **{land.portal.source_id: land.portal.name for land in PORTAL_LANDS if land.portal},
     eu_have_your_say.SOURCE_ID: "EU-Kommission: Ihre Meinung zählt",
     weact.SOURCE_ID: "WeAct",
     **{
@@ -73,32 +77,72 @@ SOURCE_NAMES: Mapping[str, str] = {
 }
 
 
-def portal_coverage(land: covered.Place) -> PortalCoverage:
+def portal_coverage(
+    land: covered.Place, index: PlaceIndex | None = None
+) -> PortalCoverage:
     """The Land's portal, with every covered place inside the Land matched
-    by its authority names, most specific first."""
+    by its authority names, most specific first. A town without a place of
+    its own counts for its covered Landkreis (`index` locates it; loaded
+    from the place table when the Land has a covered Kreis)."""
     inside = sorted(
         (p for p in covered.ALL if p.depth > land.depth and p.ags.startswith(land.ags)),
         key=lambda p: -p.depth,
     )
+    kreise = {p.ags: p.key for p in inside if p.level is covered.Level.KREIS}
+    nearby: Callable[[str], str | None] | None = None
+    if kreise:
+        places = index or PlaceIndex.load(PlzIndex.load())
+
+        def in_covered_kreis(authority: str) -> str | None:
+            town = municipality_name(authority)
+            kreis = places.kreis_of(town, land.ags) if town else None
+            return kreise.get(kreis) if kreis else None
+
+        nearby = in_covered_kreis
     return PortalCoverage(
         land=land.key,
         land_markers=land.portal_land_markers,
         local=tuple((p.key, p.authority_names) for p in inside),
+        nearby=nearby,
     )
 
 
 def default_sources(http: PoliteHttpClient) -> list[ListingSource]:
-    sachsen = covered.by_key("sachsen")
     return [
         *(OpenPetitionSource(http, scope) for scope in OPENPETITION_SCOPES),
         *(
-            [SachsenBeteiligungSource(http, portal_coverage(sachsen))]
-            if sachsen
-            else []
+            SachsenBeteiligungSource(http, land.portal, portal_coverage(land))
+            for land in PORTAL_LANDS
+            if land.portal
         ),
         EuHaveYourSaySource(http),
         WeActSource(http),
         *(OParlSource(http, body) for body in OPARL_BODIES),
+    ]
+
+
+def place_sources(http: PoliteHttpClient, place: covered.Place) -> list[ListingSource]:
+    """Only the sources that can list something for `place` or a place
+    inside it: its and its inner places' registries, and the portal of its
+    Land. For a dry run of one place, without reading everything."""
+    inside = {
+        p.key
+        for p in covered.ALL
+        if p.depth >= place.depth and p.ags.startswith(place.ags)
+    }
+    lands = {p.key for p in covered.chain(place.key)} | inside
+    return [
+        *(
+            OpenPetitionSource(http, s)
+            for s in OPENPETITION_SCOPES
+            if s.region in inside
+        ),
+        *(
+            SachsenBeteiligungSource(http, land.portal, portal_coverage(land))
+            for land in PORTAL_LANDS
+            if land.portal and land.key in lands
+        ),
+        *(OParlSource(http, body) for body in OPARL_BODIES if body.region in inside),
     ]
 
 
@@ -127,7 +171,7 @@ def default_locality_resolver(plz: PlzIndex) -> LocalityResolver:
 def default_detail_readers(http: PoliteHttpClient) -> dict[str, DetailReader]:
     """Readers for registries whose list view is too thin to enrich from.
 
-    The Sachsen portal's teaser already carries the text; its detail pages
+    The Land portals' teasers already carry the text; its detail pages
     add nothing usable. WeAct's page summary often only repeats the title.
     """
     return {

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Dry run for one place: what its sources would bring, before it goes live.
 
-Reads every configured source (no DB), keeps the listings of the place and
-the places inside it, and prints per source and kind how many survive the
+Reads only the sources that can list something for the place (no DB),
+keeps the listings of the place and the places inside it, and prints per source and kind how many survive the
 steps, plus portal authorities that name the place but match no place file
 (a hint for `portal_names`). With `--enrich N` it also sends up to N kept
 listings through the production enrichment, to measure the share that is
@@ -26,7 +26,7 @@ from meinimpact.infrastructure.listings import steps
 from meinimpact.infrastructure.listings.catalog import (
     default_detail_readers,
     default_district_matchers,
-    default_sources,
+    place_sources,
 )
 from meinimpact.infrastructure.listings.collector import SourceOutcome, collect
 from meinimpact.infrastructure.listings.http import PoliteHttpClient
@@ -45,7 +45,7 @@ async def main(place_key: str, enrich: int) -> None:
     }
 
     async with PoliteHttpClient() as http:
-        report = await collect(default_sources(http))
+        report = await collect(place_sources(http, place))
         kept = [
             item
             for item in steps.apply(

@@ -220,3 +220,65 @@ def test_the_configured_resolver_locates_saxon_places_from_the_prod_pool() -> No
     assert school.area is not None and school.area.km < 5
     assert railway.area is not None and 15 < railway.area.km < 30
     assert region.area is not None and region.area.km > 20
+
+
+_WITTENBERG = Point(51.866, 12.646)
+
+
+def test_a_town_inside_a_kreis_is_its_own_place_and_the_kreis_its_surroundings() -> (
+    None
+):
+    plz = PlzIndex(
+        {
+            "06886": PlzLocation("15091", _WITTENBERG),
+            "06925": PlzLocation("15091", Point(51.76, 13.05)),
+        }
+    )
+    places = PlaceIndex({"Wittenberg": [("15091", Area(_WITTENBERG, 3.0))]}, {}, plz)
+    resolver = LocalityResolver(plz, places)
+
+    town = resolver.of("wittenberg", "Lutherstadt Wittenberg")
+    kreis = resolver.of("lk-wittenberg", "Landkreis Wittenberg")
+
+    assert town == Locality("15091375", Reach.PLACE, Area(_WITTENBERG, 3.0))
+    assert kreis.gebiet == "15091"
+    assert kreis.reach is Reach.SURROUNDINGS
+    assert kreis.area == plz.kreis_area("15091")
+
+
+def test_a_kreis_matter_in_one_of_its_towns_lies_at_that_town() -> None:
+    graefenhainichen = Point(51.73, 12.45)
+    plz = PlzIndex({"06886": PlzLocation("15091", _WITTENBERG)})
+    places = PlaceIndex(
+        {"Gräfenhainichen": [("15091", Area(graefenhainichen, 2.5))]}, {}, plz
+    )
+    resolver = LocalityResolver(plz, places)
+
+    plan = resolver.of(
+        "lk-wittenberg", "Stadt Gräfenhainichen", Reach.PLACE, ("Gräfenhainichen",)
+    )
+
+    assert plan == Locality("15091", Reach.PLACE, Area(graefenhainichen, 2.5))
+    assert places.kreis_of("Gräfenhainichen", "15") == "15091"
+    assert places.kreis_of("Gräfenhainichen", "14") is None
+
+
+def test_a_merged_municipality_is_found_by_its_parts() -> None:
+    plz = PlzIndex({})
+    point = Area(Point(51.8, 12.4), 2.0)
+    places = PlaceIndex(
+        {
+            "Oranienbaum": [("15091", point)],
+            "Wörlitz": [("15091", point)],
+            "Bitterfeld": [("15082", point)],
+            "Wolfen": [("15082", point)],
+            "Grenzdorf": [("15082", point)],
+        },
+        {},
+        plz,
+    )
+
+    assert places.kreis_of("Oranienbaum-Wörlitz", "15") == "15091"
+    assert places.kreis_of("Bitterfeld-Wolfen", "15") == "15082"
+    assert places.kreis_of("Oranienbaum-Unbekannt", "15") is None
+    assert places.kreis_of("Wörlitz-Grenzdorf", "15") is None  # two Kreise

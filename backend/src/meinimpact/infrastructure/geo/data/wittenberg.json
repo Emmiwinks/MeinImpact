@@ -1,0 +1,184 @@
+{
+  "city": "Wittenberg",
+  "wikidata_id": "Q6837",
+  "district_types": [
+    "Q253019"
+  ],
+  "synced_at": "2026-11-25",
+  "districts": [
+    {
+      "name": "Abtsdorf",
+      "wikidata_id": "Q334596",
+      "lat": 51.890277777,
+      "lon": 12.729444444
+    },
+    {
+      "name": "Apollensdorf",
+      "wikidata_id": "Q26254880",
+      "lat": 51.87583333,
+      "lon": 12.54555556
+    },
+    {
+      "name": "Assau",
+      "wikidata_id": "Q27959015",
+      "lat": 51.984166666,
+      "lon": 12.706666666
+    },
+    {
+      "name": "Berkau",
+      "wikidata_id": "Q76392498",
+      "lat": 51.96771,
+      "lon": 12.64029
+    },
+    {
+      "name": "Boßdorf",
+      "wikidata_id": "Q702089",
+      "lat": 51.983055555,
+      "lon": 12.683055555
+    },
+    {
+      "name": "Braunsdorf",
+      "wikidata_id": "Q72952046",
+      "lat": 51.9139,
+      "lon": 12.5944
+    },
+    {
+      "name": "Dobien",
+      "wikidata_id": "Q78002039",
+      "lat": 51.90289,
+      "lon": 12.61236
+    },
+    {
+      "name": "Euper",
+      "wikidata_id": "Q98827887",
+      "lat": 51.90053,
+      "lon": 12.70422
+    },
+    {
+      "name": "Grabo",
+      "wikidata_id": "Q98397249",
+      "lat": 51.9497,
+      "lon": 12.648
+    },
+    {
+      "name": "Griebo",
+      "wikidata_id": "Q595282",
+      "lat": 51.866666666,
+      "lon": 12.516666666
+    },
+    {
+      "name": "Jahmo",
+      "wikidata_id": "Q77038359",
+      "lat": 51.949756,
+      "lon": 12.7016076
+    },
+    {
+      "name": "Kerzendorf",
+      "wikidata_id": "Q27958977",
+      "lat": 51.981388888,
+      "lon": 12.660833333
+    },
+    {
+      "name": "Kleinwittenberg",
+      "wikidata_id": "Q45060271",
+      "lat": 51.8662,
+      "lon": 12.6093
+    },
+    {
+      "name": "Kropstädt",
+      "wikidata_id": "Q696842",
+      "lat": 51.966666666,
+      "lon": 12.733055555
+    },
+    {
+      "name": "Köpnick",
+      "wikidata_id": "Q77038757",
+      "lat": 51.9396097,
+      "lon": 12.7096258
+    },
+    {
+      "name": "Labetz",
+      "wikidata_id": "Q98827747",
+      "lat": 51.8732096,
+      "lon": 12.695858
+    },
+    {
+      "name": "Mochau",
+      "wikidata_id": "Q2627704",
+      "lat": 51.933055555,
+      "lon": 12.683055555
+    },
+    {
+      "name": "Nudersdorf",
+      "wikidata_id": "Q542116",
+      "lat": 51.930277777,
+      "lon": 12.595555555
+    },
+    {
+      "name": "Piesteritz",
+      "wikidata_id": "Q2094135",
+      "lat": 51.8675,
+      "lon": 12.5967
+    },
+    {
+      "name": "Pratau",
+      "wikidata_id": "Q2107890",
+      "lat": 51.842988888,
+      "lon": 12.643288888
+    },
+    {
+      "name": "Reinsdorf",
+      "wikidata_id": "Q43273981",
+      "lat": 51.894,
+      "lon": 12.6045
+    },
+    {
+      "name": "Schmilkendorf",
+      "wikidata_id": "Q19947161",
+      "lat": 51.925833333,
+      "lon": 12.630833333
+    },
+    {
+      "name": "Seegrehna",
+      "wikidata_id": "Q2264875",
+      "lat": 51.831388888,
+      "lon": 12.553055555
+    },
+    {
+      "name": "Straach",
+      "wikidata_id": "Q696714",
+      "lat": 51.954444444,
+      "lon": 12.595833333
+    },
+    {
+      "name": "Trajuhn",
+      "wikidata_id": "Q76867155",
+      "lat": 51.8947,
+      "lon": 12.675
+    },
+    {
+      "name": "Wachsdorf",
+      "wikidata_id": "Q98827586",
+      "lat": 51.8282,
+      "lon": 12.6769
+    },
+    {
+      "name": "Weddin",
+      "wikidata_id": "Q27958981",
+      "lat": 51.974166666,
+      "lon": 12.681666666
+    },
+    {
+      "name": "Wiesigk",
+      "wikidata_id": "Q141163425",
+      "lat": 51.8762,
+      "lon": 12.7168
+    },
+    {
+      "name": "Wüstemark",
+      "wikidata_id": "Q141164304",
+      "lat": 51.9372,
+      "lon": 12.7576
+    }
+  ]
+}

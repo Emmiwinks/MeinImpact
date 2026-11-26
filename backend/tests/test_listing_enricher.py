@@ -127,6 +127,14 @@ def test_city_prompt_offers_only_the_city_and_the_places_above_it() -> None:
     assert "Braucht Dresden" not in prompt
 
 
+def test_kreis_prompt_counts_its_towns_and_names_others_as_outside() -> None:
+    prompt = build_prompt(make_listing(region="lk-wittenberg"), None)
+
+    assert '"lk-wittenberg" (Landkreis Wittenberg: der ganze Kreis oder eine' in prompt
+    assert "außerhalb von Landkreis Wittenberg" in prompt
+    assert "Menschen in Landkreis Wittenberg, Sachsen-Anhalt und Deutschland" in prompt
+
+
 def test_nationwide_prompt_offers_every_covered_place() -> None:
     prompt = build_prompt(make_listing(region="bund"), None)
 

@@ -157,7 +157,10 @@ def _scope_label(place: covered.Place) -> str:
         case covered.Level.KOMMUNE:
             return f'"{place.key}" (Stadt {place.name})'
         case covered.Level.KREIS:
-            return f'"{place.key}" (Landkreis {place.name} oder kreisweit)'
+            return (
+                f'"{place.key}" ({place.name}: der ganze Kreis oder eine Stadt '
+                "oder Gemeinde darin)"
+            )
         case covered.Level.LAND:
             return f'"{place.key}" (Land {place.name} oder ganz {place.name})'
         case covered.Level.BUND:
@@ -179,11 +182,19 @@ def _scope_text(listing: Listing) -> tuple[str, str, str, str]:
     )
     lands = [p for p in scopes if p.level is covered.Level.LAND]
     land = lands[0].name if len(lands) == 1 else None
-    other_local = (
-        f"nur eine andere Stadt/Gemeinde/einen Landkreis in {land}"
-        if land
-        else "nur eine Stadt/Gemeinde/einen Landkreis, die hier nicht genannt ist"
-    )
+    kreise = [p for p in scopes if p.level is covered.Level.KREIS]
+    kreis = kreise[0].name if len(kreise) == 1 else None
+    if land and kreis:
+        other_local = (
+            f"nur eine Stadt/Gemeinde oder einen anderen Landkreis in {land} "
+            f"außerhalb von {kreis}"
+        )
+    elif land:
+        other_local = f"nur eine andere Stadt/Gemeinde/einen Landkreis in {land}"
+    else:
+        other_local = (
+            "nur eine Stadt/Gemeinde/einen Landkreis, die hier nicht genannt ist"
+        )
     other_region = (
         f"nur ein anderes Bundesland oder eine Stadt außerhalb von {land}"
         if land

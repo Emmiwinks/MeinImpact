@@ -5,7 +5,7 @@ Check these in order for each new level. Each line: what it is, how to check it,
 ## Kommune
 
 - **OParl** (council papers and decisions; also council members and Fraktionen). Check `https://github.com/OParl/resources/blob/main/endpoints.yml` for the city, then try `<ratsinfo host>/oparl/system` or `/oparl/v1.0/system`. Needs `oparl=OParlBody(...)` with the body URL, the regexes for council, committees and neighbourhood bodies (names differ per Land: Ortschaftsrat, Ortsbeirat, Bezirksvertretung, BVV, Bezirksausschuss) and the link template for papers. The Ratsinformationssystem's own HTML (SessionNet, ALLRIS) is usually robots-blocked; OParl is the official route. No OParl: council decisions are a gap, not a scraper.
-- **openPetition region page** `https://www.openpetition.de/region/petition/<Name>`: exists for most towns; check it lists running petitions, not only ended ones. Needs `openpetition_path`.
+- **openPetition region page** `https://www.openpetition.de/region/petition/<Name>`: regions are Kreise and kreisfreie Städte, so for a town inside a Kreis the page under the town's name is the Kreis's (set it on the Kreis file). Needs `openpetition_path`. A Land page also lists many single-town petitions; enrichment drops those as "andere_kommune", which is expected.
 - **The Land's participation portal** (see Land below): the town is covered if the portal lists its authority. Note the exact authority name ("Mandant") it uses; set `portal_names` when it differs from the place name, and make sure it does not also match the Landkreis.
 - **Wikidata districts**: items with P31 Ortsteil (`Q253019`) and P131 = the town. Needs `wikidata_id` and `district_types`. Few or none is fine for small towns.
 - **The town's own Bekanntmachungen / Bauleitplanung pages and Amtsblatt**: record them in the docstring as known but unread. No shared adapter reads them yet; a generic Amtsblatt reader is a separate decision for the user.
@@ -18,7 +18,7 @@ Check these in order for each new level. Each line: what it is, how to check it,
 
 ## Land
 
-- **Beteiligungsportal** on the shared software (Jakarta Faces, `/portal/<mandant>/beteiligung/themen`, "x - y von N" paginator, page size 10): confirmed for Sachsen (`buergerbeteiligung.sachsen.de`) and Sachsen-Anhalt (`beteiligung.sachsen-anhalt.de`). Read by `sources/sachsen_beteiligung.py`. Needs `portal_land_markers`: substrings of the Land's own authority names (Staatsministerium, Ministerium, Landesamt, Landesverwaltungsamt ...).
+- **Beteiligungsportal** on the shared software (Jakarta Faces, `/portal/<mandant>/beteiligung/themen`, "x - y von N" paginator, page size 10): confirmed for Sachsen (`buergerbeteiligung.sachsen.de`, mandant `sachsen`) and Sachsen-Anhalt (`beteiligung.sachsen-anhalt.de`, mandant `hauptportal`). Read by `sources/sachsen_beteiligung.py`. Needs `portal=PortalSite(...)` and `portal_land_markers`: substrings of the Land's own authority names. To see the names, read the portal once with a throwaway `PortalSite` and count `listing.locality`; `sachsen_anhalt.py` records what that looked like.
 - **openPetition region page** for the Land.
 - **Landtag**: agendas and Drucksachen. Dokumentationssysteme (PADOKA, EDAS ...) are often robots-blocked; agenda PDFs on the main site sometimes are not. No shared adapter yet: record as known.
 - **Wahlkreise / MdL**: abgeordnetenwatch API (`https://www.abgeordnetenwatch.de/api/v2`) has every Landtag; record whether the current term is there. Not wired yet.

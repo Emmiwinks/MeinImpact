@@ -4,11 +4,12 @@ The region says who decides (and whom a letter goes to); the locality says
 whom to show it to. `gebiet` is the area key (AGS) prefix of everyone it
 concerns. Where possible an opportunity also gets an `area` around a
 centre, so the app can rank by distance:
-- A city's matter covers the city's Kreis area, or only one part of the
-  city: the part enrichment names, else the part its neighbourhood body
-  (Ortschaftsrat, Stadtbezirksbeirat ...) stands for. A city-wide reach
-  beats the body: an Ortschaftsrat advising on the city budget is no
-  neighbourhood matter.
+- A city's matter covers the city's Kreis area (a town inside a Kreis: its
+  own area from the place table; a Landkreis: the Kreis area), or only one
+  part of the city: the part enrichment names, else the part its
+  neighbourhood body (Ortschaftsrat, Stadtbezirksbeirat ...) stands for. A
+  city-wide reach beats the body: an Ortschaftsrat advising on the city
+  budget is no neighbourhood matter.
 - A Land or Bund matter that enrichment places in one or a few
   municipalities or Kreise (a school in Weinböhla, a railway from Pirna to
   Sebnitz) covers those. Its `gebiet` stays the region's: a wrongly placed
@@ -148,6 +149,13 @@ class LocalityResolver:
         reach: Reach | None,
         places: Sequence[str],
     ) -> Locality:
+        place = covered.by_key(region)
+        if place is not None and place.level is covered.Level.KREIS and reach:
+            # A Kreis matter in one or a few of its towns (a Bebauungsplan
+            # of a town without a place file of its own) lies there
+            around = self._around(places, gebiet, reach)
+            if around:
+                return Locality(gebiet, reach, around)
         neighbourhoods = self._neighbourhoods.get(region)
         if neighbourhoods and reach in (None, Reach.NEIGHBOURHOOD):
             points = [p for name in places for p in neighbourhoods.points(name)]
@@ -158,8 +166,18 @@ class LocalityResolver:
                 km = max(NEIGHBOURHOOD_KM, *(distance_km(centre, p) for p in points))
                 area = Area(centre, round(km, 1))
                 return Locality(gebiet, Reach.NEIGHBOURHOOD, area)
-        city = self._plz.kreis_area(gebiet)
-        return Locality(gebiet, Reach.CITY if city else None, city)
+        whole_reach, whole = self._whole(region, gebiet)
+        return Locality(gebiet, whole_reach if whole else None, whole)
+
+    def _whole(self, region: str, gebiet: str) -> tuple[Reach, Area | None]:
+        """The whole place: a kreisfreie Stadt and a Landkreis by their Kreis
+        area, a town inside a Kreis (8-digit key) by the place table."""
+        place = covered.by_key(region)
+        if place is not None and place.level is covered.Level.KREIS:
+            return Reach.SURROUNDINGS, self._plz.kreis_area(gebiet)
+        if len(gebiet) > 5 and place is not None:
+            return Reach.PLACE, self._places.locate(place.name, gebiet[:5])
+        return Reach.CITY, self._plz.kreis_area(gebiet)
 
     def _around(self, places: Sequence[str], gebiet: str, reach: Reach) -> Area | None:
         """The area covering every place named that lies in `gebiet`;

@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from meinimpact.infrastructure.listings.sources.oparl import OParlBody
+from meinimpact.infrastructure.listings.sources.sachsen_beteiligung import PortalSite
 
 
 class Level(StrEnum):
@@ -53,8 +54,9 @@ class Place:
     # Shared registries that cover this place
     openpetition_path: str | None = None
     oparl: OParlBody | None = None
-    # A Land's participation portal: substrings of the authority names that
-    # are the Land itself (ministries, Landesamt ...)
+    # A Land's participation portal, and substrings of the authority names
+    # on it that are the Land itself (ministries, Landesamt ...)
+    portal: PortalSite | None = None
     portal_land_markers: tuple[str, ...] = ()
     # How the Land portal names this place's own authority, if it differs
     # from `name`

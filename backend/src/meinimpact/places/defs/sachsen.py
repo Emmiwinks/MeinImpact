@@ -5,6 +5,7 @@ Blocked: Landtag Sitzungskalender (robots.txt disallows
 /de/aktuelles/sitzungskalender); no permission asked yet.
 """
 
+from meinimpact.infrastructure.listings.sources.sachsen_beteiligung import PortalSite
 from meinimpact.places.model import Level, Place, Status
 
 PLACE = Place(
@@ -15,6 +16,12 @@ PLACE = Place(
     parent="bund",
     status=Status.LIVE,
     openpetition_path="/region/petition/Sachsen",
+    portal=PortalSite(
+        source_id="beteiligung-sachsen",
+        base_url="https://buergerbeteiligung.sachsen.de",
+        mandant="sachsen",
+        name="Beteiligungsportal Sachsen",
+    ),
     portal_land_markers=(
         "Staatsministerium",
         "Staatskanzlei",

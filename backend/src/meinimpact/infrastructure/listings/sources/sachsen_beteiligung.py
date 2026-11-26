@@ -1,10 +1,12 @@
-"""Beteiligungsportal Sachsen: all current participation procedures in Saxony.
+"""Beteiligungsportal: all current participation procedures of one Land.
 
-One portal for the state government and most Saxon municipalities, Dresden
-included: consultations, surveys, Bauleitplanung displays, events, notices.
-The list is a PrimeFaces DataList. The first page is plain HTML; further
-pages come from the same AJAX call the paginator makes (session cookie +
-ViewState). Which authority runs a procedure decides its coverage region.
+Several Länder run the same portal software (Sachsen, Sachsen-Anhalt), one
+portal for the Land government and most of its municipalities:
+consultations, surveys, Bauleitplanung displays, events, notices. Each is a
+`PortalSite` in its Land's place file. The list is a PrimeFaces DataList.
+The first page is plain HTML; further pages come from the same AJAX call
+the paginator makes (session cookie + ViewState). Which authority runs a
+procedure decides its coverage region.
 """
 
 import re
@@ -28,8 +30,19 @@ from meinimpact.infrastructure.listings.parsing import (
     text_of,
 )
 
-SOURCE_ID = "beteiligung-sachsen"
-BASE_URL = "https://buergerbeteiligung.sachsen.de"
+
+@dataclass(frozen=True, slots=True)
+class PortalSite:
+    """One Land's instance of the portal software."""
+
+    source_id: str
+    base_url: str
+    # Path segment of the full list: /portal/<mandant>/beteiligung/themen
+    mandant: str
+    # Shown with every opportunity in the app
+    name: str
+
+
 _DATA_LIST = "tabForm:beteiligungList:dataList"
 _PAGE_SIZE = 10  # the portal's own page size; it rejects any other
 _TOTAL = re.compile(r"\d+\s*-\s*\d+\s*von\s*(\d+)")
@@ -44,16 +57,33 @@ _AJAX_HEADERS = {
 
 RegionResolver = Callable[[str], str | None]
 
-_MUNICIPAL_PREFIXES = (
-    "Stadt ",
+# Longest first: municipality_name strips the first that matches
+_TOWN_PREFIXES = (
+    "Einheitsgemeinde Stadt ",
+    "Einheitsgemeinde ",
+    "Große Kreisstadt ",
+    "Welterbestadt ",
+    "Lutherstadt ",
+    "Hansestadt ",
     "Gemeinde ",
-    "Große Kreisstadt",
+    "Stadt ",
+)
+_MUNICIPAL_PREFIXES = (
+    *_TOWN_PREFIXES,
     "Landkreis",
     "Landratsamt",
+    "Verbandsgemeinde",
     "Verwaltungsverband",
     "Verwaltungsgemeinschaft",
     "Zweckverband",
 )
+
+
+def municipality_name(authority: str) -> str | None:
+    """ "Stadt Gräfenhainichen" -> "Gräfenhainichen"; None for authorities
+    that are no single town (Landkreis, Verbandsgemeinde ...)."""
+    prefix = next((p for p in _TOWN_PREFIXES if authority.startswith(p)), None)
+    return authority.removeprefix(prefix).strip() if prefix else None
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,13 +98,16 @@ class PortalCoverage:
     land: str
     land_markers: tuple[str, ...]
     local: tuple[tuple[str, tuple[str, ...]], ...] = ()
+    # For a municipal authority without a place of its own: the covered
+    # Landkreis it lies in, if any (its people see it, ranked by distance)
+    nearby: Callable[[str], str | None] | None = None
 
     def region_for(self, authority: str) -> str | None:
         for key, names in self.local:
             if any(name in authority for name in names):
                 return key
         if authority.startswith(_MUNICIPAL_PREFIXES):
-            return None
+            return self.nearby(authority) if self.nearby else None
         if any(marker in authority for marker in self.land_markers):
             return self.land
         return None
@@ -83,12 +116,15 @@ class PortalCoverage:
 def parse_teasers(
     html: str,
     *,
+    site: PortalSite,
     observed_at: datetime,
     resolve_region: RegionResolver,
 ) -> list[Listing]:
     soup = BeautifulSoup(html, "html.parser")
     listings = (
-        _parse_teaser(teaser, observed_at=observed_at, resolve_region=resolve_region)
+        _parse_teaser(
+            teaser, site=site, observed_at=observed_at, resolve_region=resolve_region
+        )
         for teaser in soup.select("div.nbp-teaser")
     )
     return [listing for listing in listings if listing is not None]
@@ -122,7 +158,11 @@ def parse_partial_response(xml: str) -> str:
 
 
 def _parse_teaser(
-    teaser: Tag, *, observed_at: datetime, resolve_region: RegionResolver
+    teaser: Tag,
+    *,
+    site: PortalSite,
+    observed_at: datetime,
+    resolve_region: RegionResolver,
 ) -> Listing | None:
     link = teaser.select_one("h3.nbp-teaser-title a[href]")
     href = attr_of(link, "href")
@@ -141,9 +181,9 @@ def _parse_teaser(
     )
 
     return Listing(
-        source_id=SOURCE_ID,
+        source_id=site.source_id,
         external_id=href.rstrip("/").rsplit("/", 1)[-1],
-        url=BASE_URL + href,
+        url=site.base_url + href,
         title=title,
         kind=_kind(procedure_type, step, status),
         status=_status(status),
@@ -204,34 +244,30 @@ def _pagination_form(view_state: str, first: int, rows: int) -> dict[str, str]:
 
 
 class SachsenBeteiligungSource:
-    """Reads the portal's full list of current procedures.
-
-    `portal` selects the portal instance ("sachsen" = everything, or an
-    authority's own portal like "dresden"). Pages are fixed at the portal's
-    own size of 10; it rejects any other.
-    """
+    """Reads one portal's full list of current procedures. Pages are fixed
+    at the portal's own size of 10; it rejects any other."""
 
     def __init__(
         self,
         http: PoliteHttpClient,
+        site: PortalSite,
         coverage: PortalCoverage,
         *,
-        portal: str = "sachsen",
         max_items: int = 1500,
     ) -> None:
         self._http = http
-        self._url = f"{BASE_URL}/portal/{portal}/beteiligung/themen"
-        self._portal = portal
+        self._site = site
+        self._url = f"{site.base_url}/portal/{site.mandant}/beteiligung/themen"
         self._max_items = max_items
         self._resolve_region = coverage.region_for
 
     @property
     def source_id(self) -> str:
-        return SOURCE_ID
+        return self._site.source_id
 
     @property
     def name(self) -> str:
-        return f"{SOURCE_ID}:{self._portal}"
+        return f"{self._site.source_id}:{self._site.mandant}"
 
     async def fetch(self, *, observed_at: datetime) -> list[Listing]:
         first_page = (await self._http.get(self._url)).text
@@ -255,5 +291,8 @@ class SachsenBeteiligungSource:
 
     def _parse(self, html: str, observed_at: datetime) -> list[Listing]:
         return parse_teasers(
-            html, observed_at=observed_at, resolve_region=self._resolve_region
+            html,
+            site=self._site,
+            observed_at=observed_at,
+            resolve_region=self._resolve_region,
         )

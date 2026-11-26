@@ -28,6 +28,8 @@ from meinimpact.places.defs import sachsen
 FIXTURES = Path(__file__).parent / "fixtures" / "listings"
 NOW = datetime(2026, 11, 1, 12, 0, tzinfo=UTC)
 SACHSEN = portal_coverage(sachsen.PLACE).region_for
+assert sachsen.PLACE.portal is not None
+SITE = sachsen.PLACE.portal
 
 
 def _fixture(name: str) -> str:
@@ -98,10 +100,14 @@ def test_openpetition_card_past_collection_is_closed() -> None:
 
 def test_sachsen_parses_teasers_with_authority_region_and_dates() -> None:
     listings = sachsen_beteiligung.parse_teasers(
-        _fixture("sachsen_listing.html"), observed_at=NOW, resolve_region=SACHSEN
+        _fixture("sachsen_listing.html"),
+        site=SITE,
+        observed_at=NOW,
+        resolve_region=SACHSEN,
     )
 
     assert len(listings) == 3
+    assert {item.source_id for item in listings} == {"beteiligung-sachsen"}
     event, _, survey = listings
     assert event.organizer == "Landeshauptstadt Dresden"
     assert event.region == "dresden"
@@ -124,7 +130,10 @@ def test_sachsen_parses_teasers_with_authority_region_and_dates() -> None:
 
 def test_sachsen_event_free_seats_are_not_counted_as_participants() -> None:
     event = sachsen_beteiligung.parse_teasers(
-        _fixture("sachsen_listing.html"), observed_at=NOW, resolve_region=SACHSEN
+        _fixture("sachsen_listing.html"),
+        site=SITE,
+        observed_at=NOW,
+        resolve_region=SACHSEN,
     )[0]
 
     assert event.support.count is None
@@ -141,7 +150,7 @@ def test_sachsen_partial_response_yields_the_next_page() -> None:
     fragment = sachsen_beteiligung.parse_partial_response(_fixture("sachsen_page2.xml"))
 
     listings = sachsen_beteiligung.parse_teasers(
-        fragment, observed_at=NOW, resolve_region=SACHSEN
+        fragment, site=SITE, observed_at=NOW, resolve_region=SACHSEN
     )
 
     assert len(listings) == 2
@@ -158,6 +167,40 @@ def test_sachsen_region_for_authority() -> None:
     assert SACHSEN("Sächsisches Staatsministerium für Kultus") == "sachsen"
     assert SACHSEN("Landratsamt Sächsische Schweiz-Osterzgebirge") is None
     assert SACHSEN("Stadt Leipzig") is None
+
+
+def test_a_town_without_a_place_file_counts_for_its_covered_kreis() -> None:
+    from meinimpact.infrastructure.geo.places import PlaceIndex
+    from meinimpact.infrastructure.geo.plz import Area, PlzIndex, Point
+    from meinimpact.places.defs import sachsen_anhalt
+
+    plz = PlzIndex({})
+    index = PlaceIndex(
+        {
+            "Gräfenhainichen": [("15091", Area(Point(51.73, 12.45), 2.5))],
+            "Zerbst/Anhalt": [("15082", Area(Point(51.97, 12.08), 3.0))],
+        },
+        {},
+        plz,
+    )
+    resolve = portal_coverage(sachsen_anhalt.PLACE, index).region_for
+
+    assert resolve("Stadt Gräfenhainichen") == "lk-wittenberg"
+    assert resolve("Einheitsgemeinde Stadt Gräfenhainichen") == "lk-wittenberg"
+    assert resolve("Stadt Zerbst/Anhalt") is None  # Kreis not covered
+    assert resolve("Verbandsgemeinde Saale-Wipper") is None
+    assert resolve("Lutherstadt Wittenberg") == "wittenberg"
+    assert resolve("Landkreis Wittenberg") == "lk-wittenberg"
+    assert resolve("Ministerium für Infrastruktur und Digitales") == "sachsen-anhalt"
+
+
+def test_municipality_names_lose_their_prefix() -> None:
+    name = sachsen_beteiligung.municipality_name
+
+    assert name("Stadt Halle (Saale)") == "Halle (Saale)"
+    assert name("Welterbestadt Quedlinburg") == "Quedlinburg"
+    assert name("Landkreis Stendal") is None
+    assert name("Verbandsgemeinde Beetzendorf-Diesdorf") is None
 
 
 def test_portal_coverage_prefers_the_most_specific_place() -> None:

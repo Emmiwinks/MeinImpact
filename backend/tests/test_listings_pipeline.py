@@ -40,6 +40,32 @@ async def _no_sleep(_: float) -> None:
     return None
 
 
+async def test_place_sources_are_the_place_s_own_and_its_land_portal() -> None:
+    from meinimpact import places
+    from meinimpact.infrastructure.listings.catalog import place_sources
+
+    town = places.by_key("wittenberg")
+    land = places.by_key("sachsen-anhalt")
+    assert town is not None and land is not None
+    async with PoliteHttpClient() as http:
+        for_town = [s.name for s in place_sources(http, town)]
+        for_land = [s.name for s in place_sources(http, land)]
+
+    assert for_town == ["beteiligung-sachsen-anhalt:hauptportal"]
+    assert for_land == [
+        "openpetition:sachsen-anhalt",
+        "openpetition:lk-wittenberg",
+        "beteiligung-sachsen-anhalt:hauptportal",
+    ]
+
+
+def _sachsen_portal(handler: httpx.MockTransport) -> SachsenBeteiligungSource:
+    assert sachsen.PLACE.portal is not None
+    return SachsenBeteiligungSource(
+        _http(handler), sachsen.PLACE.portal, portal_coverage(sachsen.PLACE)
+    )
+
+
 def _http(handler: httpx.MockTransport) -> PoliteHttpClient:
     return PoliteHttpClient(
         policy=CrawlPolicy(default_delay_s=0),
@@ -183,9 +209,7 @@ async def test_sachsen_follows_ajax_pagination_with_view_state() -> None:
         body = second if len(posts) == 1 else "<partial-response/>"
         return httpx.Response(200, text=body)
 
-    source = SachsenBeteiligungSource(
-        _http(httpx.MockTransport(handler)), portal_coverage(sachsen.PLACE)
-    )
+    source = _sachsen_portal(httpx.MockTransport(handler))
 
     listings = await source.fetch(observed_at=NOW)
 
@@ -210,9 +234,7 @@ async def test_sachsen_rejected_pagination_fails_the_source_loudly() -> None:
             return httpx.Response(404)
         return httpx.Response(200, text=first if request.method == "GET" else redirect)
 
-    source = SachsenBeteiligungSource(
-        _http(httpx.MockTransport(handler)), portal_coverage(sachsen.PLACE)
-    )
+    source = _sachsen_portal(httpx.MockTransport(handler))
 
     report = await collect([source], observed_at=NOW)
 
