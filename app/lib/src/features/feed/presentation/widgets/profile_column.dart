@@ -32,10 +32,16 @@ class ProfileColumn extends StatelessWidget {
     this.onFillIn,
     this.progress,
     this.onFeedback,
+    this.themeMode = ThemeMode.system,
+    this.onThemeModeChanged,
     super.key,
   });
 
   final UserProfile? profile;
+
+  /// Light, dark or the phone's; no row to choose without the callback.
+  final ThemeMode themeMode;
+  final ValueChanged<ThemeMode>? onThemeModeChanged;
 
   /// Opens the beta feedback sheet; no feedback row without it.
   final VoidCallback? onFeedback;
@@ -135,6 +141,13 @@ class ProfileColumn extends StatelessWidget {
           onTap: Notifications.current.openSettings,
           leavesApp: true,
         ),
+      if (onThemeModeChanged case final onChanged?)
+        _ProfileRow(
+          key: const ValueKey('row-darstellung'),
+          title: 'Hell oder dunkel',
+          thumb: Icon(_AppearanceChoice.iconFor(themeMode)),
+          onTap: () => _showAppearance(context, onChanged),
+        ),
       if (onFeedback case final onFeedback?)
         _ProfileRow(
           key: const ValueKey('row-feedback'),
@@ -178,6 +191,83 @@ class ProfileColumn extends StatelessWidget {
         ),
       ),
       short: true,
+    );
+  }
+
+  // The sheet takes the app's theme as it is when opened; a new choice
+  // closes it, so the whole app turns at once and nothing is left in the
+  // old colours.
+  void _showAppearance(
+    BuildContext context,
+    ValueChanged<ThemeMode> onChanged,
+  ) {
+    _showTableSheet(
+      context,
+      Builder(
+        builder: (sheetContext) => _AppearanceChoice(
+          selected: themeMode,
+          onChanged: (mode) {
+            Navigator.of(sheetContext).pop();
+            onChanged(mode);
+          },
+        ),
+      ),
+      short: true,
+    );
+  }
+}
+
+/// Light, dark or like the phone, as three segments.
+class _AppearanceChoice extends StatelessWidget {
+  const _AppearanceChoice({required this.selected, required this.onChanged});
+
+  final ThemeMode selected;
+  final ValueChanged<ThemeMode> onChanged;
+
+  static IconData iconFor(ThemeMode mode) => switch (mode) {
+        ThemeMode.system => Icons.brightness_auto_outlined,
+        ThemeMode.light => Icons.light_mode_outlined,
+        ThemeMode.dark => Icons.dark_mode_outlined,
+      };
+
+  static const _labels = {
+    ThemeMode.system: 'Wie Handy',
+    ThemeMode.light: 'Hell',
+    ThemeMode.dark: 'Dunkel',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.mi;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _Heading('Hell oder dunkel'),
+        const SizedBox(height: MiSpace.base),
+        SegmentedButton<ThemeMode>(
+          key: const ValueKey('appearance-choice'),
+          showSelectedIcon: false,
+          segments: [
+            for (final mode in _labels.keys)
+              // Words only: with icons "Wie Handy" breaks onto two lines.
+              ButtonSegment(value: mode, label: Text(_labels[mode]!)),
+          ],
+          selected: {selected},
+          onSelectionChanged: (modes) => onChanged(modes.single),
+          style: SegmentedButton.styleFrom(
+            foregroundColor: colors.onTable,
+            selectedForegroundColor: colors.onTable,
+            selectedBackgroundColor: colors.onTable.withValues(alpha: 0.12),
+            side: BorderSide(color: colors.onTableMuted),
+            minimumSize: const Size.fromHeight(52),
+            textStyle: const TextStyle(
+              fontFamily: MiFonts.text,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

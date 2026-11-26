@@ -792,6 +792,33 @@ void main() {
     expect(bar.selectedIndex, 0);
   });
 
+  testWidgets('a chosen appearance wins over the phone', (tester) async {
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.light;
+    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('de'),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        theme: miTheme(Brightness.light),
+        darkTheme: miTheme(Brightness.dark),
+        themeMode: ThemeMode.dark,
+        home: MainTabScreen(opportunityRepository: _Repository(const [])),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final shell = tester.widget<Scaffold>(
+      find
+          .descendant(
+            of: find.byType(MainTabScreen),
+            matching: find.byType(Scaffold),
+          )
+          .first,
+    );
+    expect(shell.backgroundColor, MiColors.dark.table);
+  });
+
   testWidgets('Wirkung counts the actions done since it was last opened', (
     tester,
   ) async {

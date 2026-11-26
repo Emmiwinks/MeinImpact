@@ -126,6 +126,33 @@ void main() {
     expect(changed, isNotNull);
     expect(changed, isNotEmpty);
   });
+
+  testWidgets('no appearance row without a way to change it', (tester) async {
+    await _pump(tester, const UserProfile());
+
+    expect(find.byKey(const ValueKey('row-darstellung')), findsNothing);
+  });
+
+  testWidgets('the appearance row picks light, dark or the phone',
+      (tester) async {
+    ThemeMode? chosen;
+    await _pump(
+      tester,
+      const UserProfile(),
+      onThemeModeChanged: (mode) => chosen = mode,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('row-darstellung')));
+    await tester.pumpAndSettle();
+    expect(find.text('Wie Handy'), findsOneWidget);
+
+    await tester.tap(find.text('Hell'));
+    await tester.pumpAndSettle();
+
+    expect(chosen, ThemeMode.light);
+    // The sheet closes, so the app turns all at once.
+    expect(find.byKey(const ValueKey('appearance-choice')), findsNothing);
+  });
 }
 
 Future<void> _pump(
@@ -133,6 +160,7 @@ Future<void> _pump(
   UserProfile profile, {
   ValueChanged<InterestWeights>? onInterestsChanged,
   ValueChanged<Set<String>>? onLebenslagenChanged,
+  ValueChanged<ThemeMode>? onThemeModeChanged,
 }) async {
   tester.view.physicalSize = const Size(412, 2400);
   tester.view.devicePixelRatio = 1;
@@ -147,6 +175,7 @@ Future<void> _pump(
             onEdit: () {},
             onLebenslagenChanged: onLebenslagenChanged ?? (_) {},
             onInterestsChanged: onInterestsChanged ?? (_) {},
+            onThemeModeChanged: onThemeModeChanged,
           ),
         ),
       ),

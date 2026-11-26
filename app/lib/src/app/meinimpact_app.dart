@@ -26,6 +26,7 @@ import '../features/tracking/domain/action_log.dart';
 import '../features/tracking/domain/progress.dart';
 import '../features/tracking/progress_widgets.dart';
 import 'main_tab_screen.dart';
+import 'theme/appearance_store.dart';
 import 'theme/mi_theme.dart';
 
 class MeinImpactApp extends StatefulWidget {
@@ -41,7 +42,9 @@ class MeinImpactApp extends StatefulWidget {
         _actionLogStore = null,
         _initialActionLog = const ActionLog(),
         _dismissedStore = null,
-        _initialDismissed = const {};
+        _initialDismissed = const {},
+        _appearanceStore = null,
+        _initialThemeMode = ThemeMode.system;
 
   /// Production constructor — shows onboarding when no profile exists.
   const MeinImpactApp.withProfile({
@@ -52,6 +55,8 @@ class MeinImpactApp extends StatefulWidget {
     UserProfile? initialProfile,
     ActionLog initialActionLog = const ActionLog(),
     Set<String> initialDismissed = const {},
+    AppearanceStore? appearanceStore,
+    ThemeMode initialThemeMode = ThemeMode.system,
     InterestConfig interestConfig = const InterestConfig(),
     super.key,
   })  : _opportunityRepository = opportunityRepository,
@@ -61,7 +66,9 @@ class MeinImpactApp extends StatefulWidget {
         _actionLogStore = actionLogStore,
         _initialActionLog = initialActionLog,
         _dismissedStore = dismissedStore,
-        _initialDismissed = initialDismissed;
+        _initialDismissed = initialDismissed,
+        _appearanceStore = appearanceStore,
+        _initialThemeMode = initialThemeMode;
 
   final OpportunityRepository _opportunityRepository;
   final InterestConfig _interestConfig;
@@ -71,6 +78,8 @@ class MeinImpactApp extends StatefulWidget {
   final ActionLog _initialActionLog;
   final DismissedCardsStore? _dismissedStore;
   final Set<String> _initialDismissed;
+  final AppearanceStore? _appearanceStore;
+  final ThemeMode _initialThemeMode;
 
   @override
   State<MeinImpactApp> createState() => _MeinImpactAppState();
@@ -109,6 +118,8 @@ class _MeinImpactAppState extends State<MeinImpactApp>
   late ActionLog _actionLog;
   // Cards thrown away from the hand.
   late Set<String> _dismissed;
+  // Light, dark or the phone's, from "Mein Profil".
+  late ThemeMode _themeMode;
   final _navigatorKey = GlobalKey<NavigatorState>();
   // Tabs a notification asks to open.
   final _openTab = StreamController<int>.broadcast();
@@ -119,6 +130,7 @@ class _MeinImpactAppState extends State<MeinImpactApp>
     _profile = widget._initialProfile;
     _actionLog = widget._initialActionLog;
     _dismissed = widget._initialDismissed;
+    _themeMode = widget._initialThemeMode;
     WidgetsBinding.instance.addObserver(this);
     unawaited(Usage.current.markActive());
     unawaited(_locateHomeIfMissing());
@@ -243,6 +255,11 @@ class _MeinImpactAppState extends State<MeinImpactApp>
     final updated = {..._dismissed, ...ids};
     setState(() => _dismissed = updated);
     await widget._dismissedStore?.save(updated);
+  }
+
+  Future<void> _onThemeModeChanged(ThemeMode mode) async {
+    setState(() => _themeMode = mode);
+    await widget._appearanceStore?.save(mode);
   }
 
   Future<void> _onConsent() async {
@@ -415,9 +432,11 @@ class _MeinImpactAppState extends State<MeinImpactApp>
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
-      // Every screen lies on the card table, light or dark with the phone.
+      // Every screen lies on the card table, light or dark with the phone
+      // unless chosen otherwise in "Mein Profil".
       theme: miTheme(Brightness.light),
       darkTheme: miTheme(Brightness.dark),
+      themeMode: _themeMode,
       // Status bar icons follow the table; app bars set their own.
       builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
         value: Theme.of(context).brightness == Brightness.dark
@@ -501,6 +520,8 @@ class _MeinImpactAppState extends State<MeinImpactApp>
         onActionDone: _onActionDone,
         dismissedIds: _dismissed,
         onCardsDismissed: _onCardsDismissed,
+        themeMode: _themeMode,
+        onThemeModeChanged: _onThemeModeChanged,
         interestConfig: widget._interestConfig,
       );
     }

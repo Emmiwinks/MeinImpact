@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'src/app/meinimpact_app.dart';
+import 'src/app/theme/appearance_store.dart';
 import 'src/core/config/app_config.dart';
 import 'src/core/feedback/beta_feedback.dart';
 import 'src/core/network/api_client.dart';
@@ -54,6 +55,8 @@ void main() async {
   const dismissedStore = DismissedCardsStore();
   final initialDismissed = await dismissedStore.load();
   HandHints.current = await HandHints.load();
+  const appearanceStore = AppearanceStore();
+  final initialThemeMode = await appearanceStore.load();
 
   runApp(
     MeinImpactApp.withProfile(
@@ -64,6 +67,8 @@ void main() async {
       initialActionLog: initialActionLog,
       dismissedStore: dismissedStore,
       initialDismissed: initialDismissed,
+      appearanceStore: appearanceStore,
+      initialThemeMode: initialThemeMode,
     ),
   );
 }

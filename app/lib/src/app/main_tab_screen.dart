@@ -40,6 +40,8 @@ class MainTabScreen extends StatefulWidget {
     this.onActionDone,
     this.dismissedIds = const {},
     this.onCardsDismissed,
+    this.themeMode = ThemeMode.system,
+    this.onThemeModeChanged,
     this.interestConfig = const InterestConfig(),
     super.key,
   });
@@ -72,6 +74,10 @@ class MainTabScreen extends StatefulWidget {
   // Cards thrown away from the hand.
   final Set<String> dismissedIds;
   final ValueChanged<Set<String>>? onCardsDismissed;
+  // Light, dark or the phone's; no choice in the profile without the
+  // callback.
+  final ThemeMode themeMode;
+  final ValueChanged<ThemeMode>? onThemeModeChanged;
   final InterestConfig interestConfig;
 
   static const _fallbackProfile = UserProfile();
@@ -140,6 +146,8 @@ class _MainTabScreenState extends State<MainTabScreen> {
         onLebenslagenChanged: widget.onLebenslagenChanged,
         onInterestsChanged: widget.onInterestsChanged,
         onFeedback: _giveFeedback,
+        themeMode: widget.themeMode,
+        onThemeModeChanged: widget.onThemeModeChanged,
       ),
       AktionenTab(
         opportunityRepository: widget.opportunityRepository,
@@ -160,11 +168,16 @@ class _MainTabScreenState extends State<MainTabScreen> {
       ),
     ];
 
-    // The card table follows the phone's light or dark setting, and so do
-    // the status bar icons above it.
-    final brightness = MediaQuery.platformBrightnessOf(context);
+    // The card table is light or dark as the app is (the phone's setting
+    // unless chosen in the profile), and so are the status bar icons above
+    // it. Outside the app, e.g. in tests, it follows the phone.
+    final current = Theme.of(context);
+    final theme = current.extension<MiColors>() != null
+        ? current
+        : miTheme(MediaQuery.platformBrightnessOf(context));
+    final brightness = theme.brightness;
     return Theme(
-      data: miTheme(brightness),
+      data: theme,
       child: Builder(
         builder: (context) => AnnotatedRegion<SystemUiOverlayStyle>(
           value: brightness == Brightness.dark
@@ -226,6 +239,8 @@ class _ProfileTab extends StatelessWidget {
     required this.onLebenslagenChanged,
     required this.onInterestsChanged,
     required this.onFeedback,
+    required this.themeMode,
+    required this.onThemeModeChanged,
   });
 
   final UserProfile profile;
@@ -237,6 +252,8 @@ class _ProfileTab extends StatelessWidget {
   final ValueChanged<Set<String>>? onLebenslagenChanged;
   final ValueChanged<InterestWeights>? onInterestsChanged;
   final void Function(BuildContext context) onFeedback;
+  final ThemeMode themeMode;
+  final ValueChanged<ThemeMode>? onThemeModeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -252,6 +269,8 @@ class _ProfileTab extends StatelessWidget {
         onLebenslagenChanged: onLebenslagenChanged ?? (_) {},
         onInterestsChanged: onInterestsChanged ?? (_) {},
         onFeedback: () => onFeedback(context),
+        themeMode: themeMode,
+        onThemeModeChanged: onThemeModeChanged,
       ),
     );
   }

@@ -178,6 +178,47 @@ void main() {
         ),
       ),
     );
+    for (final open in [false, true]) {
+      testWidgets(
+        'profile appearance${open ? ' sheet' : ''}, $b',
+        (t) => screen(
+          t,
+          'phone-profil-darstellung${open ? '-sheet' : ''}-$b',
+          Scaffold(
+            body: SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(top: MiSpace.lg),
+                child: ProfileColumn(
+                  profile: const UserProfile(
+                    lebenslagen: {'eltern', 'oepnv', 'mieter'},
+                    plz: '01067',
+                    prioritaeten: _taler,
+                  ),
+                  onEdit: () {},
+                  onEditPrioritaeten: () {},
+                  onLebenslagenChanged: (_) {},
+                  onInterestsChanged: (_) {},
+                  onFeedback: () {},
+                  onThemeModeChanged: (_) {},
+                ),
+              ),
+            ),
+          ),
+          brightness: brightness,
+          act: (t) async {
+            await t.scrollUntilVisible(
+              find.byKey(const ValueKey('row-feedback')),
+              200,
+              scrollable: find.byType(Scrollable).first,
+            );
+            await t.pumpAndSettle();
+            if (open) {
+              await t.tap(find.byKey(const ValueKey('row-darstellung')));
+            }
+          },
+        ),
+      );
+    }
   }
 }
 
