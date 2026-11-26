@@ -20,7 +20,9 @@ import 'package:meinimpact/src/features/feed/domain/opportunity.dart';
 import 'package:meinimpact/src/features/feed/domain/opportunity_repository.dart';
 import 'package:meinimpact/src/features/feed/domain/user_profile.dart';
 import 'package:meinimpact/src/features/feed/presentation/aktionen_tab.dart';
-import 'package:meinimpact/src/features/feed/presentation/letter_screen.dart';import 'package:meinimpact/src/features/onboarding/rucksack/rucksack_screen.dart';
+import 'package:meinimpact/src/features/feed/presentation/hand/action_card.dart';
+import 'package:meinimpact/src/features/feed/presentation/letter_screen.dart';
+import 'package:meinimpact/src/features/onboarding/rucksack/rucksack_screen.dart';
 import 'package:meinimpact/src/features/onboarding/value_profile_screen.dart';
 import 'package:meinimpact/src/features/tracking/domain/action_log.dart';
 import 'package:meinimpact/src/features/tracking/domain/impact_news.dart';
@@ -216,7 +218,7 @@ void main() {
         'phone-bundle-back-${brightness.name}',
         brightness: brightness,
         pool: bundlePool,
-        act: (t) => t.tap(find.text('Optionen ansehen')),
+        act: (t) => t.tap(find.byType(ActionCard).last),
       ),
     );
     testWidgets(
@@ -233,7 +235,7 @@ void main() {
             via: ActionVia.inAppBrowser,
           ),
         ],
-        act: (t) => t.tap(find.text('Optionen ansehen')),
+        act: (t) => t.tap(find.byType(ActionCard).last),
       ),
     );
   }

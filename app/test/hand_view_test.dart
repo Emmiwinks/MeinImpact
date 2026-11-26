@@ -166,6 +166,39 @@ void main() {
   });
 
   group('card back', () {
+    testWidgets('carries the action; the front only turns the card', (
+      tester,
+    ) async {
+      var played = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: miTheme(Brightness.dark),
+          home: Center(
+            child: SizedBox(
+              width: 320,
+              height: 560,
+              child: ActionCard(
+                ranked: RankedOpportunity(
+                  opportunity: _o('v', title: 'Frage?'),
+                  matchedSnippet: null,
+                ),
+                actionLabel: 'Unterschreiben',
+                onAction: () => played++,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byType(FilledButton), findsNothing);
+      await tester.tap(findText('Frage?'));
+      await tester.pumpAndSettle();
+      expect(played, 0);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Unterschreiben'));
+      expect(played, 1);
+    });
+
     testWidgets('asks nothing about topics and turns back on a tap', (
       tester,
     ) async {
@@ -361,13 +394,16 @@ void main() {
       await tester.pumpWidget(tab);
       await tester.pumpAndSettle();
 
-      await tester.tap(_playable);
+      await _playFromBack(tester, 'Frage 1?');
       await tester.pump();
       await tester.pump(MiMotion.flight ~/ 2);
-      // In flight: the copy on the overlay, while the card in the fan waits
-      // hidden until the log takes it out.
-      expect(findText('Frage 1?'), findsNWidgets(2));
+      // In flight: the copy on the overlay, back up as it was played, while
+      // the card in the fan waits hidden until the log takes it out.
+      expect(findText('Antwort 1'), findsNWidgets(2));
+      expect(findText('Frage 1?'), findsNothing);
       await tester.pumpAndSettle();
+
+      expect(findText('Antwort 1'), findsNothing);
 
       expect(findText('Frage 1?'), findsNothing);
       expect(_fanAt('Karte 1 von 1'), findsOneWidget);
@@ -384,14 +420,11 @@ void main() {
       await tester.tap(findText('Frage 1?'));
       await tester.pump();
       expect(findText('Antwort 1'), findsOneWidget);
-      await tester.tap(find.byTooltip('Karte umdrehen'));
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Petition ansehen'));
+      await tester.pump();
       await tester.pump();
       expect(findText('Antwort 1'), findsNothing);
-
-      await tester.tap(_playable);
-      await tester.pump();
-      await tester.pump();
-      expect(findText('Frage 1?'), findsNothing);
       expect(tab.played, ['1']);
     });
 
@@ -456,7 +489,7 @@ void main() {
       );
       expect(find.textContaining('2 Optionen'), findsOneWidget);
 
-      await tester.tap(findText('Optionen ansehen'));
+      await tester.tap(findText('Bleibt das Informationsfreiheitsgesetz?'));
       await tester.pumpAndSettle();
       expect(findText('2 Petitionen · ähnliches Anliegen'), findsOneWidget);
       expect(findText('An den Bundestag.'), findsOneWidget);
@@ -860,10 +893,13 @@ void main() {
 // The fan's own node; its children's words follow the label.
 Finder _fanAt(String label) => find.bySemanticsLabel(RegExp('^$label'));
 
-// Only the front card's button is live; the cards behind carry one too.
-final _playable = find.byWidgetPredicate(
-  (widget) => widget is FilledButton && widget.onPressed != null,
-);
+// How a user plays a card: turn it over by its question, then press the
+// action on its back.
+Future<void> _playFromBack(WidgetTester tester, String title) async {
+  await tester.tap(findText(title));
+  await tester.pumpAndSettle();
+  await tester.tap(find.widgetWithText(FilledButton, 'Petition ansehen'));
+}
 
 List<Opportunity> _pool(int count) => [
       for (var i = 1; i <= count; i++)

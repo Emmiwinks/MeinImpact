@@ -10,8 +10,9 @@ import '../widgets/ai_mark.dart';
 import 'topic_art.dart';
 
 /// One action as a playing card. The front says what it is and why it is
-/// yours; tapping turns it over to the facts and both sides of the
-/// argument. The action button sits on both faces.
+/// yours; tapping turns it over to the facts, both sides of the argument
+/// and the action button. People read the back before acting, so the
+/// front carries no button.
 class ActionCard extends StatefulWidget {
   const ActionCard({
     required this.ranked,
@@ -25,6 +26,7 @@ class ActionCard extends StatefulWidget {
     this.drift = 0,
     this.peek = false,
     this.onPeeked,
+    this.turned = false,
     super.key,
   });
 
@@ -50,6 +52,9 @@ class ActionCard extends StatefulWidget {
   // swipe cut it short or it never ran.
   final bool peek;
   final VoidCallback? onPeeked;
+  // Laid down back up, as the played card's copy that flies off: it was
+  // played from its back.
+  final bool turned;
 
   @override
   State<ActionCard> createState() => _ActionCardState();
@@ -77,7 +82,11 @@ class _ActionCardState extends State<ActionCard>
   @override
   void initState() {
     super.initState();
-    _turn = AnimationController(vsync: this, duration: MiMotion.flip);
+    _turn = AnimationController(
+      vsync: this,
+      duration: MiMotion.flip,
+      value: widget.turned ? 1 : 0,
+    );
     if (widget.peek) _peekAtBack();
   }
 
@@ -110,7 +119,9 @@ class _ActionCardState extends State<ActionCard>
   void didUpdateWidget(ActionCard old) {
     super.didUpdateWidget(old);
     // A card that leaves the front lies face up again.
-    if (!widget.isFront && _turn.value != 0) _turn.value = 0;
+    if (!widget.isFront && !widget.turned && _turn.value != 0) {
+      _turn.value = 0;
+    }
   }
 
   @override
@@ -140,7 +151,6 @@ class _ActionCardState extends State<ActionCard>
       builder: (context, _) {
         final angle = MiMotion.ease.transform(_turn.value) * pi;
         final back = angle > pi / 2;
-        final bundle = widget.ranked.isBundle;
         final face = back
             ? _CardBack(
                 ranked: widget.ranked,
@@ -152,11 +162,6 @@ class _ActionCardState extends State<ActionCard>
               )
             : _CardFront(
                 ranked: widget.ranked,
-                // A bundle's options are on its back.
-                actionLabel: bundle ? 'Optionen ansehen' : widget.actionLabel,
-                onAction: bundle
-                    ? (widget.isFront ? _toggle : null)
-                    : widget.onAction,
                 onTurn: widget.isFront ? _toggle : null,
                 contentOpacity: widget.contentOpacity,
                 drift: still ? 0 : widget.drift.clamp(-1.0, 1.0),
@@ -212,16 +217,12 @@ class _ActionCardState extends State<ActionCard>
 class _CardFront extends StatelessWidget {
   const _CardFront({
     required this.ranked,
-    required this.actionLabel,
-    required this.onAction,
     required this.onTurn,
     required this.contentOpacity,
     required this.drift,
   });
 
   final RankedOpportunity ranked;
-  final String actionLabel;
-  final VoidCallback? onAction;
   final VoidCallback? onTurn;
   final double contentOpacity;
   final double drift;
@@ -315,11 +316,6 @@ class _CardFront extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: MiSpace.md),
-                        FilledButton(
-                          onPressed: onAction,
-                          child: Text(actionLabel, textAlign: TextAlign.center),
-                        ),
                       ],
                     ),
                   ),
@@ -388,15 +384,24 @@ class _CardBack extends StatelessWidget {
             ),
           ),
           Expanded(
-            // Fades out at the bottom edge, so more below the button reads
-            // as scrollable rather than cut off.
+            // A thin fade at the bottom edge, so more below reads as
+            // scrollable rather than cut off; the list's bottom padding is
+            // wider, so the last line scrolls clear of it.
             child: ShaderMask(
               blendMode: BlendMode.dstIn,
-              shaderCallback: (bounds) => const LinearGradient(
+              shaderCallback: (bounds) => LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Colors.black, Colors.black, Colors.transparent],
-                stops: [0, 0.86, 1],
+                colors: const [
+                  Colors.black,
+                  Colors.black,
+                  Colors.transparent,
+                ],
+                stops: [
+                  0,
+                  max(0, 1 - _backFade / max(bounds.height, 1)),
+                  1,
+                ],
               ).createShader(bounds),
               child: bundle != null
                   ? _BundleContent(
@@ -701,6 +706,10 @@ class _Arguments extends StatelessWidget {
 }
 
 const _titleLines = 5;
+
+// Height of the fade at the bottom of a card's back; below the lists'
+// bottom padding (MiSpace.xl), so the last line ends in full ink.
+const double _backFade = 10;
 
 /// The card title at the largest step (21, 18, 16, 14) that fits the whole
 /// question into [_titleLines] lines and its longest word into one line,

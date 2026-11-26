@@ -235,6 +235,7 @@ class _HandViewState extends State<HandView> with TickerProviderStateMixin {
             ranked: ranked,
             actionLabel: widget.actionLabel(ranked.opportunity),
             isFront: false,
+            turned: true,
           ),
         ),
       ),
@@ -730,9 +731,11 @@ class _CardFanState extends State<_CardFan> with TickerProviderStateMixin {
     return LayoutBuilder(
       builder: (context, constraints) {
         _cardWidth = min(constraints.maxWidth - 2 * (MiSpace.lg + 20), 340);
-        // As tall as the table allows, up to a playing card's proportions.
+        // As tall as the table allows, up to a playing card's proportions,
+        // less the button the front used to carry (52 high, 12 above), so
+        // the art did not grow when it went.
         final cardHeight =
-            min(constraints.maxHeight - MiSpace.lg, _cardWidth * 1.75);
+            min(constraints.maxHeight - MiSpace.lg, _cardWidth * 1.75) - 64;
         final pos = position.value;
         final front = pos.round().clamp(0, _last);
         final throwable = widget.onThrow != null && front < cards.length;

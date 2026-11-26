@@ -38,7 +38,6 @@ void main() {
       MeinImpactApp(opportunityRepository: _PoolRepository()),
     );
     await tester.pumpAndSettle();
-    expect(findText('Petition ansehen'), findsOneWidget);
 
     await tester.tap(findText('Petition zum Klimaschutz'));
     await tester.pumpAndSettle();
