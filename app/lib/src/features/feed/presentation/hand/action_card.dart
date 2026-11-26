@@ -290,10 +290,9 @@ class _CardFront extends StatelessWidget {
                               cardTitle(ranked),
                               text.titleLarge!.copyWith(color: colors.onCard),
                               inner,
-                              trailing:
-                                  AiText.gap + AiMark.widthOf(context),
+                              trailing: AiText.gap + AiMark.widthOf(context),
                             ),
-                                              onDark: false,
+                            onDark: false,
                             maxLines: _titleLines,
                           ),
                         ),

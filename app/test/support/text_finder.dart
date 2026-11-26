@@ -7,12 +7,11 @@ import 'package:flutter_test/flutter_test.dart';
 Finder findText(String text) => find.byWidgetPredicate(
       (widget) => switch (widget) {
         Text(data: final data?) => data == text,
-        Text(textSpan: final span?) =>
-          span.toPlainText(
-                includeSemanticsLabels: false,
-                includePlaceholders: false,
-              ) ==
-              text,
+        Text(textSpan: final span?) => span.toPlainText(
+              includeSemanticsLabels: false,
+              includePlaceholders: false,
+            ) ==
+            text,
         EditableText(:final controller) => controller.text == text,
         _ => false,
       },

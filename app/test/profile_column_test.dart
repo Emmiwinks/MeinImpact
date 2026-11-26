@@ -46,8 +46,7 @@ void main() {
     expect(find.text('Umverteilung'), findsNothing);
   });
 
-  testWidgets('the topics row opens the topics to forget',
-      (tester) async {
+  testWidgets('the topics row opens the topics to forget', (tester) async {
     InterestWeights? changed;
     await _pump(
       tester,
